@@ -415,3 +415,19 @@ VITE_AUDIO_BASE=/audio                  # F3：需同时提供 /audio/manifest.j
 5. **B6 + F1/F2/F3**：素材一次性入库，图片与音频契约自动转正；
 6. **S4 + B8 + AI3/AI6**：预渲染 + 文章 OG 图 + RAG 与评测集。
 
+---
+
+## 1️⃣1️⃣ 追加一轮：导航/页头/浮标交互调整（2026-10-30 第二批）
+
+| 改动 | 状态 | 实现 | 涉及文件 |
+|---|---|---|---|
+| 下拉菜单紧凑化 | ✅ | 面板从「整屏居中 680px 双列大卡片」改为**挂在当前导航项文字正下方**的 244px 单列面板（高度 128–214px）；首项左对齐、末项右对齐、中间项居中对齐到该导航项；去掉底部说明条 | `components/Layout.tsx` |
+| 删除各页顶部介绍大卡片 | ✅ | 新增紧凑页头 `PageHead`（一行 kicker + 单行标题 + 右侧可选操作），替换 12 个页面的 `PageIntro` 与 `/learn` 的内联介绍 section；`desc/note/Sticker` 文案降为右侧一行小字统计，**下方内容区完全不变** | `components/ui/primitives.tsx` · `pages/{Learn,Resume,Toolbox,Files,Love,Moments,Travel,MusicBox,About,Media,Timeline,Guestbook,Friends}.tsx` |
+| 简历页操作不丢失 | ✅ | 打印 / 下载打印版 / 简历原件 三个动作移入 `PageHead` 的 right 槽（F6 能力保留） | `pages/Resume.tsx` |
+| AI 助手浮标全站显示 | ✅ | 浮标从 `/learn`、`/learn/:id` 两页上提到 `Layout` 全局挂载；组件本体仍 `React.lazy`，入口包未变大（119.93 kB / gzip 44.04 kB）；「正在阅读」上下文改用 `src/lib/assistant.ts` 外部 store，文章页写入、离开自动清除；`?assistant=1` 由 Layout 统一响应 | `src/lib/assistant.ts`（新）· `components/{Layout,AIAssistant}.tsx` · `pages/{Learn,Reader}.tsx` |
+| 修掉的同类缺陷 | ✅ | framer-motion 写内联 `transform` 会覆盖 Tailwind 的 `-translate-x-1/2`，导致面板右偏半个身位；改为「外层定位 + 内层动画」，并同步修正 `Toast` 的同源问题 | `components/Layout.tsx` · `components/ui/Toast.tsx` |
+
+**实测（1440×900）**：中间三项「面板中心 − 导航项中心」差值 0.00px，首/末项左右对齐逐位相等，无越界；14 个页面 h1 高度 27px、top ≈ 108px，h1 不再处于 `rounded-[26px]` 大卡内，下方内容子项数量无缺失；16 个 URL 均存在右下角「问问 AI 助手」浮标（fixed bottom-5 right-5，未被遮挡）；Toast 水平居中偏差 0.00px；全程 **控制台 0 error**；`npm run build` + `npm run check`（数据口径 + 对比度）全绿。
+
+> 保留未改：文章阅读页 `/learn/:id` 顶部的 40px 大标题属于阅读版式的 hero（含标签/字数/进度），不是被删除的频道页介绍卡片。
+

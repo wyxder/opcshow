@@ -184,43 +184,48 @@ function Header() {
                     <ChevronDown size={11} className={cn('transition-transform', openKey === item.key && 'rotate-180')} />
                   </Link>
 
-                  {/* 紧凑下拉：挂在当前导航项文字正下方，单列、不遮满屏 */}
-                  <AnimatePresence>
-                    {openKey === item.key && (
-                      <motion.div
-                        key={item.key}
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.14, ease: 'easeOut' }}
-                        className={cn(
-                          'absolute top-full z-[80] hidden w-[244px] pt-1.5 lg:block',
-                          i === 0 ? 'left-0' : i === navItems.length - 1 ? 'right-0' : 'left-1/2 -translate-x-1/2',
-                        )}
-                      >
-                        <div className="overflow-hidden rounded-[14px] border-1.5 border-ink bg-cream shadow-hard-sm">
-                          {item.children.map((child) => {
-                            const Icon = icons[child.icon ?? 'sparkles'] ?? Sparkles
-                            return (
-                              <Link
-                                key={child.to}
-                                to={child.to}
-                                onClick={() => setOpenKey(null)}
-                                className="group flex items-center gap-2.5 border-b border-ink/8 px-2.5 py-1.5 transition-colors last:border-0 hover:bg-lime/25"
-                              >
-                                <Icon size={13} className="shrink-0 text-ink/40 transition group-hover:text-ink" />
-                                <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-[12px] font-medium leading-tight">{child.label}</span>
-                                  <span className="mt-0.5 block truncate text-[10px] leading-tight text-ink/40">{child.desc}</span>
-                                </span>
-                                <ArrowUpRight size={11} className="shrink-0 text-ink/20 opacity-0 transition group-hover:opacity-100" />
-                              </Link>
-                            )
-                          })}
-                        </div>
-                      </motion.div>
+                  {/* 紧凑下拉：挂在当前导航项文字正下方，单列、不遮满屏。
+                      定位放在外层：framer-motion 会写内联 transform，
+                      直接给 motion 元素挂 -translate-x-1/2 会被覆盖。 */}
+                  <div
+                    className={cn(
+                      'absolute top-full z-[80] hidden w-[244px] pt-1.5 lg:block',
+                      i === 0 ? 'left-0' : i === navItems.length - 1 ? 'right-0' : 'left-1/2 -translate-x-1/2',
                     )}
-                  </AnimatePresence>
+                  >
+                    <AnimatePresence>
+                      {openKey === item.key && (
+                        <motion.div
+                          key={item.key}
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.14, ease: 'easeOut' }}
+                        >
+                          <div className="overflow-hidden rounded-[14px] border-1.5 border-ink bg-cream shadow-hard-sm">
+                            {item.children.map((child) => {
+                              const Icon = icons[child.icon ?? 'sparkles'] ?? Sparkles
+                              return (
+                                <Link
+                                  key={child.to}
+                                  to={child.to}
+                                  onClick={() => setOpenKey(null)}
+                                  className="group flex items-center gap-2.5 border-b border-ink/8 px-2.5 py-1.5 transition-colors last:border-0 hover:bg-lime/25"
+                                >
+                                  <Icon size={13} className="shrink-0 text-ink/40 transition group-hover:text-ink" />
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-[12px] font-medium leading-tight">{child.label}</span>
+                                    <span className="mt-0.5 block truncate text-[10px] leading-tight text-ink/40">{child.desc}</span>
+                                  </span>
+                                  <ArrowUpRight size={11} className="shrink-0 text-ink/20 opacity-0 transition group-hover:opacity-100" />
+                                </Link>
+                              )
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               ))}
             </nav>
