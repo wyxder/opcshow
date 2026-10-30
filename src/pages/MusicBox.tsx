@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion'
 import { ArrowRight, Heart, ListMusic, Music2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { PageIntro, Plate, Sticker } from '@/components/ui/primitives'
+import { PageHead, Plate } from '@/components/ui/primitives'
 import { playlist } from '@/data/life'
 import { cn, fmtDuration, useLocalStorage, usePrefersReducedMotion } from '@/lib/utils'
 import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
 import { useSeo } from '@/lib/seo'
-import { audioEnabled, loadAudioManifest, resolveAudio } from '@/services/audio'
+import { loadAudioManifest, resolveAudio } from '@/services/audio'
 
 export default function MusicBox() {
   const [index, setIndex] = useState(0)
@@ -76,23 +76,15 @@ export default function MusicBox() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="04 / LIFE · MUSIC BOX"
-        title={
-          <>
-            写代码时
-            <br />
-            我在<span className="marker">听什么</span>
-          </>
-        }
-        desc="六首歌，对应六种状态：写需求、跑评测、改 bug、想她、想家、夜骑。播放器是真的在走；音频资源未接入时进度用模拟时钟。"
-        note={src ? '试听片段来自本地静态资源。' : audioEnabled() ? '试听暂缺：manifest 里没有这条曲目的片段。' : '试听暂缺：未配置音频资源（F3），进度为模拟。'}
+        title="写代码时我在听什么"
         right={
-          <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4}>{playlist.length} 首</Sticker>
-            <Sticker rotate={5} color="rgb(var(--c-sky))">
-              总时长 {Math.round(totalDuration / 60)} min
-            </Sticker>
+          <div className="flex items-center gap-3 font-mono text-[9.5px] text-ink/45">
+            <span>{playlist.length} 首 · {Math.round(totalDuration / 60)} min</span>
+            <span className="rounded-full border border-ink/15 px-2 py-0.5">
+              {src ? '本地试听片段' : '试听暂缺'}
+            </span>
           </div>
         }
       />

@@ -1,6 +1,6 @@
 import { CalendarHeart, Coffee, Gift, Heart, MapPin, Music, Plane, Sun } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { PageIntro, Reveal, Sticker } from '@/components/ui/primitives'
+import { PageHead, Reveal } from '@/components/ui/primitives'
 import { loveMeta, loveRecords, loveStats } from '@/data/life'
 import { cn, daysBetween } from '@/lib/utils'
 import { useSeo } from '@/lib/seo'
@@ -38,27 +38,13 @@ export default function Love() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="04 / LIFE · LOVE LOG"
-        title={
-          <>
-            异地第{' '}
-            <br />
-            <span className="marker">{Math.floor(days / 365) + 1} 年</span>
-          </>
-        }
-        desc={loveMeta.motto}
-        note="她叫小羊，是这篇页面的第一位读者，也是最严格的编辑。"
+        title={`异地第 ${Math.floor(days / 365) + 1} 年 · ${loveMeta.city}`}
         right={
-          <div className="flex flex-col items-start gap-3 sm:items-end">
-            <Sticker rotate={-5} color="rgb(var(--c-rose))">
-              {loveMeta.city}
-            </Sticker>
-            <div className="rounded-2xl border-1.5 border-ink bg-cream px-5 py-4 text-center shadow-hard">
-              <p className="font-mono text-[9px] tracking-[0.2em] text-ink/40">TOGETHER</p>
-              <p className="font-display text-[38px] font-extrabold leading-none">{days.toLocaleString()}</p>
-              <p className="mt-1 text-[11px] text-ink/50">天 · since 2023.05.20</p>
-            </div>
+          <div className="rounded-xl border-1.5 border-ink bg-cream px-4 py-2 text-center">
+            <p className="font-mono text-[9px] tracking-[0.2em] text-ink/40">TOGETHER</p>
+            <p className="font-display text-[22px] font-extrabold leading-none">{days.toLocaleString()}<span className="ml-1 text-[10px] font-medium text-ink/45">天</span></p>
           </div>
         }
       />

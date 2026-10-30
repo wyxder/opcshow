@@ -1,13 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { MessageSquare, Send, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Marquee, PageIntro, Sticker } from '@/components/ui/primitives'
+import { Marquee, PageHead } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
 import { cn, readableInk, useLocalStorage } from '@/lib/utils'
 import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
 import { useSeo } from '@/lib/seo'
 import { AbuseBlockedError, guestbook, type GuestMessage } from '@/services/guestbook'
-import { serverConfig } from '@/services/config'
 
 const colors = ['rgb(var(--c-lime))', 'rgb(var(--c-rose))', 'rgb(var(--c-sky))', 'rgb(var(--c-coral))', 'rgb(var(--c-grape))', 'rgb(var(--c-surface))']
 
@@ -73,26 +72,13 @@ export default function Guestbook() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="05 / ME · GUESTBOOK"
-        title={
-          <>
-            留言，
-            <br />
-            会<span className="marker">飞过去</span>
-          </>
-        }
-        desc="不用登录，不用邮箱。写一句话，它会成为墙上飘过去的一条弹幕。想聊正事可以留邮箱，我会回。"
-        note={serverConfig.enabled ? '留言进入审核队列，通过后才会上公共墙。' : '当前没有服务端：你的留言只存在自己的浏览器里。'}
+        title="留言，会飞过去"
         right={
-          <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4} color="rgb(var(--c-lime))">
-              {items.length} 条留言
-            </Sticker>
-            <Sticker rotate={5} color="rgb(var(--c-sky))">
-              {guestbook.origin === 'local' ? '本机存储' : '服务端存储'}
-            </Sticker>
-          </div>
+          <span className="font-mono text-[9.5px] text-ink/45">
+            {items.length} 条 · {guestbook.origin === 'local' ? '本机存储' : '服务端存储'}
+          </span>
         }
       />
 

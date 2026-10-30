@@ -13,9 +13,9 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { AIAssistant } from '@/components/AIAssistant'
 import { Modal } from '@/components/ui/Modal'
 import { Pill } from '@/components/ui/primitives'
+import { setAssistantContext } from '@/lib/assistant'
 import { articleById, articles, type Block } from '@/data/articles'
 import { profile } from '@/data/site'
 import { cn } from '@/lib/utils'
@@ -114,7 +114,6 @@ export default function Reader() {
   const [active, setActive] = useState('')
   const [progress, setProgress] = useState(0)
   const [tocOpen, setTocOpen] = useState(false)
-  const [assistantOpen, setAssistantOpen] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
 
   // fx.md S3 / S4：文章页自己的一套 title/description + Article 结构化数据
@@ -137,6 +136,12 @@ export default function Reader() {
     () => (article ? article.sections.flatMap((s) => [s.id, ...s.subs.map((x) => x.id)]) : []),
     [article],
   )
+
+  // 助手浮标现在全局挂在 Layout，这里只声明「正在阅读」上下文
+  useEffect(() => {
+    setAssistantContext(article ? article.title : '')
+    return () => setAssistantContext('')
+  }, [article])
 
   useEffect(() => {
     if (!article) return
@@ -407,8 +412,6 @@ export default function Reader() {
           <TocTree onNavigate={() => setTocOpen(false)} />
         </div>
       </Modal>
-
-      <AIAssistant defaultOpen={assistantOpen} context={article.title} />
 
     </div>
   )

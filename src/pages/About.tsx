@@ -2,7 +2,7 @@ import { ArrowUpRight, Coffee, Heart, Mail, MapPin, MessageCircle, Sparkles, Tar
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Modal } from '@/components/ui/Modal'
-import { PageIntro, Sticker } from '@/components/ui/primitives'
+import { PageHead } from '@/components/ui/primitives'
 import { aboutCards, mediaStats } from '@/data/me'
 import { profile, skillGroups } from '@/data/site'
 import { useSeo } from '@/lib/seo'
@@ -19,24 +19,11 @@ export default function About() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="05 / ME · SELF INTRO"
-        title={
-          <>
-            关于我，
-            <br />
-            <span className="marker">四张卡片</span>
-          </>
-        }
-        desc="简历上写不下的部分：我怎么工作、为什么做内容、以及一些没什么用但很真诚的私货。"
-        note="点开任意一张卡片，会弹出细节。"
+        title="关于我，四张卡片"
         right={
-          <div className="flex flex-col items-start gap-2 sm:items-end">
-            <Sticker rotate={-5}>24 岁 · 重庆万州</Sticker>
-            <Sticker rotate={4} color="rgb(var(--c-sky))">
-              西安 · 研二
-            </Sticker>
-          </div>
+          <span className="font-mono text-[9.5px] text-ink/45">24 岁 · 重庆万州 · 西安研二</span>
         }
       />
 

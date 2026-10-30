@@ -1,10 +1,16 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowUp, Bot, ExternalLink, Loader2, Minus, Sparkles, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
 import { cn, newId } from '@/lib/utils'
+import { getAssistantContext, subscribeAssistantContext } from '@/lib/assistant'
 import { askSite, quickPrompts, type AnswerSource, type ChatReference } from '@/services/ai'
 import { serverConfig } from '@/services/config'
+
+/** 「正在阅读」上下文：由页面通过 setAssistantContext() 写入 */
+function useAssistantContext() {
+  return useSyncExternalStore(subscribeAssistantContext, getAssistantContext, () => '')
+}
 
 type Msg = {
   id: string
@@ -23,8 +29,9 @@ const greeting = (live: boolean): Msg => ({
     : '你好，我是这个站的 AI 助手。当前没有接入模型服务，回答来自作者手写的预置问答（离线可用）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇。',
 })
 
-export function AIAssistant({ defaultOpen = false, context }: { defaultOpen?: boolean; context?: string }) {
+export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
+  const context = useAssistantContext()
   const [msgs, setMsgs] = useState<Msg[]>([greeting(serverConfig.enabled)])
   const [draft, setDraft] = useState('')
   const [typing, setTyping] = useState(false)

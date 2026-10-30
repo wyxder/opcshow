@@ -1,7 +1,7 @@
 import { ArrowUpRight, CalendarDays, Flag, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageIntro, Sticker } from '@/components/ui/primitives'
+import { PageHead } from '@/components/ui/primitives'
 import { growthTimeline } from '@/data/me'
 import { cn } from '@/lib/utils'
 import { useSeo } from '@/lib/seo'
@@ -28,24 +28,13 @@ export default function Timeline() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="05 / ME · TIMELINE"
-        title={
-          <>
-            2018 到 2026，
-            <br />
-            <span className="marker">一步步长出来</span>
-          </>
-        }
-        desc="不是一条漂亮的直线：装坏过主板、写过没人看的教程、也拿过国赛一等奖。按时间读，比简历真实。"
-        note="橙色标记的是我自己认为的转折点。"
+        title="2018 到 2026，一步步长出来"
         right={
-          <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4} color="rgb(var(--c-lime))">
-              8 年
-            </Sticker>
-            <Sticker rotate={5}>10 个节点</Sticker>
-          </div>
+          <span className="font-mono text-[9.5px] text-ink/45">
+            8 年 · {growthTimeline.length} 个节点
+          </span>
         }
       />
 

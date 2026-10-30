@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion'
 import { ArrowRight, ArrowUpRight, BookOpen, Clock, Eye, Search, Sparkles, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { AIAssistant } from '@/components/AIAssistant'
-import { Plate, Reveal, Sticker } from '@/components/ui/primitives'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { PageHead, Plate, Reveal } from '@/components/ui/primitives'
 import { articleCategories, articleMeta } from '@/data/articles.index'
 import { cn } from '@/lib/utils'
 import { useSeo } from '@/lib/seo'
@@ -15,7 +14,6 @@ const learningPath = [
 ]
 
 export default function Learn() {
-  const [params] = useSearchParams()
   const [cat, setCat] = useState('all')
   const [q, setQ] = useState('')
 
@@ -24,10 +22,6 @@ export default function Learn() {
     description: `${articleMeta.length} 篇长文：RAG 工程化、Agent 评测、工程手记。`,
     path: '/learn',
   })
-
-  useEffect(() => {
-    if (params.get('assistant') === '1') window.dispatchEvent(new CustomEvent('open-assistant'))
-  }, [params])
 
   const list = useMemo(() => {
     const key = q.trim().toLowerCase()
@@ -43,43 +37,19 @@ export default function Learn() {
 
   return (
     <div className="shell">
-      <section className="relative mb-8 overflow-hidden rounded-[26px] border-1.5 border-ink bg-cream p-6 shadow-hard sm:p-9">
-        <div className="pointer-events-none absolute inset-0 grid-paper opacity-60" />
-        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full border-1.5 border-ink/10 bg-lime/30" />
-        <div className="relative grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-          <div>
-            <p className="kicker">02 / LEARN · KNOWLEDGE BASE</p>
-            <h1 className="mt-3 text-[clamp(30px,5.2vw,52px)] font-extrabold leading-[0.98]">
-              把踩过的坑，
-              <br />
-              写成<span className="marker">能复用</span>的路。
-            </h1>
-            <p className="mt-4 max-w-lg text-[13.5px] leading-relaxed text-ink-soft">
-              这里是我做项目时的真实决策记录：为什么这样切片、为什么这个指标不能用 Judge、为什么自进化必须有三层刹车。不写「什么是 RAG」，只写我在什么时候选了哪条路。
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Sticker rotate={-4}>三级目录阅读</Sticker>
-              <Sticker rotate={3} color="rgb(var(--c-sky))">浮屏 AI 助手</Sticker>
-              <Sticker rotate={-2} color="rgb(var(--c-rose))">全部非虚构</Sticker>
-            </div>
+      <PageHead
+        kicker="02 / LEARN · KNOWLEDGE BASE"
+        title="把踩过的坑，写成能复用的路。"
+        right={
+          <div className="flex items-center gap-3 font-mono text-[9.5px] text-ink/45">
+            <span>{articleMeta.length} 篇</span>
+            <span className="h-0.5 w-0.5 rounded-full bg-ink/30" />
+            <span>{(totalViews / 1000).toFixed(1)}k 阅读</span>
+            <span className="h-0.5 w-0.5 rounded-full bg-ink/30" />
+            <span>{totalRead} min</span>
           </div>
-          <div className="grid grid-cols-3 gap-2 self-end lg:self-center">
-            {[
-              { label: '文章', value: articleMeta.length, unit: '篇' },
-              { label: '总阅读', value: `${(totalViews / 1000).toFixed(1)}k`, unit: '' },
-              { label: '读完需', value: totalRead, unit: 'min' },
-            ].map((s) => (
-              <div key={s.label} className="rounded-xl border-1.5 border-ink bg-paper px-3 py-3">
-                <p className="font-display text-[24px] font-extrabold leading-none">
-                  {s.value}
-                  <span className="ml-0.5 text-[11px] text-ink/40">{s.unit}</span>
-                </p>
-                <p className="mt-1.5 font-mono text-[9px] tracking-widest text-ink/40">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        }
+      />
 
       {/* toolbar */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -265,8 +235,6 @@ export default function Learn() {
           </span>
         </motion.div>
       </div>
-
-      <AIAssistant defaultOpen={params.get('assistant') === '1'} />
     </div>
   )
 }

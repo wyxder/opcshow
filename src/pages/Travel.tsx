@@ -1,7 +1,7 @@
 import { CalendarDays, Compass, Images, MapPin, Plane, Route, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageIntro, Plate, Reveal, Sticker } from '@/components/ui/primitives'
+import { PageHead, Plate, Reveal } from '@/components/ui/primitives'
 import { SmartImage } from '@/components/SmartImage'
 import { trips, type Trip } from '@/data/life'
 import { lookupMedia } from '@/data/media'
@@ -62,24 +62,13 @@ export default function Travel() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="04 / LIFE · TRAVEL ATLAS"
-        title={
-          <>
-            地图上的
-            <br />
-            <span className="marker">11 个点</span>
-          </>
-        }
-        desc="比赛、出差、带她回家、一个人看海。每个点都对应一段真实的行程，点一下地图上的图钉看故事。"
-        note={`真实照片已上传 ${photoCount} / ${trips.length} 张，其余先用图形占位（F1）。`}
+        title={`地图上的 ${trips.length} 个点`}
         right={
-          <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4}>11 座城市</Sticker>
-            <Sticker rotate={5} color="rgb(var(--c-sky))">
-              2023 → 2026
-            </Sticker>
-          </div>
+          <span className="font-mono text-[9.5px] text-ink/45">
+            {trips.length} 座城市 · 2023 → 2026 · 真实照片 {photoCount}/{trips.length}
+          </span>
         }
       />
 

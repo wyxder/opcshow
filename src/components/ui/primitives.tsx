@@ -201,6 +201,39 @@ export function SectionHead({
   )
 }
 
+/* -------------------------------- PageHead -------------------------------- */
+/**
+ * 紧凑页头：一行 kicker + 标题（+ 可选右侧操作）。
+ * 取代原来的大张 PageIntro 卡片，把首屏让给真正的内容；
+ * 需要保留的操作（如简历页的打印/下载）放在 right 槽里。
+ */
+export function PageHead({
+  kicker,
+  title,
+  right,
+  className,
+}: {
+  kicker: string
+  title: ReactNode
+  right?: ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        'mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-ink/12 pb-3.5',
+        className,
+      )}
+    >
+      <div className="min-w-0">
+        <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-ink/40">{kicker}</p>
+        <h1 className="mt-1.5 text-[clamp(20px,3vw,27px)] font-extrabold leading-none">{title}</h1>
+      </div>
+      {right && <div className="flex flex-wrap items-center gap-2">{right}</div>}
+    </div>
+  )
+}
+
 /* -------------------------------- PageIntro ------------------------------- */
 export function PageIntro({
   kicker,

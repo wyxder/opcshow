@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Camera, Heart, ImagePlus, Link2, MapPin, MessageCircle, Send, Share2, Sparkles } from 'lucide-react'
+import { Camera, Heart, ImagePlus, MapPin, MessageCircle, Send, Share2, Sparkles } from 'lucide-react'
 import { useState } from 'react'
-import { PageIntro } from '@/components/ui/primitives'
+import { PageHead } from '@/components/ui/primitives'
 import { SmartImage } from '@/components/SmartImage'
 import { useToast } from '@/components/ui/Toast'
 import { moments as seedMoments, type Moment } from '@/data/life'
@@ -76,17 +76,9 @@ export default function Moments() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="04 / LIFE · MOMENTS"
-        title={
-          <>
-            碎碎念
-            <br />
-            与<span className="marker">深夜复盘</span>
-          </>
-        }
-        desc="朋友圈同步：项目的坑、比赛的现场、路上的风景，还有那些不适合放进简历的废话。"
-        note={serverConfig.enabled ? '新动态会提交到服务端并进审核队列。' : '新发的动态只存在本地，刷新还在，换浏览器就没了。'}
+        title="碎碎念与深夜复盘"
         right={
           <div className="flex items-center gap-2 font-mono text-[9px] text-ink/40">
             <span className="h-1.5 w-1.5 animate-blink rounded-full bg-coral" />

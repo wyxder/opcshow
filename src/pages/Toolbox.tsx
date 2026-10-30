@@ -1,7 +1,7 @@
 import { ArrowUpRight, Box, Copy, Flame, Search, Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageIntro, Reveal, Sticker } from '@/components/ui/primitives'
+import { PageHead, Reveal } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
 import { toolboxGroups } from '@/data/work'
 import { cn, useLocalStorage } from '@/lib/utils'
@@ -50,24 +50,13 @@ export default function Toolbox() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="03 / WORK · TOOLBOX"
-        title={
-          <>
-            我的
-            <br />
-            <span className="marker">百宝箱</span>
-          </>
-        }
-        desc="反复用到的 Prompt、代码片段、设计资产和输入源。都是我线上项目里活下来的东西，直接抄不丢人。"
-        note="点星星收藏会存在你的浏览器里；「取用」是真复制。"
+        title="我的百宝箱"
         right={
-          <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-5}>{all.length} 件藏品</Sticker>
-            <Sticker rotate={4} color="rgb(var(--c-rose))">
-              已收藏 {stars.length}
-            </Sticker>
-          </div>
+          <span className="font-mono text-[9.5px] text-ink/45">
+            {all.length} 件藏品 · 已收藏 {stars.length}
+          </span>
         }
       />
 

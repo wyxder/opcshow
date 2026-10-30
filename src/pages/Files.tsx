@@ -1,7 +1,7 @@
 import { CloudUpload, Download, FileArchive, FileCode2, FileSpreadsheet, FileText, FolderOpen, LayoutGrid, List, Lock, Search, Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageIntro, Sticker } from '@/components/ui/primitives'
+import { PageHead } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
 import { resourceFiles, type ResourceFile } from '@/data/work'
 import { cn, useLocalStorage } from '@/lib/utils'
@@ -99,24 +99,13 @@ export default function Files() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="03 / WORK · RESOURCES"
-        title={
-          <>
-            文件
-            <br />
-            <span className="marker">资源中心</span>
-          </>
-        }
-        desc="简历、课件、数据集、模板和源码，能下载的都放在这里。公开的都可以直接用，注明来源即可。"
-        note={`${downloadable} / ${resourceFiles.length} 个文件已经可以真实下载，剩下的标了原因。`}
+        title="文件资源中心"
         right={
-          <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4}>{resourceFiles.length} 个文件</Sticker>
-            <Sticker rotate={5} color="rgb(var(--c-sky))">
-              已收藏 {stars.length}
-            </Sticker>
-          </div>
+          <span className="font-mono text-[9.5px] text-ink/45">
+            {resourceFiles.length} 个文件 · {online} 可下载 · 已收藏 {stars.length}
+          </span>
         }
       />
 

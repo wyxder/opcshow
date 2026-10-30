@@ -32,16 +32,20 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { navItems } from '@/data/nav'
 import { projects } from '@/data/projects'
 import { articleSearchIndex } from '@/data/articles.index'
 import { links, profile, siteMeta } from '@/data/site'
 import { cn } from '@/lib/utils'
+import { openAssistant, setAssistantContext } from '@/lib/assistant'
 import { Marquee } from '@/components/ui/primitives'
 import { Modal } from '@/components/ui/Modal'
 import { ThemePicker, ThemeSwitcher } from '@/components/ThemeSwitcher'
+
+// 右下角 AI 助手：所有页面都要有，但组件本体懒加载，不进首屏包
+const AIAssistant = lazy(() => import('@/components/AIAssistant').then((m) => ({ default: m.AIAssistant })))
 
 const icons: Record<string, LucideIcon> = {
   home: Home,
@@ -158,7 +162,7 @@ function Header() {
 
             {/* desktop nav */}
             <nav className="hidden items-center gap-1 lg:flex" onMouseLeave={() => setOpenKey(null)} aria-label="主导航">
-              {navItems.map((item) => (
+              {navItems.map((item, i) => (
                 <div key={item.key} className="relative" onMouseEnter={() => setOpenKey(item.key)}>
                   <Link
                     to={item.to}
@@ -179,6 +183,44 @@ function Header() {
                     {item.label}
                     <ChevronDown size={11} className={cn('transition-transform', openKey === item.key && 'rotate-180')} />
                   </Link>
+
+                  {/* 紧凑下拉：挂在当前导航项文字正下方，单列、不遮满屏 */}
+                  <AnimatePresence>
+                    {openKey === item.key && (
+                      <motion.div
+                        key={item.key}
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.14, ease: 'easeOut' }}
+                        className={cn(
+                          'absolute top-full z-[80] hidden w-[244px] pt-1.5 lg:block',
+                          i === 0 ? 'left-0' : i === navItems.length - 1 ? 'right-0' : 'left-1/2 -translate-x-1/2',
+                        )}
+                      >
+                        <div className="overflow-hidden rounded-[14px] border-1.5 border-ink bg-cream shadow-hard-sm">
+                          {item.children.map((child) => {
+                            const Icon = icons[child.icon ?? 'sparkles'] ?? Sparkles
+                            return (
+                              <Link
+                                key={child.to}
+                                to={child.to}
+                                onClick={() => setOpenKey(null)}
+                                className="group flex items-center gap-2.5 border-b border-ink/8 px-2.5 py-1.5 transition-colors last:border-0 hover:bg-lime/25"
+                              >
+                                <Icon size={13} className="shrink-0 text-ink/40 transition group-hover:text-ink" />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-[12px] font-medium leading-tight">{child.label}</span>
+                                  <span className="mt-0.5 block truncate text-[10px] leading-tight text-ink/40">{child.desc}</span>
+                                </span>
+                                <ArrowUpRight size={11} className="shrink-0 text-ink/20 opacity-0 transition group-hover:opacity-100" />
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               ))}
             </nav>
@@ -218,55 +260,6 @@ function Header() {
               </button>
             </div>
           </div>
-
-          {/* dropdown */}
-          <AnimatePresence>
-            {openKey && (
-              <motion.div
-                key={openKey}
-                initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                transition={{ duration: 0.18, ease: 'easeOut' }}
-                onMouseEnter={() => setOpenKey(openKey)}
-                onMouseLeave={() => setOpenKey(null)}
-                className="absolute left-1/2 hidden w-[min(680px,92vw)] -translate-x-1/2 pt-2 lg:block"
-              >
-                <div className="overflow-hidden rounded-[20px] border-1.5 border-ink bg-cream shadow-hard">
-                  <div className="grid grid-cols-2 gap-px bg-ink/10">
-                    {navItems
-                      .find((n) => n.key === openKey)!
-                      .children.map((child) => {
-                        const Icon = icons[child.icon ?? 'sparkles'] ?? Sparkles
-                        return (
-                          <Link
-                            key={child.to}
-                            to={child.to}
-                            onClick={() => setOpenKey(null)}
-                            className="group flex items-start gap-3 bg-cream px-4 py-3.5 transition-colors hover:bg-lime/25"
-                          >
-                            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink/80 bg-paper transition group-hover:bg-ink group-hover:text-lime">
-                              <Icon size={14} />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="flex items-center gap-1 text-[13.5px] font-semibold">
-                                {child.label}
-                                <ArrowUpRight size={12} className="opacity-0 transition group-hover:opacity-100" />
-                              </span>
-                              <span className="mt-0.5 block truncate text-[11.5px] text-ink/50">{child.desc}</span>
-                            </span>
-                          </Link>
-                        )
-                      })}
-                  </div>
-                  <div className="flex items-center justify-between border-t border-ink/10 bg-paper px-4 py-2 font-mono text-[9.5px] tracking-[0.14em] text-ink/40">
-                    <span>{navItems.find((n) => n.key === openKey)!.en} CHANNEL</span>
-                    <span>ESC / 移开关闭</span>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </header>
 
@@ -517,6 +510,23 @@ function Footer() {
   )
 }
 
+/* ---------------------------- global AI assistant -------------------------- */
+function GlobalAssistant() {
+  const { pathname, search } = useLocation()
+
+  useEffect(() => {
+    // 只有文章阅读页有「正在阅读」上下文，离开时清掉
+    if (!/^\/learn\//.test(pathname)) setAssistantContext('')
+    if (new URLSearchParams(search).get('assistant') === '1') openAssistant()
+  }, [pathname, search])
+
+  return (
+    <Suspense fallback={null}>
+      <AIAssistant />
+    </Suspense>
+  )
+}
+
 /* --------------------------------- layout --------------------------------- */
 export default function Layout() {
   return (
@@ -532,6 +542,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <GlobalAssistant />
     </div>
   )
 }

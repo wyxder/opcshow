@@ -1,5 +1,5 @@
 import { ArrowUpRight, HeartHandshake, Link2, Mail, Sparkles } from 'lucide-react'
-import { PageIntro, Sticker } from '@/components/ui/primitives'
+import { PageHead } from '@/components/ui/primitives'
 import { friends } from '@/data/me'
 import { profile } from '@/data/site'
 import { useSeo } from '@/lib/seo'
@@ -13,27 +13,10 @@ export default function Friends() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="05 / ME · FRIENDS"
-        title={
-          <>
-            同频的人
-            <br />
-            与<span className="marker">他们的站</span>
-          </>
-        }
-        desc="一起打过比赛的、一起改过稿的、在我卡住时给我答案的人。互联网上能遇到这些人，运气很好。"
-        note="想交换友链？往下翻有我的站点信息。"
-        right={
-          <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4} color="rgb(var(--c-lime))">
-              {friends.length} 个友链
-            </Sticker>
-            <Sticker rotate={5} color="rgb(var(--c-sky))">
-              持续更新
-            </Sticker>
-          </div>
-        }
+        title="同频的人与他们的站"
+        right={<span className="font-mono text-[9.5px] text-ink/45">{friends.length} 个友链 · 持续更新</span>}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

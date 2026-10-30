@@ -1,8 +1,8 @@
 import { ArrowUpRight, BarChart3, BookOpen, ExternalLink, Mail, PlayCircle, Sparkles, TrendingUp } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { PageIntro, Reveal, Sticker } from '@/components/ui/primitives'
+import { PageHead, Reveal } from '@/components/ui/primitives'
 import { followersToNumber, formatWan, mediaStats, platforms, totalFollowers, totalPosts } from '@/data/me'
-import { figures, links, profile } from '@/data/site'
+import { figures, profile } from '@/data/site'
 import { useSeo } from '@/lib/seo'
 
 const series = [
@@ -23,24 +23,13 @@ export default function Media() {
 
   return (
     <div className="shell">
-      <PageIntro
+      <PageHead
         kicker="05 / ME · MEDIA MATRIX"
-        title={
-          <>
-            六个平台，
-            <br />
-            <span className="marker">一个人运营</span>
-          </>
-        }
-        desc={`从 2024 年底开始做 AI 内容，第一篇只有 200 播放。现在全网 ${formatWan(totalFollowers)} 粉，${figures.fdeTutorials} 篇 FDE 教程，累计浏览 ${figures.totalViews}。`}
-        note="内容不是副业收入来源，是我保持输入的方式。"
+        title={`${platforms.length} 个平台，一个人运营`}
         right={
-          <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4} color="rgb(var(--c-lime))">
-              全网 {formatWan(totalFollowers)} 粉
-            </Sticker>
-            <Sticker rotate={5}>{totalPosts} 条原创</Sticker>
-          </div>
+          <span className="font-mono text-[9.5px] text-ink/45">
+            全网 {formatWan(totalFollowers)} 粉 · {totalPosts} 条原创
+          </span>
         }
       />
 
