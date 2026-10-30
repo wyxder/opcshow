@@ -26,7 +26,7 @@ export default function About() {
         right={
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <Sticker rotate={-5}>24 岁 · 重庆万州</Sticker>
-            <Sticker rotate={4} color="#BFD8FF">
+            <Sticker rotate={4} color="rgb(var(--c-sky))">
               西安 · 研二
             </Sticker>
           </div>

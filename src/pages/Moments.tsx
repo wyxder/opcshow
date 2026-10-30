@@ -26,7 +26,7 @@ export default function Moments() {
       text: draft.trim(),
       place: '西安',
       likes: 0,
-      accent: '#C9F158',
+      accent: 'rgb(var(--c-lime))',
       media: [],
       comments: [],
       tags: ['新动态'],
@@ -141,7 +141,7 @@ export default function Moments() {
                           <div
                             key={k}
                             className="relative flex h-[124px] w-[168px] items-end overflow-hidden rounded-xl border border-ink/15"
-                            style={{ background: `linear-gradient(135deg, ${m.accent}55, #FBF8F1 70%)` }}
+                            style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${m.accent} 33%, transparent), rgb(var(--c-surface)) 70%)` }}
                           >
                             <div className="absolute inset-0 halftone opacity-30" />
                             <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border border-ink/20 bg-cream/80">
@@ -252,7 +252,7 @@ export default function Moments() {
                 <div
                   key={v}
                   className="flex h-8 w-8 items-center justify-center rounded-full border-1.5 border-ink text-[10px] font-bold text-ink"
-                  style={{ background: ['#FFB3C7', '#BFD8FF', '#C9F158', '#E6DDC9', '#7C5CFF'][i] }}
+                  style={{ background: ['rgb(var(--c-rose))', 'rgb(var(--c-sky))', 'rgb(var(--c-lime))', 'rgb(var(--c-surface-2))', 'rgb(var(--c-grape))'][i] }}
                 >
                   {v}
                 </div>

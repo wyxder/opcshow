@@ -112,10 +112,10 @@ export default function OverviewPage({
           <TrendChart
             labels={data.labels}
             series={[
-              { name: 'pv', color: '#FF5A2B', values: data.pv },
-              { name: 'uv', color: '#3C5BFF', values: data.uv },
+              { name: 'pv', color: 'rgb(var(--c-coral))', values: data.pv },
+              { name: 'uv', color: 'rgb(var(--c-blue))', values: data.uv },
             ]}
-            bars={{ values: data.ai, color: '#C9F158' }}
+            bars={{ values: data.ai, color: 'rgb(var(--c-lime))' }}
             height={214}
             labelStep={win === '7d' ? 1 : 5}
           />
@@ -168,7 +168,7 @@ export default function OverviewPage({
                 </div>
                 <span className="shrink-0 font-mono text-[10.5px] text-admin-muted">{a.views.toLocaleString()}</span>
                 <div className="w-14 shrink-0">
-                  <Meter value={a.ratio} color={i === 0 ? '#FF5A2B' : '#3C5BFF'} />
+                  <Meter value={a.ratio} color={i === 0 ? 'rgb(var(--c-coral))' : 'rgb(var(--c-blue))'} />
                 </div>
               </div>
             ))}

@@ -94,10 +94,10 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
         <TrendChart
           labels={data.labels}
           series={[
-            { name: 'pv', color: '#FF5A2B', values: data.pv },
-            { name: 'uv', color: '#3C5BFF', values: data.uv },
+            { name: 'pv', color: 'rgb(var(--c-coral))', values: data.pv },
+            { name: 'uv', color: 'rgb(var(--c-blue))', values: data.uv },
           ]}
-          bars={{ values: data.ai, color: '#C9F158' }}
+          bars={{ values: data.ai, color: 'rgb(var(--c-lime))' }}
           height={230}
           labelStep={win === '7d' ? 1 : 5}
         />
@@ -122,7 +122,7 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
                   <span className="font-mono text-[10.5px] text-admin-muted">{p.stay}</span>
                   <span className="font-mono text-[10.5px] text-admin-muted">{p.bounce}</span>
                   <div className="flex justify-end">
-                    <MiniBars data={[4, 6, 5, 8, 7, 9, i === 0 ? 11 : 6]} height={20} color={i === 0 ? '#FF5A2B' : '#3C5BFF'} />
+                    <MiniBars data={[4, 6, 5, 8, 7, 9, i === 0 ? 11 : 6]} height={20} color={i === 0 ? 'rgb(var(--c-coral))' : 'rgb(var(--c-blue))'} />
                   </div>
                 </div>
               ))}
@@ -149,7 +149,7 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
                     <span className="text-admin-muted">{r.label}</span>
                     <span className="font-mono">{r.value}%</span>
                   </div>
-                  <Meter value={r.value} color={r.value > 30 ? '#FF5A2B' : '#E6A23C'} className="mt-1" />
+                  <Meter value={r.value} color={r.value > 30 ? 'rgb(var(--c-coral))' : 'rgb(var(--c-amber))'} className="mt-1" />
                 </div>
               ))}
             </div>
@@ -168,7 +168,7 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
                     {f.value.toLocaleString()} · {f.ratio}%
                   </span>
                 </div>
-                <Meter value={f.ratio} color={f.ratio > 50 ? '#3C5BFF' : f.ratio > 10 ? '#E6A23C' : '#FF5A2B'} className="mt-1 h-2" />
+                <Meter value={f.ratio} color={f.ratio > 50 ? 'rgb(var(--c-blue))' : f.ratio > 10 ? 'rgb(var(--c-amber))' : 'rgb(var(--c-coral))'} className="mt-1 h-2" />
               </div>
             ))}
           </div>
@@ -205,7 +205,7 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
 
       <div className="grid gap-3 xl:grid-cols-[1.4fr_1fr]">
         <Panel kicker="Hourly" title="今日访问分布（小时）" desc="横轴 0—23 时">
-          <MiniBars data={hourly} height={86} color="#FF5A2B" />
+          <MiniBars data={hourly} height={86} color="rgb(var(--c-coral))" />
           <div className="mt-2 flex justify-between font-mono text-[9px] text-admin-muted">
             <span>00:00</span>
             <span>06:00</span>

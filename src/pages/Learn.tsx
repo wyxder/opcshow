@@ -8,9 +8,9 @@ import { articles, articleCategories } from '@/data/articles'
 import { cn } from '@/lib/utils'
 
 const learningPath = [
-  { step: '01', title: '先把 RAG 打通', desc: '切片、召回、溯源，做出第一个不胡说八道的问答。', color: '#C9F158' },
-  { step: '02', title: '再给 Agent 上约束', desc: '工具、预算、越权、回归，让它稳定地重复成功。', color: '#FF5A2B' },
-  { step: '03', title: '最后让评测驱动', desc: '指标、盲测、自进化，把优化变成可审计的闭环。', color: '#7C5CFF' },
+  { step: '01', title: '先把 RAG 打通', desc: '切片、召回、溯源，做出第一个不胡说八道的问答。', color: 'rgb(var(--c-lime))' },
+  { step: '02', title: '再给 Agent 上约束', desc: '工具、预算、越权、回归，让它稳定地重复成功。', color: 'rgb(var(--c-coral))' },
+  { step: '03', title: '最后让评测驱动', desc: '指标、盲测、自进化，把优化变成可审计的闭环。', color: 'rgb(var(--c-grape))' },
 ]
 
 export default function Learn() {
@@ -52,8 +52,8 @@ export default function Learn() {
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Sticker rotate={-4}>三级目录阅读</Sticker>
-              <Sticker rotate={3} color="#BFD8FF">浮屏 AI 助手</Sticker>
-              <Sticker rotate={-2} color="#FFB3C7">全部非虚构</Sticker>
+              <Sticker rotate={3} color="rgb(var(--c-sky))">浮屏 AI 助手</Sticker>
+              <Sticker rotate={-2} color="rgb(var(--c-rose))">全部非虚构</Sticker>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 self-end lg:self-center">

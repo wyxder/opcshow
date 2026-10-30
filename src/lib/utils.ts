@@ -55,12 +55,14 @@ export function daysBetween(from: string, to = new Date()) {
   return Math.max(0, Math.floor((to.getTime() - start) / 86400000))
 }
 
-/** Picks ink or paper text for a given background hex, so colored chips stay readable. */
-export function readableInk(hex: string) {
-  const clean = hex.replace('#', '')
+/** 给彩色背景挑一个可读的前景色。令牌色（rgb(var(--c-*))）直接用 --c-on-accent。 */
+export function readableInk(color: string) {
+  const hex = /^#([0-9a-fA-F]{6})$/.exec(color.trim())
+  if (!hex) return 'rgb(var(--c-on-accent))'
+  const clean = hex[1]
   const r = parseInt(clean.slice(0, 2), 16) || 0
   const g = parseInt(clean.slice(2, 4), 16) || 0
   const b = parseInt(clean.slice(4, 6), 16) || 0
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return lum > 0.62 ? '#14140F' : '#FBF8F1'
+  return lum > 0.62 ? 'rgb(var(--c-ink))' : 'rgb(var(--c-surface))'
 }

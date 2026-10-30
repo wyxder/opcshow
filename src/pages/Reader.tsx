@@ -239,7 +239,7 @@ export default function Reader() {
             <div className="pointer-events-none absolute inset-0 grid-paper opacity-50" />
             <div className="relative">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="tag" style={{ background: article.accent + '40' }}>
+                <span className="tag" style={{ background: `color-mix(in srgb, ${article.accent} 25%, transparent)` }}>
                   {article.category}
                 </span>
                 {article.tags.map((t) => (

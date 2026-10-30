@@ -40,6 +40,7 @@ import { profile } from '@/data/site'
 import { cn } from '@/lib/utils'
 import { Marquee } from '@/components/ui/primitives'
 import { Modal } from '@/components/ui/Modal'
+import { ThemePicker, ThemeSwitcher } from '@/components/ThemeSwitcher'
 
 const icons: Record<string, LucideIcon> = {
   home: Home,
@@ -182,6 +183,7 @@ function Header() {
 
             {/* actions */}
             <div className="flex items-center gap-1.5">
+              <ThemeSwitcher className="hidden lg:block" />
               <button
                 onClick={() => setPaletteOpen(true)}
                 className="hidden items-center gap-2 rounded-full border-1.5 border-ink/15 bg-paper px-2.5 py-1.5 font-mono text-[10px] text-ink/50 transition hover:border-ink/40 hover:text-ink sm:flex"
@@ -309,6 +311,12 @@ function Header() {
                   </div>
                 ))}
               </div>
+
+              {/* 移动端主题入口 */}
+              <div className="mt-7 border-t border-paper/15 pt-6">
+                <ThemePicker />
+              </div>
+
               <div className="mt-auto pt-10">
                 <Link to="/admin" className="flex items-center justify-between rounded-xl border border-lime/60 px-4 py-3 text-sm text-lime">
                   后台管理系统 <ArrowUpRight size={16} />

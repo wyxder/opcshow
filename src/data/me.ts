@@ -119,12 +119,12 @@ export type Platform = {
 }
 
 export const platforms: Platform[] = [
-  { id: 'xhs', name: '小红书', handle: '@云潇的实验室', followers: '2.3w', posts: 168, focus: 'AI 工具 / 教程图文', color: '#FF5A2B', growth: '+38% / 90d', note: '主阵地，FDE 教程合集 89 篇' },
-  { id: 'bili', name: 'B 站', handle: '@wyx_ai', followers: '6,200', posts: 42, focus: '项目复盘 / 长视频', color: '#3C5BFF', growth: '+21% / 90d', note: '《手搓 Agent 评测中台》播放 7.9w' },
-  { id: 'douyin', name: '抖音', handle: '@云潇AI', followers: '4,800', posts: 63, focus: '60s 工具测评', color: '#14140F', growth: '+46% / 90d', note: '最短的一条爆了 120w 曝光' },
-  { id: 'wechat', name: '公众号', handle: '云潇的 AI 手记', followers: '3,100', posts: 37, focus: '深度长文', color: '#C9F158', growth: '+12% / 90d', note: 'RAG 工程化系列收藏率最高' },
-  { id: 'github', name: 'GitHub', handle: '@wyx-code', followers: '980', posts: 26, focus: '开源项目 / Demo', color: '#7C5CFF', growth: '+31% / 90d', note: '20+ 原创开源仓库' },
-  { id: 'zhihu', name: '知乎', handle: '魏云潇', followers: '2,400', posts: 19, focus: '技术问答', color: '#BFD8FF', growth: '+9% / 90d', note: '「Agent 评测怎么做」高赞回答' },
+  { id: 'xhs', name: '小红书', handle: '@云潇的实验室', followers: '2.3w', posts: 168, focus: 'AI 工具 / 教程图文', color: 'rgb(var(--c-coral))', growth: '+38% / 90d', note: '主阵地，FDE 教程合集 89 篇' },
+  { id: 'bili', name: 'B 站', handle: '@wyx_ai', followers: '6,200', posts: 42, focus: '项目复盘 / 长视频', color: 'rgb(var(--c-blue))', growth: '+21% / 90d', note: '《手搓 Agent 评测中台》播放 7.9w' },
+  { id: 'douyin', name: '抖音', handle: '@云潇AI', followers: '4,800', posts: 63, focus: '60s 工具测评', color: 'rgb(var(--c-ink))', growth: '+46% / 90d', note: '最短的一条爆了 120w 曝光' },
+  { id: 'wechat', name: '公众号', handle: '云潇的 AI 手记', followers: '3,100', posts: 37, focus: '深度长文', color: 'rgb(var(--c-lime))', growth: '+12% / 90d', note: 'RAG 工程化系列收藏率最高' },
+  { id: 'github', name: 'GitHub', handle: '@wyx-code', followers: '980', posts: 26, focus: '开源项目 / Demo', color: 'rgb(var(--c-grape))', growth: '+31% / 90d', note: '20+ 原创开源仓库' },
+  { id: 'zhihu', name: '知乎', handle: '魏云潇', followers: '2,400', posts: 19, focus: '技术问答', color: 'rgb(var(--c-sky))', growth: '+9% / 90d', note: '「Agent 评测怎么做」高赞回答' },
 ]
 
 export const mediaStats = [
@@ -145,25 +145,25 @@ export type FriendLink = {
 }
 
 export const friends: FriendLink[] = [
-  { id: 'f1', name: '初芯 OPC', desc: '杭州的 AI 创业者社区，我在那里讲过 Harness。', url: '#', tag: '社区', color: '#C9F158', avatar: '初' },
-  { id: 'f2', name: '老陈的炼丹炉', desc: '做多模态的师兄，微表情数据集的另一位贡献者。', url: '#', tag: '同门', color: '#BFD8FF', avatar: '陈' },
-  { id: 'f3', name: '阿哲', desc: '黑客松固定队友，前端手速比我快一倍。', url: '#', tag: '队友', color: '#FFB3C7', avatar: '哲' },
-  { id: 'f4', name: 'DeepEval 中文社区', desc: '评测工具的中文文档与案例，我的评测启蒙。', url: '#', tag: '开源', color: '#7C5CFF', avatar: 'DE' },
-  { id: 'f5', name: '西交 AI 俱乐部', desc: '高校 AI 黑客松的组织方，认识了很多同频的人。', url: '#', tag: '社团', color: '#FF5A2B', avatar: 'XJ' },
-  { id: 'f6', name: '小羊的相机', desc: '她的胶片日记，我的站内照片一半来自这里。', url: '#', tag: '生活', color: '#E6DDC9', avatar: '羊' },
+  { id: 'f1', name: '初芯 OPC', desc: '杭州的 AI 创业者社区，我在那里讲过 Harness。', url: '#', tag: '社区', color: 'rgb(var(--c-lime))', avatar: '初' },
+  { id: 'f2', name: '老陈的炼丹炉', desc: '做多模态的师兄，微表情数据集的另一位贡献者。', url: '#', tag: '同门', color: 'rgb(var(--c-sky))', avatar: '陈' },
+  { id: 'f3', name: '阿哲', desc: '黑客松固定队友，前端手速比我快一倍。', url: '#', tag: '队友', color: 'rgb(var(--c-rose))', avatar: '哲' },
+  { id: 'f4', name: 'DeepEval 中文社区', desc: '评测工具的中文文档与案例，我的评测启蒙。', url: '#', tag: '开源', color: 'rgb(var(--c-grape))', avatar: 'DE' },
+  { id: 'f5', name: '西交 AI 俱乐部', desc: '高校 AI 黑客松的组织方，认识了很多同频的人。', url: '#', tag: '社团', color: 'rgb(var(--c-coral))', avatar: 'XJ' },
+  { id: 'f6', name: '小羊的相机', desc: '她的胶片日记，我的站内照片一半来自这里。', url: '#', tag: '生活', color: 'rgb(var(--c-surface-2))', avatar: '羊' },
 ]
 
 export const danmakuSeeds = [
-  { id: 'd1', user: '路过的前端', text: '这个转场好丝滑，做了多久？', color: '#3C5BFF' },
-  { id: 'd2', user: '小羊', text: '记得吃饭。', color: '#FF5A2B' },
-  { id: 'd3', user: 'Lily', text: '求 RAG 系列的完整代码～', color: '#7C5CFF' },
-  { id: 'd4', user: '陈师兄', text: 'ICCV 加油，等你中稿。', color: '#14140F' },
-  { id: 'd5', user: '阿哲', text: '下一场黑客松还带你。', color: '#C9F158' },
-  { id: 'd6', user: '匿名网友', text: '第一次看到把评测讲这么清楚的博主。', color: '#3C5BFF' },
-  { id: 'd7', user: 'OPC 小编', text: '杭州分享的回放剪好啦！', color: '#FF5A2B' },
-  { id: 'd8', user: '西交学妹', text: '学长，本科怎么准备 AI 实习？', color: '#7C5CFF' },
-  { id: 'd9', user: 'Kevin', text: '希望能合作一次 Agent 项目。', color: '#14140F' },
-  { id: 'd10', user: '重庆老乡', text: '万州人报道，面馆在哪家？', color: '#C9F158' },
+  { id: 'd1', user: '路过的前端', text: '这个转场好丝滑，做了多久？', color: 'rgb(var(--c-blue))' },
+  { id: 'd2', user: '小羊', text: '记得吃饭。', color: 'rgb(var(--c-coral))' },
+  { id: 'd3', user: 'Lily', text: '求 RAG 系列的完整代码～', color: 'rgb(var(--c-grape))' },
+  { id: 'd4', user: '陈师兄', text: 'ICCV 加油，等你中稿。', color: 'rgb(var(--c-ink))' },
+  { id: 'd5', user: '阿哲', text: '下一场黑客松还带你。', color: 'rgb(var(--c-lime))' },
+  { id: 'd6', user: '匿名网友', text: '第一次看到把评测讲这么清楚的博主。', color: 'rgb(var(--c-blue))' },
+  { id: 'd7', user: 'OPC 小编', text: '杭州分享的回放剪好啦！', color: 'rgb(var(--c-coral))' },
+  { id: 'd8', user: '西交学妹', text: '学长，本科怎么准备 AI 实习？', color: 'rgb(var(--c-grape))' },
+  { id: 'd9', user: 'Kevin', text: '希望能合作一次 Agent 项目。', color: 'rgb(var(--c-ink))' },
+  { id: 'd10', user: '重庆老乡', text: '万州人报道，面馆在哪家？', color: 'rgb(var(--c-lime))' },
 ]
 
 export const aboutCards = [

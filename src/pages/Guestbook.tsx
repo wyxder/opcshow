@@ -8,7 +8,7 @@ import { cn, readableInk, useLocalStorage } from '@/lib/utils'
 
 type Msg = { id: string; user: string; text: string; color: string; time: string }
 
-const colors = ['#C9F158', '#FFB3C7', '#BFD8FF', '#FF5A2B', '#7C5CFF', '#FBF8F1']
+const colors = ['rgb(var(--c-lime))', 'rgb(var(--c-rose))', 'rgb(var(--c-sky))', 'rgb(var(--c-coral))', 'rgb(var(--c-grape))', 'rgb(var(--c-surface))']
 
 export default function Guestbook() {
   const [mine, setMine] = useLocalStorage<Msg[]>('wyx-guestbook', [])
@@ -61,10 +61,10 @@ export default function Guestbook() {
         note="演示站点：留言存在你自己的浏览器里。"
         right={
           <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4} color="#C9F158">
+            <Sticker rotate={-4} color="rgb(var(--c-lime))">
               {all.length} 条留言
             </Sticker>
-            <Sticker rotate={5} color="#BFD8FF">
+            <Sticker rotate={5} color="rgb(var(--c-sky))">
               无需登录
             </Sticker>
           </div>

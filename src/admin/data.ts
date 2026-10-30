@@ -70,11 +70,11 @@ export const traffic: Record<'7d' | '30d', TrafficWindow> = {
 }
 
 export const sourceShare = [
-  { label: '直接访问', value: 42, color: '#FF5A2B' },
-  { label: '公众号', value: 23, color: '#E6A23C' },
-  { label: '小红书', value: 16, color: '#3C5BFF' },
-  { label: 'GitHub', value: 11, color: '#7C5CFF' },
-  { label: '其他', value: 8, color: '#E8859F' },
+  { label: '直接访问', value: 42, color: 'rgb(var(--c-coral))' },
+  { label: '公众号', value: 23, color: 'rgb(var(--c-amber))' },
+  { label: '小红书', value: 16, color: 'rgb(var(--c-blue))' },
+  { label: 'GitHub', value: 11, color: 'rgb(var(--c-grape))' },
+  { label: '其他', value: 8, color: 'rgb(var(--c-rose))' },
 ]
 
 export const topArticles = articles
@@ -111,10 +111,10 @@ export const pageRank = [
 ]
 
 export const deviceShare = [
-  { label: '桌面端', value: 61, color: '#3C5BFF' },
-  { label: 'iOS', value: 22, color: '#FF5A2B' },
-  { label: 'Android', value: 14, color: '#E6A23C' },
-  { label: '其他', value: 3, color: '#7C5CFF' },
+  { label: '桌面端', value: 61, color: 'rgb(var(--c-blue))' },
+  { label: 'iOS', value: 22, color: 'rgb(var(--c-coral))' },
+  { label: 'Android', value: 14, color: 'rgb(var(--c-amber))' },
+  { label: '其他', value: 3, color: 'rgb(var(--c-grape))' },
 ]
 
 export const regionShare = [
@@ -142,10 +142,10 @@ export const funnels = [
 ]
 
 export const aiSessions = [
-  { label: '简历问答', value: 96, color: '#FF5A2B' },
-  { label: '项目咨询', value: 68, color: '#3C5BFF' },
-  { label: '学习手记', value: 47, color: '#E6A23C' },
-  { label: '闲聊', value: 28, color: '#7C5CFF' },
+  { label: '简历问答', value: 96, color: 'rgb(var(--c-coral))' },
+  { label: '项目咨询', value: 68, color: 'rgb(var(--c-blue))' },
+  { label: '学习手记', value: 47, color: 'rgb(var(--c-amber))' },
+  { label: '闲聊', value: 28, color: 'rgb(var(--c-grape))' },
 ]
 
 export const hourly = [
@@ -268,11 +268,11 @@ export const storage = {
   total: 128,
   trend: '近 30 天增长 4.2 GB',
   buckets: [
-    { label: '简历与作品集', value: 12.6, color: '#FF5A2B' },
-    { label: '课程与讲义', value: 24.8, color: '#E6A23C' },
-    { label: '数据集', value: 14.2, color: '#3C5BFF' },
-    { label: '源码与模板', value: 8.4, color: '#7C5CFF' },
-    { label: '回收站', value: 3.4, color: '#E8859F' },
+    { label: '简历与作品集', value: 12.6, color: 'rgb(var(--c-coral))' },
+    { label: '课程与讲义', value: 24.8, color: 'rgb(var(--c-amber))' },
+    { label: '数据集', value: 14.2, color: 'rgb(var(--c-blue))' },
+    { label: '源码与模板', value: 8.4, color: 'rgb(var(--c-grape))' },
+    { label: '回收站', value: 3.4, color: 'rgb(var(--c-rose))' },
   ],
   trash: [
     { id: 'tr1', name: '旧版简历 v0.9.pdf', size: '860 KB', deleted: '2026-10-06' },
@@ -342,19 +342,15 @@ export const aiUsage = {
     { date: '10-29', tokens: 26000, cost: 0.4 },
   ],
   byModel: [
-    { label: 'DeepSeek Chat', value: 68, color: '#FF5A2B' },
-    { label: 'GPT-4o mini', value: 21, color: '#3C5BFF' },
-    { label: '其他', value: 11, color: '#E6A23C' },
+    { label: 'DeepSeek Chat', value: 68, color: 'rgb(var(--c-coral))' },
+    { label: 'GPT-4o mini', value: 21, color: 'rgb(var(--c-blue))' },
+    { label: '其他', value: 11, color: 'rgb(var(--c-amber))' },
   ],
 }
 
 /* -------------------------------- settings -------------------------------- */
 
-export const themePresets = [
-  { id: 'paper', name: 'Paper Brutal', note: '米白纸感 + 墨黑硬边', colors: ['#F4F0E6', '#14140F', '#C9F158', '#FF5A2B'] },
-  { id: 'clay', name: 'Warm Clay', note: '奶油底 + 珊瑚点缀', colors: ['#FBF8F1', '#14140F', '#FF5A2B', '#E6A23C'] },
-  { id: 'slate', name: 'Quiet Blue', note: '纸底 + 靛蓝强调', colors: ['#F4F0E6', '#14140F', '#3C5BFF', '#C9F158'] },
-]
+// 主题预设已收敛到 src/theme/theme.ts + src/index.css 的令牌层，后台不再维护第二份色板。
 
 export const seoDefaults = {
   title: 'WYX.SPACE · 魏云潇的个人站',

@@ -7,13 +7,13 @@ import { resourceFiles, type ResourceFile } from '@/data/work'
 import { cn, useLocalStorage } from '@/lib/utils'
 
 const extMeta: Record<ResourceFile['ext'], { color: string; icon: typeof FileText; label: string }> = {
-  pdf: { color: '#FF5A2B', icon: FileText, label: 'PDF' },
-  md: { color: '#3C5BFF', icon: FileText, label: 'MD' },
-  zip: { color: '#7C5CFF', icon: FileArchive, label: 'ZIP' },
-  fig: { color: '#FFB3C7', icon: LayoutGrid, label: 'FIG' },
-  py: { color: '#C9F158', icon: FileCode2, label: 'PY' },
-  pptx: { color: '#FF5A2B', icon: FileText, label: 'PPT' },
-  xlsx: { color: '#1D9E75', icon: FileSpreadsheet, label: 'XLS' },
+  pdf: { color: 'rgb(var(--c-coral))', icon: FileText, label: 'PDF' },
+  md: { color: 'rgb(var(--c-blue))', icon: FileText, label: 'MD' },
+  zip: { color: 'rgb(var(--c-grape))', icon: FileArchive, label: 'ZIP' },
+  fig: { color: 'rgb(var(--c-rose))', icon: LayoutGrid, label: 'FIG' },
+  py: { color: 'rgb(var(--c-lime))', icon: FileCode2, label: 'PY' },
+  pptx: { color: 'rgb(var(--c-coral))', icon: FileText, label: 'PPT' },
+  xlsx: { color: 'rgb(var(--c-teal))', icon: FileSpreadsheet, label: 'XLS' },
 }
 
 const categories = ['全部', '简历与作品集', '课程与讲义', '数据集', '模板', '源码'] as const
@@ -59,7 +59,7 @@ export default function Files() {
         right={
           <div className="flex flex-wrap gap-2">
             <Sticker rotate={-4}>{resourceFiles.length} 个文件</Sticker>
-            <Sticker rotate={5} color="#BFD8FF">
+            <Sticker rotate={5} color="rgb(var(--c-sky))">
               已收藏 {stars.length}
             </Sticker>
           </div>
@@ -190,7 +190,7 @@ export default function Files() {
                 <div className="flex items-start gap-3 p-4">
                   <span
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-1.5 border-ink"
-                    style={{ background: meta.color + '66' }}
+                    style={{ background: `color-mix(in srgb, ${meta.color} 40%, transparent)` }}
                   >
                     <Icon size={16} />
                   </span>

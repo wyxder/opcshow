@@ -40,7 +40,7 @@ export const articles: Article[] = [
     date: '2026-09-18',
     readMin: 12,
     views: 4210,
-    accent: '#3C5BFF',
+    accent: 'rgb(var(--c-blue))',
     abstract:
       '在字节的电商客服项目里，我把 Recall@5 从 0.72 推到 0.93。真正起作用的不是换模型，而是七个工程决策：切片粒度、元数据、双路召回、融合、重排、溯源与回归评测。',
     sections: [
@@ -187,7 +187,7 @@ top = reranker.rerank(query, fused[:20])[:6]`,
     date: '2026-09-02',
     readMin: 10,
     views: 3180,
-    accent: '#7C5CFF',
+    accent: 'rgb(var(--c-grape))',
     abstract:
       '在评测中台项目里我沉淀了 22 个内置指标。指标不在多，在于每个都能回答一个业务问题，并且稳定可复现。',
     sections: [
@@ -270,7 +270,7 @@ const right = flip ? row.a : row.b` },
     date: '2026-08-21',
     readMin: 9,
     views: 2760,
-    accent: '#FF5A2B',
+    accent: 'rgb(var(--c-coral))',
     abstract:
       'Harness 不是框架，是约束。它负责把不确定的模型输出，变成可追踪、可回归、可回滚的工程行为。',
     sections: [
@@ -323,7 +323,7 @@ const right = flip ? row.a : row.b` },
     date: '2026-08-08',
     readMin: 11,
     views: 1990,
-    accent: '#C9F158',
+    accent: 'rgb(var(--c-lime))',
     abstract:
       '把「失败归因 → 优化提案 → 影子回归 → 验收写回」做成流水线，指标才能自己往上走。前提是可审批、可回滚、可审计。',
     sections: [
@@ -379,7 +379,7 @@ const right = flip ? row.a : row.b` },
     date: '2026-07-19',
     readMin: 8,
     views: 5340,
-    accent: '#BFD8FF',
+    accent: 'rgb(var(--c-sky))',
     abstract:
       '上线过 7 款付费产品之后，我大概摸清了：哪些活交出去，哪些必须自己写。',
     sections: [
@@ -437,7 +437,7 @@ const right = flip ? row.a : row.b` },
     date: '2026-06-30',
     readMin: 7,
     views: 1620,
-    accent: '#FFB3C7',
+    accent: 'rgb(var(--c-rose))',
     abstract:
       '做数字人导游和带货视频平台时踩过的坑：转码、轮询、失败重试，才是多模态真正的成本中心。',
     sections: [

@@ -123,7 +123,7 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                   <span className="text-admin-muted">解析进度</span>
                   <span className="font-mono text-[10.5px]">{parsing ? '进行中…' : '100%'}</span>
                 </div>
-                <Meter value={parsing ? 62 : 100} color={parsing ? '#E6A23C' : '#2E6B3F'} className="mt-2 h-2" />
+                <Meter value={parsing ? 62 : 100} color={parsing ? 'rgb(var(--c-amber))' : 'rgb(var(--c-teal))'} className="mt-2 h-2" />
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
                     ['解析耗时', '4.2s'],
@@ -188,7 +188,7 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                       </span>
                     </div>
                     <p className="mt-1 text-[11.5px] leading-snug">{e.value}</p>
-                    <Meter value={e.confidence} color={e.confidence >= 95 ? '#2E6B3F' : '#E6A23C'} className="mt-1.5 h-1" />
+                    <Meter value={e.confidence} color={e.confidence >= 95 ? 'rgb(var(--c-teal))' : 'rgb(var(--c-amber))'} className="mt-1.5 h-1" />
                   </div>
                 ))}
               </div>

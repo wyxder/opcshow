@@ -236,7 +236,7 @@ export default function ContentPage({
                   }}
                   className={cn('shrink-0 rounded-md p-1 transition', p.featured ? 'text-admin-amber' : 'text-admin-muted/60 hover:text-admin-muted')}
                 >
-                  <Star size={13} fill={p.featured ? '#E6A23C' : 'none'} />
+                  <Star size={13} fill={p.featured ? 'rgb(var(--c-amber))' : 'none'} />
                 </button>
               </div>
               <div className="mt-2 flex flex-wrap gap-1">

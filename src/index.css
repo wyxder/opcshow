@@ -2,50 +2,372 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =============================================================================
+   主题令牌层（唯一数据源）
+   -----------------------------------------------------------------------------
+   5 套主题：paper / lab / swiss / terminal / pop
+   颜色一律存 RGB 通道三值（"244 240 230"），这样 Tailwind 的 `bg-ink/10`
+   这类透明度语法可以写成 rgb(var(--c-ink) / <alpha-value>) 并跟随主题。
+   新增主题 = 追加一个 [data-theme='xx'] 块 + 在 src/theme/theme.ts 注册元信息。
+   ========================================================================== */
+
 @layer base {
-  :root {
-    --paper: #f4f0e6;
-    --ink: #14140f;
+  /* ------------------------------ 01 · 纸感极简 ------------------------------ */
+  :root,
+  [data-theme='paper'] {
+    color-scheme: light;
+
+    /* 底色 */
+    --c-bg: 244 240 230;
+    --c-surface: 251 248 241;
+    --c-surface-2: 234 225 207;
+    /* 文字 */
+    --c-ink: 20 20 15;
+    --c-ink-soft: 74 74 64;
+    --c-ink-mute: 107 98 85;
+    /* 描边 */
+    --c-line: 20 20 15;
+    --c-on-accent: 20 20 15;
+    --c-accent-on-dark: 201 241 88;
+
+    /* 装饰色板 */
+    --c-lime: 201 241 88;
+    --c-coral: 255 90 43;
+    --c-blue: 60 91 255;
+    --c-grape: 124 92 255;
+    --c-sky: 191 216 255;
+    --c-rose: 255 179 199;
+    --c-teal: 46 107 63;
+    --c-amber: 230 162 60;
+    --c-plum: 94 69 201;
+    --c-moss: 79 98 34;
+    --c-danger: 178 58 20;
+    --c-info: 44 70 214;
+
+    /* 形态 */
+    --r-xl: 26px;
+    --r-lg: 22px;
+    --r-md: 18px;
+    --r-sm: 12px;
+    --r-xs: 8px;
+    --r-pill: 999px;
+    --bw: 1.5px;
+    --bw-strong: 3px;
+
+    --sh-hard: 4px 4px 0 rgb(var(--c-ink));
+    --sh-hard-sm: 2px 2px 0 rgb(var(--c-ink));
+    --sh-hard-lg: 8px 8px 0 rgb(var(--c-ink));
+    --sh-soft: 0 18px 40px -24px rgb(var(--c-ink) / 0.45);
+    --sh-lift: 0 30px 60px -30px rgb(var(--c-ink) / 0.5);
+
+    /* 字体 */
+    --ff-display: 'Bricolage Grotesque', 'Noto Sans SC', system-ui, sans-serif;
+    --ff-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+    --ff-mono: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+    --fw-display: 800;
+    --ls-display: -0.02em;
+    --tt-display: none;
+
+    /* 纹理 */
+    --bg-image: none;
+    --tex-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+    --tex-size: auto;
+    --tex-opacity: 0.3;
+    --tex-blend: multiply;
+
+    /* 强调细节 */
+    --hl: rgb(var(--c-lime) / 0.9);
+    --squiggle: rgb(var(--c-coral));
+
     --gutter: clamp(16px, 4vw, 56px);
   }
 
+  /* ----------------------------- 02 · 实验室科技 ---------------------------- */
+  [data-theme='lab'] {
+    color-scheme: light;
+
+    --c-bg: 238 242 246;
+    --c-surface: 255 255 255;
+    --c-surface-2: 226 234 241;
+    --c-ink: 11 27 42;
+    --c-ink-soft: 66 87 107;
+    --c-ink-mute: 124 147 168;
+    --c-line: 185 201 216;
+    --c-on-accent: 255 255 255;
+        --c-accent-on-dark: 158 198 255;
+
+    --c-lime: 31 107 255;
+    --c-coral: 255 107 74;
+    --c-blue: 0 200 180;
+    --c-grape: 108 92 231;
+    --c-sky: 191 217 242;
+    --c-rose: 255 158 184;
+    --c-teal: 0 150 136;
+    --c-amber: 214 142 24;
+    --c-plum: 92 76 200;
+    --c-moss: 43 120 74;
+    --c-danger: 199 60 32;
+    --c-info: 31 107 255;
+
+    --r-xl: 10px;
+    --r-lg: 8px;
+    --r-md: 6px;
+    --r-sm: 6px;
+    --r-xs: 4px;
+    --r-pill: 6px;
+    --bw: 1px;
+    --bw-strong: 2px;
+
+    --sh-hard: 0 2px 0 rgb(var(--c-ink) / 0.07);
+    --sh-hard-sm: 0 1px 0 rgb(var(--c-ink) / 0.07);
+    --sh-hard-lg: 0 14px 30px -20px rgb(var(--c-ink) / 0.32);
+    --sh-soft: 0 18px 40px -26px rgb(var(--c-ink) / 0.3);
+    --sh-lift: 0 26px 50px -30px rgb(var(--c-ink) / 0.35);
+
+    --ff-display: 'Bricolage Grotesque', 'Noto Sans SC', system-ui, sans-serif;
+    --ff-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+    --ff-mono: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+    --fw-display: 700;
+    --ls-display: -0.01em;
+    --tt-display: none;
+
+    --bg-image: none;
+    --tex-image: linear-gradient(rgb(var(--c-ink) / 0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--c-ink) / 0.055) 1px, transparent 1px);
+    --tex-size: 22px 22px;
+    --tex-opacity: 1;
+    --tex-blend: normal;
+
+    --hl: rgb(var(--c-lime) / 0.24);
+    --squiggle: rgb(var(--c-lime));
+  }
+
+  /* ------------------------------ 03 · 瑞士国际 ----------------------------- */
+  [data-theme='swiss'] {
+    color-scheme: light;
+
+    --c-bg: 247 247 244;
+    --c-surface: 255 255 255;
+    --c-surface-2: 236 236 231;
+    --c-ink: 13 13 13;
+    --c-ink-soft: 74 74 72;
+    --c-ink-mute: 138 138 134;
+    --c-line: 13 13 13;
+    --c-on-accent: 255 255 255;
+    --c-accent-on-dark: 255 255 255;
+
+    --c-lime: 228 0 43;
+    --c-coral: 13 13 13;
+    --c-blue: 13 13 13;
+    --c-grape: 90 90 86;
+    --c-sky: 221 221 214;
+    --c-rose: 201 201 194;
+    --c-teal: 20 20 20;
+    --c-amber: 90 90 86;
+    --c-plum: 60 60 58;
+    --c-moss: 20 20 20;
+    --c-danger: 228 0 43;
+    --c-info: 13 13 13;
+
+    --r-xl: 0px;
+    --r-lg: 0px;
+    --r-md: 0px;
+    --r-sm: 0px;
+    --r-xs: 0px;
+    --r-pill: 0px;
+    --bw: 1px;
+    --bw-strong: 2px;
+
+    --sh-hard: none;
+    --sh-hard-sm: none;
+    --sh-hard-lg: none;
+    --sh-soft: none;
+    --sh-lift: none;
+
+    --ff-display: 'Bricolage Grotesque', 'Helvetica Neue', 'Noto Sans SC', system-ui, sans-serif;
+    --ff-body: 'Noto Sans SC', 'PingFang SC', 'Helvetica Neue', system-ui, sans-serif;
+    --ff-mono: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+    --fw-display: 800;
+    --ls-display: -0.045em;
+    --tt-display: uppercase;
+
+    --bg-image: none;
+    --tex-image: none;
+    --tex-size: auto;
+    --tex-opacity: 0;
+    --tex-blend: normal;
+
+    --hl: rgb(var(--c-lime));
+    --squiggle: rgb(var(--c-lime));
+  }
+
+  /* ------------------------------ 05 · 终端极客 ----------------------------- */
+  [data-theme='terminal'] {
+    color-scheme: dark;
+
+    --c-bg: 5 9 8;
+    --c-surface: 10 18 16;
+    --c-surface-2: 13 26 22;
+    --c-ink: 201 255 212;
+    --c-ink-soft: 143 187 160;
+    --c-ink-mute: 92 122 102;
+    --c-line: 36 64 47;
+    --c-on-accent: 4 18 10;
+    --c-accent-on-dark: 4 18 10;
+
+    --c-lime: 107 255 122;
+    --c-coral: 255 209 102;
+    --c-blue: 79 163 255;
+    --c-grape: 199 146 234;
+    --c-sky: 40 90 68;
+    --c-rose: 255 179 193;
+    --c-teal: 61 190 132;
+    --c-amber: 255 209 102;
+    --c-plum: 199 146 234;
+    --c-moss: 107 255 122;
+    --c-danger: 255 122 107;
+    --c-info: 79 163 255;
+
+    --r-xl: 3px;
+    --r-lg: 2px;
+    --r-md: 2px;
+    --r-sm: 2px;
+    --r-xs: 2px;
+    --r-pill: 2px;
+    --bw: 1px;
+    --bw-strong: 2px;
+
+    --sh-hard: none;
+    --sh-hard-sm: none;
+    --sh-hard-lg: none;
+    --sh-soft: none;
+    --sh-lift: none;
+
+    --ff-display: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+    --ff-body: 'JetBrains Mono', 'Noto Sans SC', ui-monospace, monospace;
+    --ff-mono: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+    --fw-display: 700;
+    --ls-display: 0;
+    --tt-display: none;
+
+    --bg-image: none;
+    --tex-image: repeating-linear-gradient(0deg, rgb(var(--c-lime) / 0.055) 0 1px, transparent 1px 3px);
+    --tex-size: auto;
+    --tex-opacity: 1;
+    --tex-blend: normal;
+
+    --hl: rgb(var(--c-lime) / 0.45);
+    --squiggle: rgb(var(--c-lime));
+  }
+
+  /* ----------------------------- 06 · 设计师青春 ---------------------------- */
+  [data-theme='pop'] {
+    color-scheme: light;
+
+    --c-bg: 255 247 242;
+    --c-surface: 255 255 255;
+    --c-surface-2: 255 233 240;
+    --c-ink: 36 27 43;
+    --c-ink-soft: 91 79 102;
+    --c-ink-mute: 154 143 166;
+    --c-line: 240 201 216;
+    --c-on-accent: 255 255 255;
+    --c-accent-on-dark: 255 176 200;
+
+    --c-lime: 255 78 135;
+    --c-coral: 255 183 43;
+    --c-blue: 124 196 255;
+    --c-grape: 177 140 255;
+    --c-sky: 220 235 255;
+    --c-rose: 255 209 224;
+    --c-teal: 43 168 133;
+    --c-amber: 214 142 24;
+    --c-plum: 160 104 214;
+    --c-moss: 43 150 110;
+    --c-danger: 219 62 90;
+    --c-info: 76 155 240;
+
+    --r-xl: 30px;
+    --r-lg: 26px;
+    --r-md: 20px;
+    --r-sm: 16px;
+    --r-xs: 12px;
+    --r-pill: 999px;
+    --bw: 1.5px;
+    --bw-strong: 3px;
+
+    --sh-hard: 0 14px 30px -18px rgb(var(--c-lime) / 0.55);
+    --sh-hard-sm: 0 8px 18px -12px rgb(var(--c-lime) / 0.55);
+    --sh-hard-lg: 0 24px 52px -26px rgb(var(--c-lime) / 0.6);
+    --sh-soft: 0 22px 48px -28px rgb(var(--c-lime) / 0.45);
+    --sh-lift: 0 30px 64px -30px rgb(var(--c-lime) / 0.5);
+
+    --ff-display: 'Bricolage Grotesque', 'Noto Sans SC', system-ui, sans-serif;
+    --ff-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+    --ff-mono: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+    --fw-display: 800;
+    --ls-display: -0.025em;
+    --tt-display: none;
+
+    --bg-image: radial-gradient(58% 46% at 100% 0%, rgb(var(--c-rose)) 0, transparent 62%),
+      radial-gradient(46% 40% at 0% 12%, rgb(var(--c-sky)) 0, transparent 58%),
+      radial-gradient(44% 38% at 50% 100%, rgb(var(--c-coral) / 0.25) 0, transparent 60%);
+    --tex-image: none;
+    --tex-size: auto;
+    --tex-opacity: 0;
+    --tex-blend: normal;
+
+    --hl: rgb(var(--c-coral) / 0.6);
+    --squiggle: rgb(var(--c-lime));
+  }
+
+  /* ------------------------------- 基础元素 -------------------------------- */
   * {
     -webkit-tap-highlight-color: transparent;
   }
 
   html {
     scroll-behavior: smooth;
+    background-color: rgb(var(--c-bg));
   }
 
   body {
-    @apply bg-paper text-ink font-sans antialiased;
+    @apply font-sans antialiased;
+    background-color: rgb(var(--c-bg));
+    background-image: var(--bg-image);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    color: rgb(var(--c-ink));
     font-feature-settings: 'ss01' 1;
     overflow-x: hidden;
   }
 
-  ::selection {
-    background: #c9f158;
-    color: #14140f;
-  }
-
-  /* paper grain, sits above background but below content */
+  /* 主题纹理：纸纹 / 精密网格 / 扫描线 */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    opacity: 0.32;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
-    mix-blend-mode: multiply;
+    background-image: var(--tex-image);
+    background-size: var(--tex-size);
+    opacity: var(--tex-opacity);
+    mix-blend-mode: var(--tex-blend);
+  }
+
+  ::selection {
+    background: rgb(var(--c-lime));
+    color: rgb(var(--c-on-accent));
   }
 
   h1,
   h2,
   h3,
   h4 {
-    @apply font-display;
-    letter-spacing: -0.02em;
+    font-family: var(--ff-display);
+    font-weight: var(--fw-display);
+    letter-spacing: var(--ls-display);
+    text-transform: var(--tt-display);
   }
 
   ::-webkit-scrollbar {
@@ -53,11 +375,11 @@
     height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: #e9e2d1;
+    background: rgb(var(--c-surface-2));
   }
   ::-webkit-scrollbar-thumb {
-    background: #14140f;
-    border: 2px solid #e9e2d1;
+    background: rgb(var(--c-ink));
+    border: 2px solid rgb(var(--c-surface-2));
     border-radius: 99px;
   }
 }
@@ -71,42 +393,78 @@
   }
 
   .card {
-    @apply rounded-[22px] border-1.5 border-ink bg-cream;
+    background: rgb(var(--c-surface));
+    border: var(--bw) solid rgb(var(--c-line));
+    border-radius: var(--r-lg);
   }
 
   .card-hard {
-    @apply card shadow-hard transition-all duration-300;
+    @apply card transition-all duration-300;
+    box-shadow: var(--sh-hard);
   }
   .card-hard:hover {
-    @apply -translate-x-[3px] -translate-y-[3px] shadow-hard-lg;
+    transform: translate(-3px, -3px);
+    box-shadow: var(--sh-hard-lg);
   }
 
   .tag {
-    @apply inline-flex items-center gap-1 rounded-full border-1.5 border-ink/85 bg-cream px-2.5 py-1 text-[11px] font-medium leading-none tracking-wide;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.625rem;
+    border: var(--bw) solid rgb(var(--c-line) / 0.85);
+    border-radius: var(--r-pill);
+    background: rgb(var(--c-surface));
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.02em;
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border-1.5 border-ink bg-cream px-5 py-2.5 text-sm font-medium transition-all duration-200;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border: var(--bw) solid rgb(var(--c-line));
+    border-radius: var(--r-pill);
+    background: rgb(var(--c-surface));
+    color: rgb(var(--c-ink));
+    font-size: 13px;
+    font-weight: 600;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
   }
   .btn:hover {
-    @apply -translate-y-0.5 shadow-hard-sm;
+    transform: translateY(-2px);
+    box-shadow: var(--sh-hard-sm);
   }
   .btn-ink {
-    @apply btn bg-ink text-paper;
+    @apply btn;
+    background: rgb(var(--c-ink));
+    color: rgb(var(--c-bg));
+    border-color: rgb(var(--c-ink));
   }
   .btn-ink:hover {
-    @apply bg-ink/90;
+    background: rgb(var(--c-ink) / 0.9);
   }
   .btn-lime {
-    @apply btn bg-lime text-ink;
+    @apply btn;
+    background: rgb(var(--c-lime));
+    color: rgb(var(--c-on-accent));
+    border-color: rgb(var(--c-lime));
   }
 
   .kicker {
-    @apply font-mono text-[11px] uppercase tracking-[0.22em] text-ink/55;
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: rgb(var(--c-ink) / 0.55);
   }
 
   .marker {
-    background-image: linear-gradient(transparent 68%, rgba(201, 241, 88, 0.9) 68%, rgba(201, 241, 88, 0.9) 100%);
+    background-image: linear-gradient(transparent 68%, var(--hl) 68%, var(--hl) 100%);
     padding-inline: 2px;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
@@ -115,7 +473,7 @@
   .squiggle {
     text-decoration: underline;
     text-decoration-style: wavy;
-    text-decoration-color: #ff5a2b;
+    text-decoration-color: var(--squiggle);
     text-decoration-thickness: 2px;
     text-underline-offset: 6px;
   }
@@ -128,27 +486,26 @@
     width: 78px;
     height: 22px;
     transform: translateX(-50%) rotate(-3deg);
-    background: rgba(255, 255, 255, 0.55);
-    border-left: 1px dashed rgba(20, 20, 15, 0.18);
-    border-right: 1px dashed rgba(20, 20, 15, 0.18);
+    background: rgb(var(--c-surface) / 0.55);
+    border-left: 1px dashed rgb(var(--c-ink) / 0.18);
+    border-right: 1px dashed rgb(var(--c-ink) / 0.18);
     backdrop-filter: blur(2px);
   }
 
   .halftone {
-    background-image: radial-gradient(#14140f 1px, transparent 1px);
+    background-image: radial-gradient(rgb(var(--c-ink)) 1px, transparent 1px);
     background-size: 9px 9px;
     opacity: 0.11;
   }
 
   .grid-paper {
-    background-image:
-      linear-gradient(to right, rgba(20, 20, 15, 0.055) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(20, 20, 15, 0.055) 1px, transparent 1px);
+    background-image: linear-gradient(to right, rgb(var(--c-ink) / 0.055) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--c-ink) / 0.055) 1px, transparent 1px);
     background-size: 28px 28px;
   }
 
   .noise-plate {
-    background-image: radial-gradient(rgba(255, 255, 255, 0.35) 1px, transparent 1px);
+    background-image: radial-gradient(rgb(var(--c-surface) / 0.35) 1px, transparent 1px);
     background-size: 6px 6px;
   }
 
@@ -160,14 +517,13 @@
     scrollbar-width: none;
   }
 
-  /* admin tables: paper zebra stripe, hover keeps lime highlight */
-  .admin-zebra > *:nth-child(odd):not(:first-child):not(:hover) {
-    background-color: rgba(239, 231, 215, 0.55);
+  /* 后台表格：斑马纹 */
+  .admin-zebra > *:nth-child(even):not(:hover) {
+    background-color: rgb(var(--c-surface-2) / 0.55);
   }
 
-  /* admin focus ring follows the paper/ink language */
   .admin-focus:focus-visible {
-    outline: 2px solid #14140f;
+    outline: 2px solid rgb(var(--c-line));
     outline-offset: 2px;
   }
 
@@ -211,10 +567,135 @@
   }
 }
 
-/* ------------------------------- print (resume) --------------------------- */
+/* =============================================================================
+   主题形态收敛：这些差异无法靠"换色"表达（圆角 / 大写 / 强调色上的文字色）
+   统一放在这里，页面与组件里不再出现 theme === 'xx' 的判断。
+   ========================================================================== */
+
+/* 03 · 瑞士：一切归零 */
+[data-theme='swiss'] [class*='rounded'] {
+  border-radius: 0;
+}
+[data-theme='swiss'] .card-hard:hover {
+  transform: none;
+}
+[data-theme='swiss'] .kicker,
+[data-theme='swiss'] .tag,
+[data-theme='swiss'] nav a,
+[data-theme='swiss'] .btn {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+[data-theme='swiss'] h1 u,
+[data-theme='swiss'] .marker {
+  background-image: none;
+  background-color: rgb(var(--c-lime));
+  color: rgb(var(--c-on-accent));
+}
+
+/* 02 · 实验室：任意字号的圆角也收敛到 6px */
+[data-theme='lab'] [class*='rounded-['] {
+  border-radius: var(--r-lg);
+}
+[data-theme='lab'] .card-hard:hover {
+  transform: translateY(-2px);
+}
+[data-theme='lab'] .kicker,
+[data-theme='lab'] .tag {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+/* 描边语言：实验室 / 终端 / 青春用主题线色，不再沿用墨黑硬边 */
+[data-theme='lab'] [class*='border-ink'],
+[data-theme='terminal'] [class*='border-ink'],
+[data-theme='pop'] [class*='border-ink'] {
+  border-color: rgb(var(--c-line));
+}
+
+/* 05 · 终端：像素级直角 + 全等宽 + 无浮起 */
+[data-theme='terminal'] [class*='rounded-['] {
+  border-radius: var(--r-xs);
+}
+[data-theme='terminal'] .card-hard:hover {
+  transform: none;
+}
+[data-theme='terminal'] h1,
+[data-theme='terminal'] h2,
+[data-theme='terminal'] h3 {
+  text-shadow: none;
+}
+
+/* 06 · 设计师青春：大圆角更圆 */
+[data-theme='pop'] [class*='rounded-['] {
+  border-radius: var(--r-xl);
+}
+
+/* 手写体（Caveat）在理性系主题里换成等宽 / 正体，保持字体语言统一 */
+[data-theme='lab'] .font-hand,
+[data-theme='terminal'] .font-hand {
+  font-family: var(--ff-mono);
+}
+[data-theme='swiss'] .font-hand {
+  font-family: var(--ff-body);
+  font-weight: 600;
+}
+
+/* 强调色用在深色面板上时，改用主题专门提供的亮调，避免蓝配蓝 / 绿配绿 */
+[data-theme='lab'] .bg-ink [class~='text-lime'],
+[data-theme='swiss'] .bg-ink [class~='text-lime'],
+[data-theme='pop'] .bg-ink [class~='text-lime'],
+[data-theme='terminal'] .bg-ink [class~='text-lime'],
+[data-theme='lab'] .bg-ink [class~='hover:text-lime']:hover,
+[data-theme='swiss'] .bg-ink [class~='hover:text-lime']:hover,
+[data-theme='pop'] .bg-ink [class~='hover:text-lime']:hover,
+[data-theme='terminal'] .bg-ink [class~='hover:text-lime']:hover {
+  color: rgb(var(--c-accent-on-dark));
+}
+
+/* 主强调色上的文字：亮色主题用白字、深色主题用深字 */
+[data-theme='lab'] .bg-lime,
+[data-theme='swiss'] .bg-lime,
+[data-theme='pop'] .bg-lime,
+[data-theme='terminal'] .bg-lime {
+  color: rgb(var(--c-on-accent));
+}
+[data-theme='lab'] [class~='hover:bg-lime']:hover,
+[data-theme='swiss'] [class~='hover:bg-lime']:hover,
+[data-theme='pop'] [class~='hover:bg-lime']:hover,
+[data-theme='terminal'] [class~='hover:bg-lime']:hover {
+  color: rgb(var(--c-on-accent));
+}
+/* 深色底面板如果没有自带文字色，补上 bg 色，保证默认文字可读 */
+[data-theme='lab'] .bg-ink:not([class*='text-']),
+[data-theme='swiss'] .bg-ink:not([class*='text-']),
+[data-theme='pop'] .bg-ink:not([class*='text-']),
+[data-theme='terminal'] .bg-ink:not([class*='text-']) {
+  color: rgb(var(--c-bg));
+}
+
+/* ------------------------------- 打印（简历） ------------------------------ */
 @media print {
   @page {
     margin: 12mm;
+  }
+
+  /* 无论当前是哪套主题，打印回到黑白，避免深底白字打空 */
+  :root[data-theme] {
+    --c-bg: 255 255 255;
+    --c-surface: 255 255 255;
+    --c-surface-2: 244 244 242;
+    --c-ink: 20 20 15;
+    --c-ink-soft: 60 60 55;
+    --c-ink-mute: 110 110 105;
+    --c-line: 20 20 15;
+    --c-on-accent: 20 20 15;
+    --sh-hard: none;
+    --sh-hard-sm: none;
+    --sh-hard-lg: none;
+    --bg-image: none;
+    --tex-image: none;
+    --tex-opacity: 0;
   }
 
   body {
@@ -246,6 +727,7 @@
     box-shadow: none !important;
     animation: none !important;
     transition: none !important;
+    text-shadow: none !important;
   }
   section,
   .card,

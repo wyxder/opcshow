@@ -44,7 +44,7 @@ export default function Love() {
         note="她叫小羊，是这篇页面的第一位读者，也是最严格的编辑。"
         right={
           <div className="flex flex-col items-start gap-3 sm:items-end">
-            <Sticker rotate={-5} color="#FFB3C7">
+            <Sticker rotate={-5} color="rgb(var(--c-rose))">
               {loveMeta.city}
             </Sticker>
             <div className="rounded-2xl border-1.5 border-ink bg-cream px-5 py-4 text-center shadow-hard">
@@ -104,7 +104,7 @@ export default function Love() {
                       <div className="group rounded-2xl border-1.5 border-ink bg-cream p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-hard-sm sm:p-5">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="rounded-full px-2 py-0.5 font-mono text-[9px]" style={{ background: r.color + '80' }}>
+                            <span className="rounded-full px-2 py-0.5 font-mono text-[9px]" style={{ background: `color-mix(in srgb, ${r.color} 50%, transparent)` }}>
                               {r.type}
                             </span>
                             <span className="font-mono text-[10px] text-ink/40">{r.date}</span>

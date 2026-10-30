@@ -348,8 +348,8 @@ export function TrendChart({
             const gy = pad.t + (i / 4) * innerH
             return (
               <g key={i}>
-                <line x1={pad.l} x2={pad.l + innerW} y1={gy} y2={gy} stroke="#14140F" strokeOpacity={0.1} strokeDasharray="2 5" />
-                <text x={pad.l - 8} y={gy + 3} textAnchor="end" className="fill-[#6B6255]" style={{ fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}>
+                <line x1={pad.l} x2={pad.l + innerW} y1={gy} y2={gy} stroke="rgb(var(--c-ink))" strokeOpacity={0.1} strokeDasharray="2 5" />
+                <text x={pad.l - 8} y={gy + 3} textAnchor="end" className="fill-mute" style={{ fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}>
                   {Math.round(max - (i / 4) * max)}
                 </text>
               </g>
@@ -379,7 +379,7 @@ export function TrendChart({
                 )}
                 <path d={d} fill="none" stroke={s.color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                 {pts.map((p, i) => (
-                  <circle key={i} cx={p[0]} cy={p[1]} r={2.2} fill="#FBF8F1" stroke={s.color} strokeWidth={1.6} />
+                  <circle key={i} cx={p[0]} cy={p[1]} r={2.2} fill="rgb(var(--c-surface))" stroke={s.color} strokeWidth={1.6} />
                 ))}
               </g>
             )
@@ -392,7 +392,7 @@ export function TrendChart({
                 x={x(i)}
                 y={height - 4}
                 textAnchor="middle"
-                className="fill-[#6B6255]"
+                className="fill-mute"
                 style={{ fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}
               >
                 {l}
@@ -405,7 +405,7 @@ export function TrendChart({
   )
 }
 
-export function Sparkline({ data, color = '#FF5A2B', width = 62, height = 22 }: { data: number[]; color?: string; width?: number; height?: number }) {
+export function Sparkline({ data, color = 'rgb(var(--c-coral))', width = 62, height = 22 }: { data: number[]; color?: string; width?: number; height?: number }) {
   const max = Math.max(...data)
   const min = Math.min(...data)
   const pts = data.map((d, i) => [ (i / (data.length - 1)) * width, height - 3 - ((d - min) / (max - min || 1)) * (height - 8) ] as [number, number])
@@ -480,7 +480,7 @@ export function Legend({ data, className }: { data: { label: string; value?: num
   )
 }
 
-export function Meter({ value, color = '#FF5A2B', className }: { value: number; color?: string; className?: string }) {
+export function Meter({ value, color = 'rgb(var(--c-coral))', className }: { value: number; color?: string; className?: string }) {
   return (
     <div className={cn('h-1.5 w-full overflow-hidden rounded-full border border-ink/20 bg-paper', className)}>
       <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(0, value))}%`, background: color }} />
@@ -488,7 +488,7 @@ export function Meter({ value, color = '#FF5A2B', className }: { value: number; 
   )
 }
 
-export function MiniBars({ data, color = '#FF5A2B', height = 56 }: { data: number[]; color?: string; height?: number }) {
+export function MiniBars({ data, color = 'rgb(var(--c-coral))', height = 56 }: { data: number[]; color?: string; height?: number }) {
   const max = Math.max(...data, 1)
   return (
     <div className="flex items-end gap-[3px]" style={{ height }}>

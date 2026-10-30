@@ -45,7 +45,7 @@ export default function Toolbox() {
         right={
           <div className="flex flex-wrap gap-2">
             <Sticker rotate={-5}>{all.length} 件藏品</Sticker>
-            <Sticker rotate={4} color="#FFB3C7">
+            <Sticker rotate={4} color="rgb(var(--c-rose))">
               已收藏 {stars.length}
             </Sticker>
           </div>

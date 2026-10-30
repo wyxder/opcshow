@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { applyTheme, DEFAULT_THEME, isThemeId, MODEL_THEME_EVENT, readStoredTheme, THEME_STORAGE_KEY, THEMES, type ThemeId } from './theme'
+import { applyTheme, DEFAULT_THEME, isThemeId, readStoredTheme, THEME_STORAGE_KEY, THEMES, type ThemeId } from './theme'
 
 type ThemeContextValue = {
   theme: ThemeId
@@ -27,7 +27,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } catch {
       /* 存不下就算了，本次会话内仍然生效 */
     }
-    window.dispatchEvent(new CustomEvent(MODEL_THEME_EVENT, { detail: id }))
   }, [])
 
   const resetTheme = useCallback(() => setTheme(DEFAULT_THEME), [setTheme])

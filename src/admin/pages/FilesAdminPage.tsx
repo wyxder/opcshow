@@ -127,7 +127,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                       <span className="font-mono text-[9px] text-admin-muted">{q.size}</span>
                     </span>
                     <div className="w-24">
-                      <Meter value={q.progress} color={q.state === '完成' ? '#2E6B3F' : '#E6A23C'} />
+                      <Meter value={q.progress} color={q.state === '完成' ? 'rgb(var(--c-teal))' : 'rgb(var(--c-amber))'} />
                     </div>
                     <Status>{q.state}</Status>
                     <IconButton

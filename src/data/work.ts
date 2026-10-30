@@ -21,7 +21,7 @@ export const toolboxGroups: ToolboxGroup[] = [
     key: 'prompt',
     title: 'Prompt 仓库',
     desc: '反复用、改了十几次的提示词，直接抄。',
-    color: '#C9F158',
+    color: 'rgb(var(--c-lime))',
     items: [
       { id: 'p1', title: 'RAG 引用约束 Prompt', desc: '强制每句结论绑定 chunk_id，不允许无源回答。', tag: 'RAG', link: '#', stars: 42, hot: true },
       { id: 'p2', title: 'Judge 评分模板 v3', desc: '带 rubric 与反例的 6 维评分，附 ±0.05 校准方法。', tag: '评测', link: '#', stars: 37 },
@@ -33,7 +33,7 @@ export const toolboxGroups: ToolboxGroup[] = [
     key: 'code',
     title: '代码片段',
     desc: '复制就能跑的小组件，都是线上磨过的。',
-    color: '#BFD8FF',
+    color: 'rgb(var(--c-sky))',
     items: [
       { id: 'c1', title: 'RRF 融合实现（Python）', desc: '双路召回排名融合，k 可配，30 行搞定。', tag: 'RAG', link: '#', stars: 56, hot: true },
       { id: 'c2', title: 'SSE 流式对话 Hook', desc: '断线重连、节流、卸载清理一次处理完。', tag: 'React', link: '#', stars: 48 },
@@ -45,7 +45,7 @@ export const toolboxGroups: ToolboxGroup[] = [
     key: 'design',
     title: '设计资产',
     desc: '配色、字体、组件规范，做作品集直接拿。',
-    color: '#FFB3C7',
+    color: 'rgb(var(--c-rose))',
     items: [
       { id: 'd1', title: 'Paper Brutal 色板', desc: '米白纸感 + 墨黑硬边 + 酸性绿点缀。', tag: '配色', link: '#', stars: 64 },
       { id: 'd2', title: '卡片硬阴影规范', desc: '2/4/8px 三档硬阴影，hover 位移 3px。', tag: 'UI', link: '#', stars: 22 },
@@ -56,7 +56,7 @@ export const toolboxGroups: ToolboxGroup[] = [
     key: 'reading',
     title: '在读 / 在听',
     desc: '最近喂养大脑的东西。',
-    color: '#7C5CFF',
+    color: 'rgb(var(--c-grape))',
     items: [
       { id: 'r1', title: '《Building LLM Apps》', desc: '工程视角讲评测与可观测性，第三章反复读。', tag: '书', link: '#', stars: 15 },
       { id: 'r2', title: 'Anthropic: Building effective agents', desc: '少即是多，能不用框架就不用框架。', tag: '论文', link: '#', stars: 41 },

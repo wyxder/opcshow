@@ -35,7 +35,7 @@ export default function Resume() {
         note="支持直接打印成 A4，或者发邮件要 PDF 版。"
         right={
           <div className="flex flex-col items-start gap-2 sm:items-end">
-            <Sticker rotate={4} color="#C9F158">
+            <Sticker rotate={4} color="rgb(var(--c-lime))">
               随时到岗 · 6 个月起
             </Sticker>
             <div className="flex gap-2">

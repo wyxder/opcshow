@@ -283,7 +283,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
 
           <div className="grid gap-3 xl:grid-cols-[1.6fr_1fr]">
             <Panel kicker="Daily" title="近 7 天 Token 消耗" desc="柱高为 token，橙线为折算费用（角）">
-              <MiniBars data={aiUsage.daily.map((d) => d.tokens)} height={110} color="#FF5A2B" />
+              <MiniBars data={aiUsage.daily.map((d) => d.tokens)} height={110} color="rgb(var(--c-coral))" />
               <div className="mt-2 flex justify-between font-mono text-[9px] text-admin-muted">
                 {aiUsage.daily.map((d) => (
                   <span key={d.date}>{d.date}</span>
@@ -350,7 +350,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                   <span className="text-admin-muted">本月已用</span>
                   <span className="font-mono">{aiUsage.monthTokens} / 3M</span>
                 </div>
-                <Meter value={tokenPercent} color={tokenPercent > 80 ? '#FF5A2B' : '#2E6B3F'} className="mt-2 h-2" />
+                <Meter value={tokenPercent} color={tokenPercent > 80 ? 'rgb(var(--c-coral))' : 'rgb(var(--c-teal))'} className="mt-2 h-2" />
                 <div className="mt-3 grid gap-3">
                   <Field label="每月额度（tokens）">
                     <Input value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, ''))} />

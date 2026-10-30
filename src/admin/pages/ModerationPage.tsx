@@ -314,7 +314,7 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
               <div className="grid gap-2 p-4 sm:grid-cols-2">
                 {friends.map((f) => (
                   <div key={f.id} className="flex items-center gap-2.5 rounded-lg border border-ink/15 px-3 py-2">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: `${f.color}66` }}>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: `color-mix(in srgb, ${f.color} 40%, transparent)` }}>
                       {f.avatar}
                     </span>
                     <div className="min-w-0 flex-1">

@@ -6,11 +6,11 @@ import { growthTimeline } from '@/data/me'
 import { cn } from '@/lib/utils'
 
 const tagColor: Record<string, string> = {
-  学习: '#BFD8FF',
-  项目: '#C9F158',
-  竞赛: '#FF5A2B',
-  内容: '#7C5CFF',
-  生活: '#FFB3C7',
+  学习: 'rgb(var(--c-sky))',
+  项目: 'rgb(var(--c-lime))',
+  竞赛: 'rgb(var(--c-coral))',
+  内容: 'rgb(var(--c-grape))',
+  生活: 'rgb(var(--c-rose))',
 }
 
 const tags = ['全部', '学习', '项目', '竞赛', '内容', '生活'] as const
@@ -34,7 +34,7 @@ export default function Timeline() {
         note="橙色标记的是我自己认为的转折点。"
         right={
           <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4} color="#C9F158">
+            <Sticker rotate={-4} color="rgb(var(--c-lime))">
               8 年
             </Sticker>
             <Sticker rotate={5}>10 个节点</Sticker>

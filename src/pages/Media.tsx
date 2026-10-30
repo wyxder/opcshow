@@ -5,10 +5,10 @@ import { mediaStats, platforms } from '@/data/me'
 import { profile } from '@/data/site'
 
 const series = [
-  { name: 'FDE 前沿教程', count: 89, note: '工具测评与工作流拆解，小红书收藏最多的一栏。', color: '#C9F158' },
-  { name: '项目复盘', count: 42, note: '每个项目一篇长文，写决策不写成绩。', color: '#BFD8FF' },
-  { name: 'Agent 评测笔记', count: 31, note: '指标、Judge、A/B 盲测，读者多为同行。', color: '#FFB3C7' },
-  { name: '生活切片', count: 18, note: '骑行、咖啡、胶片，用来平衡算法的密度。', color: '#E6DDC9' },
+  { name: 'FDE 前沿教程', count: 89, note: '工具测评与工作流拆解，小红书收藏最多的一栏。', color: 'rgb(var(--c-lime))' },
+  { name: '项目复盘', count: 42, note: '每个项目一篇长文，写决策不写成绩。', color: 'rgb(var(--c-sky))' },
+  { name: 'Agent 评测笔记', count: 31, note: '指标、Judge、A/B 盲测，读者多为同行。', color: 'rgb(var(--c-rose))' },
+  { name: '生活切片', count: 18, note: '骑行、咖啡、胶片，用来平衡算法的密度。', color: 'rgb(var(--c-surface-2))' },
 ]
 
 export default function Media() {
@@ -29,7 +29,7 @@ export default function Media() {
         note="内容不是副业收入来源，是我保持输入的方式。"
         right={
           <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4} color="#C9F158">
+            <Sticker rotate={-4} color="rgb(var(--c-lime))">
               全网 3.4w 粉
             </Sticker>
             <Sticker rotate={5}>355 条原创</Sticker>
@@ -119,7 +119,7 @@ export default function Media() {
                   <span
                     key={i}
                     className="aspect-square rounded-[2px]"
-                    style={{ background: level === 0 ? 'rgba(251,248,241,0.08)' : `rgba(201,241,88,${0.25 + level * 0.18})` }}
+                    style={{ background: level === 0 ? 'rgb(var(--c-surface) / 0.08)' : `rgb(var(--c-lime) / ${0.25 + level * 0.18})` }}
                   />
                 )
               })}

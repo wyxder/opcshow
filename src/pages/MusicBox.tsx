@@ -59,7 +59,7 @@ export default function MusicBox() {
         right={
           <div className="flex flex-wrap gap-2">
             <Sticker rotate={-4}>{playlist.length} 首</Sticker>
-            <Sticker rotate={5} color="#BFD8FF">
+            <Sticker rotate={5} color="rgb(var(--c-sky))">
               总时长 {Math.round(totalDuration / 60)} min
             </Sticker>
           </div>
@@ -106,7 +106,7 @@ export default function MusicBox() {
                   <motion.span
                     key={i}
                     className="w-full flex-1 rounded-sm"
-                    style={{ background: i % 3 === 0 ? '#C9F158' : 'rgba(251,248,241,0.35)' }}
+                    style={{ background: i % 3 === 0 ? 'rgb(var(--c-lime))' : 'rgb(var(--c-surface) / 0.35)' }}
                     animate={playing ? { height: [`${h * 0.35}%`, `${h}%`, `${h * 0.55}%`] } : { height: `${h * 0.35}%` }}
                     transition={playing ? { duration: 0.8 + (i % 5) * 0.14, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
                   />
@@ -278,9 +278,9 @@ export default function MusicBox() {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {[
-          { title: '写需求', note: 'Lo-fi，不抢注意力', color: '#BFD8FF' },
-          { title: '跑评测', note: '节拍稳定，适合盯日志', color: '#C9F158' },
-          { title: '改 bug 到深夜', note: '只能听熟歌，不能听新歌', color: '#FFB3C7' },
+          { title: '写需求', note: 'Lo-fi，不抢注意力', color: 'rgb(var(--c-sky))' },
+          { title: '跑评测', note: '节拍稳定，适合盯日志', color: 'rgb(var(--c-lime))' },
+          { title: '改 bug 到深夜', note: '只能听熟歌，不能听新歌', color: 'rgb(var(--c-rose))' },
         ].map((c, i) => (
           <div key={c.title} className="rounded-2xl border-1.5 border-ink bg-cream p-4" style={{ transform: `rotate(${i % 2 === 0 ? -0.6 : 0.6}deg)` }}>
             <span className="inline-block rounded-full px-2 py-0.5 font-mono text-[9.5px]" style={{ background: c.color }}>

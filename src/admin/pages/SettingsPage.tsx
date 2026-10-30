@@ -1,6 +1,6 @@
 import { Check, CloudDownload, DatabaseBackup, Download, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { backups as backupSeed, seoDefaults, systemInfo, themePresets } from '@/admin/data'
+import { useEffect, useMemo, useState } from 'react'
+import { backups as backupSeed, seoDefaults, systemInfo } from '@/admin/data'
 import {
   AButton,
   AdminModal,
@@ -19,22 +19,38 @@ import {
   Toggle,
 } from '@/admin/ui'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/theme/ThemeProvider'
+import { SWATCH_TOKENS } from '@/theme/theme'
 
 type Tab = 'theme' | 'seo' | 'backup'
 
 export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: (t: Tab) => void; show: (m: string) => void }) {
-  const [theme, setTheme] = useState('paper')
-  const [radius, setRadius] = useState<'sm' | 'md' | 'lg'>('md')
-  const [dark, setDark] = useState(false)
-  const [texture, setTexture] = useState(true)
+  // 主题只有一套数据源：直接读写 ThemeProvider，不再维护后台自己的预设表
+  const { theme, setTheme, resetTheme, themes } = useTheme()
+  const current = themes.find((t) => t.id === theme) ?? themes[0]
+
+  const [tokenValues, setTokenValues] = useState<Record<string, string>>({})
   const [seo, setSeo] = useState(seoDefaults)
   const [autoBackup, setAutoBackup] = useState(true)
   const [backups, setBackups] = useState(backupSeed)
   const [restoring, setRestoring] = useState<string | null>(null)
   const [backingUp, setBackingUp] = useState(false)
 
-  const preset = themePresets.find((t) => t.id === theme) ?? themePresets[1]
-  const [bg, ink, accent, accent2] = preset.colors
+  // 等主题属性落到 <html> 后再读实际值
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      const styles = getComputedStyle(document.documentElement)
+      const keys = ['--c-bg', '--c-surface', '--c-ink', '--c-ink-soft', '--c-lime', '--c-coral', '--r-lg', '--bw', '--sh-hard']
+      setTokenValues(
+        keys.reduce<Record<string, string>>((acc, k) => {
+          const raw = styles.getPropertyValue(k).trim()
+          acc[k] = k.startsWith('--c-') && raw ? `rgb(${raw})` : raw
+          return acc
+        }, {}),
+      )
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [theme])
 
   const checks = useMemo(
     () => [
@@ -82,16 +98,20 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
       {tab === 'theme' && (
         <div className="grid gap-3 xl:grid-cols-[1.5fr_1fr]">
           <div className="space-y-3">
-            <Panel kicker="Presets" title="主题预设" desc="切换后前台会读取新的色板与字体">
-              <div className="grid gap-2.5 sm:grid-cols-3">
-                {themePresets.map((t) => {
+            <Panel kicker="Theme" title="主题预设" desc="与前台共用同一套令牌，点选即全站生效并写入 localStorage">
+              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="站点主题">
+                {themes.map((t) => {
                   const on = t.id === theme
                   return (
                     <button
                       key={t.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      aria-label={`主题 ${t.no} ${t.name}`}
                       onClick={() => {
                         setTheme(t.id)
-                        show(`已切换到「${t.name}」`)
+                        show(`已切换到「${t.name}」，前台同步生效`)
                       }}
                       className={cn(
                         'relative rounded-xl border p-3 text-left transition',
@@ -99,12 +119,18 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
                       )}
                     >
                       <div className="flex gap-1">
-                        {t.colors.map((c) => (
-                          <span key={c} className="h-6 flex-1 rounded" style={{ background: c }} />
+                        {SWATCH_TOKENS.map((token) => (
+                          <span key={token} data-theme={t.id} className="h-6 flex-1 overflow-hidden rounded border border-ink/10">
+                            <span className="block h-full w-full" style={{ background: `rgb(var(${token}))` }} />
+                          </span>
                         ))}
                       </div>
-                      <p className="mt-2.5 text-[11.5px] font-semibold">{t.name}</p>
-                      <p className="mt-0.5 text-[9.5px] text-admin-muted">{t.note}</p>
+                      <p className="mt-2.5 text-[11.5px] font-semibold">
+                        <span className="mr-1 font-mono text-[9.5px] text-admin-muted">{t.no}</span>
+                        {t.name}
+                      </p>
+                      <p className="mt-0.5 font-mono text-[8.5px] tracking-[0.14em] text-admin-muted">{t.en}</p>
+                      <p className="mt-1 text-[9.5px] leading-snug text-admin-muted">{t.note}</p>
                       {on && (
                         <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-lime">
                           <Check size={10} />
@@ -115,110 +141,105 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
                 })}
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <p className="mb-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-admin-muted">圆角</p>
-                  <Segmented
-                    value={radius}
-                    onChange={setRadius}
-                    options={[
-                      { key: 'sm', label: '小' },
-                      { key: 'md', label: '中' },
-                      { key: 'lg', label: '大' },
-                    ]}
-                  />
-                </div>
-                <Field label="正文字体">
-                  <Select defaultValue="Noto Sans SC">
-                    {['Noto Sans SC', 'PingFang SC', 'Inter', '系统默认'].map((f) => (
-                      <option key={f}>{f}</option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-
-              <div className="mt-3 space-y-2">
-                {[
-                  ['深色模式', dark, setDark, '夜间访客会自动切换'],
-                  ['纸张纹理背景', texture, setTexture, '轻微噪点，降低纯色疲劳'],
-                ].map(([label, on, set, note]) => (
-                  <div key={label as string} className="flex items-center justify-between gap-3 rounded-lg border border-ink/15 px-3 py-2.5">
-                    <div>
-                      <p className="text-[11.5px] font-medium">{label as string}</p>
-                      <p className="mt-0.5 text-[9.5px] text-admin-muted">{note as string}</p>
-                    </div>
-                    <Toggle on={on as boolean} label={label as string} onChange={(v) => (set as (v: boolean) => void)(v)} />
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 flex gap-2">
-                <AButton variant="primary" icon={<Check size={12} />} onClick={() => show('主题设置已保存，前台已生效')}>
-                  保存主题
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <AButton variant="primary" icon={<Check size={12} />} onClick={() => show(`「${current.name}」已保存，前台同步生效`)}>
+                  保存当前主题
                 </AButton>
-                <AButton onClick={() => { setTheme('paper'); setRadius('md'); show('已恢复默认主题') }}>恢复默认</AButton>
+                <AButton onClick={() => { resetTheme(); show('已恢复默认主题 · 01 纸感极简') }}>恢复默认</AButton>
+                <span className="ml-auto font-mono text-[9px] tracking-[0.16em] text-admin-muted">ACTIVE · {current.en}</span>
               </div>
             </Panel>
 
-            <Panel kicker="Tokens" title="设计变量" desc="以下变量会注入到前台 CSS 变量">
+            <Panel kicker="Tokens" title="设计变量" desc="由当前主题注入 :root，换主题就换这组值">
               <div className="grid gap-2 sm:grid-cols-2">
                 {[
-                  ['--bg', bg],
-                  ['--ink', ink],
-                  ['--accent', accent],
-                  ['--accent-2', accent2],
-                ].map(([k, v]) => (
-                  <div key={k} className="flex items-center gap-2 rounded-lg border border-ink/15 px-2.5 py-2">
-                    <span className="h-5 w-5 rounded border border-ink/15" style={{ background: v }} />
-                    <span className="flex-1 font-mono text-[9.5px] text-admin-muted">{k}</span>
-                    <span className="font-mono text-[10px]">{v}</span>
-                  </div>
-                ))}
+                  ['--c-bg', '底色'],
+                  ['--c-surface', '表面'],
+                  ['--c-ink', '文字'],
+                  ['--c-ink-soft', '次级文字'],
+                  ['--c-lime', '主强调'],
+                  ['--c-coral', '次强调'],
+                  ['--r-lg', '卡片圆角'],
+                  ['--bw', '描边'],
+                  ['--sh-hard', '阴影'],
+                ].map(([k, label]) => {
+                  const isColor = k.startsWith('--c-')
+                  const value = tokenValues[k] || '—'
+                  return (
+                    <div key={k} className="flex items-center gap-2 rounded-lg border border-ink/15 px-2.5 py-2">
+                      <span
+                        className="h-5 w-5 shrink-0 rounded border border-ink/15"
+                        style={isColor ? { background: `rgb(var(${k}))` } : undefined}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-mono text-[9px] text-admin-muted">{k}</span>
+                        <span className="block truncate font-mono text-[9.5px]">{label}</span>
+                      </span>
+                      <span className="max-w-[46%] truncate font-mono text-[9px] text-admin-muted">{value}</span>
+                    </div>
+                  )
+                })}
               </div>
             </Panel>
           </div>
 
           <div className="space-y-3">
-            <Panel kicker="Preview" title="前台预览">
-              <div className="overflow-hidden rounded-xl border border-ink/15" style={{ background: bg }}>
-                <div className="flex items-center justify-between px-3 py-2" style={{ color: ink }}>
+            <Panel kicker="Preview" title="前台预览" desc="用真实令牌渲染，切换主题即时变化">
+              <div className="overflow-hidden rounded-xl border border-ink/15" style={{ background: 'rgb(var(--c-bg))', color: 'rgb(var(--c-ink))' }}>
+                <div className="flex items-center justify-between border-b px-3 py-2" style={{ borderColor: 'rgb(var(--c-ink) / 0.12)' }}>
                   <span className="text-[10px] font-bold">WYX.SPACE</span>
-                  <div className="flex gap-2 text-[8px] opacity-80">
+                  <div className="flex gap-2 text-[8px] opacity-70">
                     <span>学习</span>
                     <span>作品</span>
                     <span>生活</span>
                   </div>
                 </div>
-                <div className="px-3 pb-3 pt-2" style={{ color: ink }}>
-                  <p className="font-mono text-[8px] opacity-80">AI FULL-STACK</p>
+                <div className="px-3 pb-3 pt-2.5">
+                  <p className="font-mono text-[8px] tracking-[0.18em] opacity-60">AI FULL-STACK</p>
                   <p className="mt-1 text-[15px] font-extrabold leading-tight">
                     把想法做成
                     <br />
                     能上线的东西。
                   </p>
                   <div className="mt-2 flex gap-1.5">
-                    <span className="rounded-full px-2 py-1 text-[7px]" style={{ background: accent, color: '#14140F' }}>
+                    <span
+                      className="rounded-full px-2 py-1 text-[7px] font-semibold"
+                      style={{ background: 'rgb(var(--c-lime))', color: 'rgb(var(--c-on-accent))' }}
+                    >
                       看作品
                     </span>
-                    <span className="rounded-full border px-2 py-1 text-[7px]" style={{ borderColor: `${ink}33` }}>
+                    <span className="rounded-full border px-2 py-1 text-[7px]" style={{ borderColor: 'rgb(var(--c-ink) / 0.25)' }}>
                       简历
                     </span>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-1.5">
                     {[0, 1].map((i) => (
-                      <div key={i} className="rounded-lg p-2" style={{ background: i === 0 ? `${accent2}22` : `${ink}0d` }}>
-                        <p className="text-[6.5px] font-semibold" style={{ color: ink }}>
-                          {i === 0 ? 'RAG 客服系统' : 'Agent 评测中台'}
-                        </p>
-                        <p className="mt-1 text-[7px] opacity-80" style={{ color: ink }}>
-                          Recall@5 0.93
-                        </p>
+                      <div
+                        key={i}
+                        className="rounded-lg border p-2"
+                        style={{
+                          background: i === 0 ? 'rgb(var(--c-surface))' : 'rgb(var(--c-surface-2))',
+                          borderColor: 'rgb(var(--c-ink) / 0.12)',
+                          borderRadius: 'var(--r-sm)',
+                        }}
+                      >
+                        <p className="text-[6.5px] font-semibold">{i === 0 ? 'RAG 客服系统' : 'Agent 评测中台'}</p>
+                        <p className="mt-1 text-[7px] opacity-70">Recall@5 0.93</p>
                       </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    {SWATCH_TOKENS.map((token) => (
+                      <span
+                        key={token}
+                        className="h-3.5 flex-1 rounded-sm border"
+                        style={{ background: `rgb(var(${token}))`, borderColor: 'rgb(var(--c-ink) / 0.15)' }}
+                      />
                     ))}
                   </div>
                 </div>
               </div>
-              <p className="mt-2 text-center font-mono text-[9px] text-admin-muted">示例内容仅供配色预览</p>
+              <p className="mt-2 text-center font-mono text-[9px] text-admin-muted">令牌由 CSS 变量提供 · 无后台硬编码色值</p>
             </Panel>
 
             <Panel kicker="Cache" title="静态资源">

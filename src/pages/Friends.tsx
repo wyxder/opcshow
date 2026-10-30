@@ -19,10 +19,10 @@ export default function Friends() {
         note="想交换友链？往下翻有我的站点信息。"
         right={
           <div className="flex flex-wrap gap-2">
-            <Sticker rotate={-4} color="#C9F158">
+            <Sticker rotate={-4} color="rgb(var(--c-lime))">
               {friends.length} 个友链
             </Sticker>
-            <Sticker rotate={5} color="#BFD8FF">
+            <Sticker rotate={5} color="rgb(var(--c-sky))">
               持续更新
             </Sticker>
           </div>
@@ -36,7 +36,7 @@ export default function Friends() {
             href={f.url}
             className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard"
           >
-            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full border-1.5 border-ink/10" style={{ background: f.color + '70' }} />
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full border-1.5 border-ink/10" style={{ background: `color-mix(in srgb, ${f.color} 44%, transparent)` }} />
             <div className="relative flex items-start gap-3">
               <div
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-1.5 border-ink font-display text-[15px] font-extrabold"

@@ -140,7 +140,7 @@ export function CountUp({ to, suffix = '', decimals = 0 }: { to: number; suffix?
 export function Sticker({
   children,
   rotate = -6,
-  color = '#C9F158',
+  color = 'rgb(var(--c-lime))',
   className,
 }: {
   children: ReactNode
@@ -226,7 +226,7 @@ export function PageIntro({
 /* ---------------------------------- Plate -------------------------------- */
 export function Plate({
   motif = 'grid',
-  accent = '#C9F158',
+  accent = 'rgb(var(--c-lime))',
   label,
   index,
   className,
@@ -242,7 +242,7 @@ export function Plate({
   return (
     <div
       className={cn('overflow-hidden', !className?.includes('absolute') && 'relative', className)}
-      style={{ background: `linear-gradient(150deg, ${accent}55 0%, #FBF8F1 68%)` }}
+      style={{ background: `linear-gradient(150deg, color-mix(in srgb, ${accent} 33%, transparent) 0%, rgb(var(--c-surface)) 68%)` }}
     >
       <div className="absolute inset-0 halftone" />
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden>
@@ -261,7 +261,7 @@ export function Plate({
               <ellipse cx="200" cy="130" rx="105" ry="105" />
               <ellipse cx="200" cy="130" rx="62" ry="62" strokeOpacity="0.35" />
               <circle cx="200" cy="130" r="26" fill={accent} fillOpacity="0.5" stroke="none" />
-              <circle cx="305" cy="130" r="5" fill="#14140F" stroke="none" />
+              <circle cx="305" cy="130" r="5" fill="rgb(var(--c-ink))" stroke="none" />
             </>
           )}
           {motif === 'wave' &&
@@ -295,7 +295,7 @@ export function Plate({
                 width="200"
                 height="86"
                 rx="8"
-                fill="#FBF8F1"
+                fill="rgb(var(--c-surface))"
                 fillOpacity={0.7}
                 stroke={accent}
                 strokeOpacity={0.8}
@@ -323,7 +323,7 @@ export function Plate({
 export function Avatar({
   name = '魏云潇',
   size = 56,
-  accent = '#C9F158',
+  accent = 'rgb(var(--c-lime))',
   className,
 }: {
   name?: string

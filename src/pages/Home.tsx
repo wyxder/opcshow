@@ -34,20 +34,20 @@ import type { Project } from '@/data/projects'
 import { cn } from '@/lib/utils'
 
 const colorMap: Record<string, string> = {
-  lime: '#C9F158',
-  coral: '#FF5A2B',
-  blue: '#3C5BFF',
-  grape: '#7C5CFF',
-  rose: '#FFB3C7',
-  sky: '#BFD8FF',
-  sand: '#E6DDC9',
-  cream: '#FBF8F1',
+  lime: 'rgb(var(--c-lime))',
+  coral: 'rgb(var(--c-coral))',
+  blue: 'rgb(var(--c-blue))',
+  grape: 'rgb(var(--c-grape))',
+  rose: 'rgb(var(--c-rose))',
+  sky: 'rgb(var(--c-sky))',
+  sand: 'rgb(var(--c-surface-2))',
+  cream: 'rgb(var(--c-surface))',
 }
 
 const hobbyIcons = [Utensils, Bike, Coffee, Camera, Film, BookOpen]
 
 /* -------------------------------- rotating -------------------------------- */
-function RotatingBadge({ text = 'OPEN TO WORK · AI FULLSTACK · ', size = 106, accent = '#14140F' }: { text?: string; size?: number; accent?: string }) {
+function RotatingBadge({ text = 'OPEN TO WORK · AI FULLSTACK · ', size = 106, accent = 'rgb(var(--c-ink))' }: { text?: string; size?: number; accent?: string }) {
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg viewBox="0 0 120 120" className="h-full w-full animate-spin-slow">
@@ -148,7 +148,7 @@ function Hero({ onOpenCard }: { onOpenCard: () => void }) {
           <Reveal delay={0.15} y={26}>
             <div className="relative mx-auto max-w-[330px] lg:mt-4">
               <div className="absolute -left-3 -top-3 z-10">
-                <Sticker rotate={-8} color="#C9F158">2026 可实习</Sticker>
+                <Sticker rotate={-8} color="rgb(var(--c-lime))">2026 可实习</Sticker>
               </div>
               <Tilt strength={10}>
                 <button
@@ -194,7 +194,7 @@ function Hero({ onOpenCard }: { onOpenCard: () => void }) {
                         const x = i % 12
                         const y = Math.floor(i / 12)
                         const on = (x * 13 + y * 29 + ((x * y) % 7)) % 5 < 2
-                        return on ? <rect key={i} x={x * 8} y={y * 8} width="7" height="7" fill="#14140F" /> : null
+                        return on ? <rect key={i} x={x * 8} y={y * 8} width="7" height="7" fill="rgb(var(--c-ink))" /> : null
                       })}
                       {[
                         [0, 0],
@@ -202,8 +202,8 @@ function Hero({ onOpenCard }: { onOpenCard: () => void }) {
                         [0, 64],
                       ].map(([x, y], i) => (
                         <g key={i}>
-                          <rect x={x} y={y} width="24" height="24" fill="none" stroke="#14140F" strokeWidth="5" />
-                          <rect x={x + 10} y={y + 10} width="5" height="5" fill="#14140F" />
+                          <rect x={x} y={y} width="24" height="24" fill="none" stroke="rgb(var(--c-ink))" strokeWidth="5" />
+                          <rect x={x + 10} y={y + 10} width="5" height="5" fill="rgb(var(--c-ink))" />
                         </g>
                       ))}
                     </svg>
@@ -601,9 +601,9 @@ function Honors() {
 /* ------------------------------- life teaser ------------------------------- */
 function LifeTeaser() {
   const blocks = [
-    { to: '/life/love', title: '恋爱记录', desc: '1240 天，86 次见面，11 座城市。', color: '#FFB3C7', icon: Heart, tag: '异地第 4 年' },
-    { to: '/life/travel', title: '旅拍相册', desc: '地图上钉了 11 个点，每个都有故事。', color: '#BFD8FF', icon: MapPin, tag: '11 座城市' },
-    { to: '/life/music', title: '音乐盒', desc: '写代码时在听什么，都在这。', color: '#C9F158', icon: Music, tag: '6 张歌单' },
+    { to: '/life/love', title: '恋爱记录', desc: '1240 天，86 次见面，11 座城市。', color: 'rgb(var(--c-rose))', icon: Heart, tag: '异地第 4 年' },
+    { to: '/life/travel', title: '旅拍相册', desc: '地图上钉了 11 个点，每个都有故事。', color: 'rgb(var(--c-sky))', icon: MapPin, tag: '11 座城市' },
+    { to: '/life/music', title: '音乐盒', desc: '写代码时在听什么，都在这。', color: 'rgb(var(--c-lime))', icon: Music, tag: '6 张歌单' },
   ]
   return (
     <section>
@@ -655,7 +655,7 @@ function LifeTeaser() {
                     className="group relative rounded-lg border-1.5 border-ink bg-cream p-2 text-center transition-transform hover:-translate-y-1 hover:rotate-0"
                     style={{ transform: `rotate(${h.rotate}deg)` }}
                   >
-                    <div className="flex h-12 items-center justify-center rounded-md" style={{ background: colorMap[h.color] + '80' }}>
+                    <div className="flex h-12 items-center justify-center rounded-md" style={{ background: `color-mix(in srgb, ${colorMap[h.color]} 50%, transparent)` }}>
                       <Icon size={18} />
                     </div>
                     <p className="mt-1.5 text-[10.5px] font-semibold leading-tight">{h.title}</p>

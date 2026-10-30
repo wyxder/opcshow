@@ -65,7 +65,7 @@ export default function Travel() {
         right={
           <div className="flex flex-wrap gap-2">
             <Sticker rotate={-4}>11 座城市</Sticker>
-            <Sticker rotate={5} color="#BFD8FF">
+            <Sticker rotate={5} color="rgb(var(--c-sky))">
               2023 → 2026
             </Sticker>
           </div>
@@ -98,24 +98,24 @@ export default function Travel() {
 
       <div className="grid gap-4 lg:grid-cols-[1.55fr_1fr]">
         {/* map */}
-        <div className="relative overflow-hidden rounded-[24px] border-1.5 border-ink bg-[#F0EADA] shadow-hard">
+        <div className="relative overflow-hidden rounded-[24px] border-1.5 border-ink bg-sand shadow-hard">
           <div className="absolute inset-0 grid-paper opacity-70" />
           <svg viewBox="0 0 1000 620" preserveAspectRatio="none" className="relative block h-full w-full">
             {[...Array(9)].map((_, i) => (
-              <line key={`h${i}`} x1="0" y1={i * 77.5} x2="1000" y2={i * 77.5} stroke="#14140F" strokeOpacity="0.06" />
+              <line key={`h${i}`} x1="0" y1={i * 77.5} x2="1000" y2={i * 77.5} stroke="rgb(var(--c-ink))" strokeOpacity="0.06" />
             ))}
             {[...Array(13)].map((_, i) => (
-              <line key={`v${i}`} x1={i * 83.3} y1="0" x2={i * 83.3} y2="620" stroke="#14140F" strokeOpacity="0.06" />
+              <line key={`v${i}`} x1={i * 83.3} y1="0" x2={i * 83.3} y2="620" stroke="rgb(var(--c-ink))" strokeOpacity="0.06" />
             ))}
-            <path d={outlinePath} fill="#FBF8F1" fillOpacity="0.85" stroke="#14140F" strokeOpacity="0.55" strokeWidth="2.4" strokeLinejoin="round" />
-            <path d={outlinePath} fill="none" stroke="#14140F" strokeOpacity="0.12" strokeWidth="10" strokeLinejoin="round" />
-            <ellipse cx="774" cy="494" rx="10" ry="24" fill="#FBF8F1" stroke="#14140F" strokeOpacity="0.4" strokeWidth="1.6" />
-            <ellipse cx="594" cy="568" rx="16" ry="13" fill="#FBF8F1" stroke="#14140F" strokeOpacity="0.4" strokeWidth="1.6" />
-            <polyline points={routePoints} fill="none" stroke="#FF5A2B" strokeOpacity="0.55" strokeWidth="1.8" strokeDasharray="5 7" strokeLinecap="round" />
-            <text x="60" y="70" fill="#14140F" fillOpacity="0.25" fontSize="30" fontWeight="800" fontFamily="Bricolage Grotesque, sans-serif">
+            <path d={outlinePath} fill="rgb(var(--c-surface))" fillOpacity="0.85" stroke="rgb(var(--c-ink))" strokeOpacity="0.55" strokeWidth="2.4" strokeLinejoin="round" />
+            <path d={outlinePath} fill="none" stroke="rgb(var(--c-ink))" strokeOpacity="0.12" strokeWidth="10" strokeLinejoin="round" />
+            <ellipse cx="774" cy="494" rx="10" ry="24" fill="rgb(var(--c-surface))" stroke="rgb(var(--c-ink))" strokeOpacity="0.4" strokeWidth="1.6" />
+            <ellipse cx="594" cy="568" rx="16" ry="13" fill="rgb(var(--c-surface))" stroke="rgb(var(--c-ink))" strokeOpacity="0.4" strokeWidth="1.6" />
+            <polyline points={routePoints} fill="none" stroke="rgb(var(--c-coral))" strokeOpacity="0.55" strokeWidth="1.8" strokeDasharray="5 7" strokeLinecap="round" />
+            <text x="60" y="70" fill="rgb(var(--c-ink))" fillOpacity="0.25" fontSize="30" fontWeight="800" fontFamily="Bricolage Grotesque, sans-serif">
               CHINA
             </text>
-            <text x="60" y="94" fill="#14140F" fillOpacity="0.2" fontSize="11" letterSpacing="4" fontFamily="JetBrains Mono, monospace">
+            <text x="60" y="94" fill="rgb(var(--c-ink))" fillOpacity="0.2" fontSize="11" letterSpacing="4" fontFamily="JetBrains Mono, monospace">
               TRAVEL ATLAS / 2023—2026
             </text>
           </svg>
@@ -134,7 +134,7 @@ export default function Travel() {
               >
                 <span
                   className={cn('flex items-center justify-center rounded-full border-1.5 border-ink transition-all duration-300', isActive && 'scale-125')}
-                  style={{ width: size, height: size, background: t.color, boxShadow: isActive ? '0 0 0 5px rgba(20,20,15,0.12)' : undefined }}
+                  style={{ width: size, height: size, background: t.color, boxShadow: isActive ? '0 0 0 5px rgb(var(--c-ink) / 0.12)' : undefined }}
                 />
                 {isActive && <span className="absolute inset-0 -z-10 animate-ping rounded-full" style={{ background: t.color, opacity: 0.5 }} />}
                 <span
@@ -166,7 +166,7 @@ export default function Travel() {
                   <h2 className="mt-1 text-[22px] font-extrabold leading-tight">{active.city}</h2>
                   <p className="text-[11.5px] text-ink/50">{active.spot}</p>
                 </div>
-                <span className="rounded-full px-2 py-0.5 font-mono text-[9px]" style={{ background: active.color + '66' }}>
+                <span className="rounded-full px-2 py-0.5 font-mono text-[9px]" style={{ background: `color-mix(in srgb, ${active.color} 40%, transparent)` }}>
                   {active.date}
                 </span>
               </div>
@@ -226,12 +226,12 @@ export default function Travel() {
               )}
               style={{ transform: `rotate(${(t.lon % 5) - 2.5}deg)` }}
             >
-              <div className="relative aspect-[4/3] overflow-hidden rounded-sm border border-ink/10" style={{ background: `linear-gradient(150deg, ${t.color}, #FBF8F1 85%)` }}>
+              <div className="relative aspect-[4/3] overflow-hidden rounded-sm border border-ink/10" style={{ background: `linear-gradient(150deg, ${t.color}, rgb(var(--c-surface)) 85%)` }}>
                 <div className="absolute inset-0 halftone opacity-25" />
                 <svg viewBox="0 0 120 90" className="absolute inset-0 h-full w-full" aria-hidden>
-                  <circle cx="60" cy="42" r="26" fill="none" stroke="#14140F" strokeOpacity="0.15" />
-                  <circle cx="60" cy="42" r="14" fill="#14140F" fillOpacity="0.06" />
-                  <path d="M0 68 Q 30 52 60 66 T 120 58 L120 90 L0 90Z" fill="#14140F" fillOpacity="0.07" />
+                  <circle cx="60" cy="42" r="26" fill="none" stroke="rgb(var(--c-ink))" strokeOpacity="0.15" />
+                  <circle cx="60" cy="42" r="14" fill="rgb(var(--c-ink))" fillOpacity="0.06" />
+                  <path d="M0 68 Q 30 52 60 66 T 120 58 L120 90 L0 90Z" fill="rgb(var(--c-ink))" fillOpacity="0.07" />
                 </svg>
                 <span className="absolute bottom-1.5 left-2 font-display text-[15px] font-extrabold text-ink/70">{t.city}</span>
                 <span className="absolute right-1.5 top-1.5 font-mono text-[9px] text-ink/40">{t.date.slice(0, 7)}</span>
