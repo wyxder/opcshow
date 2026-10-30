@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AdminShell, { getSection, sections, type SectionKey } from '@/admin/AdminShell'
+import LoginPage from '@/admin/LoginPage'
 import { useAdminToast } from '@/admin/ui'
 import { useSeo } from '@/lib/seo'
-import { getSession, type AdminSession } from '@/services/auth'
+import { getSession, logout, type AdminSession } from '@/services/auth'
 import { serverConfig } from '@/services/config'
+import { apiJsonSafe } from '@/services/http'
+import { listPending } from '@/services/guestbook'
 import AiConfigPage from '@/admin/pages/AiConfigPage'
 import AnalyticsPage from '@/admin/pages/AnalyticsPage'
 import ContentPage from '@/admin/pages/ContentPage'
@@ -20,18 +23,41 @@ export default function AdminApp() {
   const navigate = useNavigate()
   const { show, node } = useAdminToast()
   const [session, setSession] = useState<AdminSession | null>(null)
+  const [ready, setReady] = useState(!serverConfig.enabled)
+  const [pending, setPending] = useState<number | null>(null)
 
   // fx.md S3：后台不参与索引
-  useSeo({ title: '后台管理 · WYX.SPACE', description: '站点后台（演示）。', path: '/admin', robots: 'noindex, nofollow' })
+  useSeo({ title: '后台管理 · WYX.SPACE', description: '站点后台。', path: '/admin', robots: 'noindex, nofollow' })
+
+  const reloadSession = useCallback(() => {
+    setReady(false)
+    getSession().then((s) => {
+      setSession(s)
+      setReady(true)
+    })
+  }, [])
 
   // fx.md B2：会话适配层。未配服务端 = 演示会话（不拦人，但界面必须说清楚）
   useEffect(() => {
-    let alive = true
-    getSession().then((s) => alive && setSession(s))
-    return () => {
-      alive = false
+    reloadSession()
+  }, [reloadSession])
+
+  // F-02 / F-07 / F-15：侧栏 badge 用真实待审数，不再写死
+  useEffect(() => {
+    if (serverConfig.enabled) {
+      if (!session) return
+      apiJsonSafe<{ count: number }>('/api/guestbook/pending/count').then((r) => setPending(r?.count ?? null))
+      return
     }
-  }, [])
+    // 演示模式：数本机留言队列（不含预置种子），没有服务端也能对上
+    listPending().then((l) => setPending(l.length))
+  }, [session])
+
+  const handleLogout = async () => {
+    await logout()
+    setSession(null)
+    show('已退出登录')
+  }
 
   const parts = location.pathname.replace(/^\/admin\/?/, '').split('/').filter(Boolean)
   const known = sections.some((s) => s.key === parts[0])
@@ -48,6 +74,14 @@ export default function AdminApp() {
     navigate(`/admin/${target}/${t ?? next.tabs[0].key}`)
   }
   const setTab = (t: string) => navigate(`/admin/${key}/${t}`)
+
+  // F-02：真实模式下未登录不可进后台
+  if (serverConfig.enabled && !ready) {
+    return <div className="flex min-h-screen items-center justify-center bg-paper font-mono text-[11px] text-admin-muted">正在校验会话…</div>
+  }
+  if (serverConfig.enabled && !session) {
+    return <LoginPage onDone={reloadSession} />
+  }
 
   const page = (() => {
     switch (key) {
@@ -73,16 +107,12 @@ export default function AdminApp() {
   })()
 
   return (
-    <AdminShell section={key} onNavigate={(k) => go(k)}>
+    <AdminShell section={key} onNavigate={(k) => go(k)} onLogout={handleLogout} pending={pending}>
       {session?.mode === 'demo' && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border-1.5 border-dashed border-warning/60 bg-warning/10 px-3 py-2 text-[11.5px] text-ink">
           <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-admin-warning">DEMO · 未鉴权</span>
-          <span>
-            当前没有服务端，任何访客都能打开这个后台；所有写操作只改内存，刷新就没了。
-          </span>
-          <span className="font-mono text-[9.5px] text-ink/45">
-            接入点：VITE_API_BASE + services/auth.ts（{serverConfig.authLoginPath}）
-          </span>
+          <span>当前没有服务端，任何访客都能打开这个后台；所有写操作只改内存，刷新就没了。</span>
+          <span className="font-mono text-[9.5px] text-ink/45">接入方式：配置 VITE_API_BASE（{serverConfig.authLoginPath}）</span>
         </div>
       )}
       {page}

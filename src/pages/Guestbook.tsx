@@ -1,12 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { MessageSquare, Send, Sparkles, Trash2 } from 'lucide-react'
+import { Flag, MessageSquare, Send, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Marquee, PageHead } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
 import { cn, readableInk, useLocalStorage } from '@/lib/utils'
 import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
 import { useSeo } from '@/lib/seo'
-import { AbuseBlockedError, guestbook, type GuestMessage } from '@/services/guestbook'
+import { AbuseBlockedError, guestbook, reportMessage, toggleLike, type GuestMessage } from '@/services/guestbook'
 
 const colors = ['rgb(var(--c-lime))', 'rgb(var(--c-rose))', 'rgb(var(--c-sky))', 'rgb(var(--c-coral))', 'rgb(var(--c-grape))', 'rgb(var(--c-surface))']
 
@@ -21,6 +21,8 @@ export default function Guestbook() {
   const [items, setItems] = useState<GuestMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [likes, setLikes] = useLocalStorage<string[]>(STORAGE_KEYS.guestbookLikes, [], isStringArray)
+  /** 服务端留言的真实点赞态；本机留言仍走 localStorage（来源不同，不混算） */
+  const [remoteLikes, setRemoteLikes] = useState<Record<string, { likes: number; liked: boolean }>>({})
   const [name, setName] = useState('')
   const [text, setText] = useState('')
   const [color, setColor] = useState(colors[0])
@@ -28,7 +30,7 @@ export default function Guestbook() {
   const { show, node } = useToast()
 
   useSeo({
-    title: '留言弹幕墙 · 魏云潇',
+    title: '留言弹幕墙 · 晓叶',
     description: '不用登录，写一句话，它会成为墙上飘过去的一条弹幕。',
     path: '/me/guestbook',
   })
@@ -68,6 +70,34 @@ export default function Guestbook() {
   const remove = async (id: string) => {
     await guestbook.remove(id)
     setItems((l) => l.filter((x) => x.id !== id))
+  }
+
+  /** F-07 点赞：服务端留言按 id 落库去重；本机留言仍只存本地 */
+  const like = async (m: GuestMessage) => {
+    if (m.source === 'remote') {
+      const res = await toggleLike(m.id)
+      if (res) setRemoteLikes((x) => ({ ...x, [m.id]: res }))
+      else show('点赞没成功：服务端暂时不可用')
+      return
+    }
+    setLikes((l) => (l.includes(m.id) ? l.filter((x) => x !== m.id) : [...l, m.id]))
+  }
+
+  const likeState = (m: GuestMessage) => {
+    if (m.source === 'remote') {
+      const own = remoteLikes[m.id]
+      return { liked: own?.liked ?? false, count: own?.likes ?? m.likes ?? 0 }
+    }
+    return { liked: likes.includes(m.id), count: likes.includes(m.id) ? 1 : 0 }
+  }
+
+  const report = async (m: GuestMessage) => {
+    if (m.source !== 'remote') {
+      show('本机留言不需要举报')
+      return
+    }
+    const ok = await reportMessage(m.id)
+    show(ok ? '已举报，累计 3 次会重新进入审核' : '举报失败：服务端暂时不可用')
   }
 
   return (
@@ -215,12 +245,18 @@ export default function Guestbook() {
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       <button
-                        onClick={() => setLikes((l) => (l.includes(m.id) ? l.filter((x) => x !== m.id) : [...l, m.id]))}
-                        className={cn('font-mono text-[9px] transition', likes.includes(m.id) ? 'text-coral' : 'text-ink/30 hover:text-ink')}
+                        onClick={() => void like(m)}
+                        className={cn('font-mono text-[9px] transition', likeState(m).liked ? 'text-coral' : 'text-ink/30 hover:text-ink')}
                         aria-label="点赞"
+                        aria-pressed={likeState(m).liked}
                       >
-                        ♥ {likes.includes(m.id) ? 1 : 0}
+                        ♥ {likeState(m).count}
                       </button>
+                      {m.source === 'remote' && (
+                        <button onClick={() => void report(m)} className="text-ink/20 hover:text-coral" aria-label="举报留言">
+                          <Flag size={11} />
+                        </button>
+                      )}
                       {isMine && (
                         <button onClick={() => remove(m.id)} className="text-ink/20 hover:text-coral" aria-label="删除留言">
                           <Trash2 size={11} />

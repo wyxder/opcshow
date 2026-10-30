@@ -34,6 +34,7 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
   const [replyText, setReplyText] = useState('')
   /** fx.md F5/B4 一期：本机真实留言（访客自填）进同一个审核队列 */
   const [localQueue, setLocalQueue] = useState<GuestMessage[]>([])
+  const realMode = serverConfig.enabled
 
   useEffect(() => {
     let alive = true
@@ -182,9 +183,12 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
                     <IconButton
                       label="通过"
                       onClick={() => {
-                        approvePending(m.id)
-                        setLocalQueue((l) => l.map((x) => (x.id === m.id ? { ...x, status: 'published' } : x)))
-                        show('已通过，前台弹幕墙会显示这条留言')
+                        void approvePending(m.id)
+                          .then(() => {
+                            setLocalQueue((l) => l.map((x) => (x.id === m.id ? { ...x, status: 'published' } : x)))
+                            show('已通过，前台弹幕墙会显示这条留言')
+                          })
+                          .catch((err: Error) => show(`审核失败：${err.message}`))
                       }}
                     >
                       <Check size={11} />
@@ -192,9 +196,12 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
                     <IconButton
                       label="删除"
                       onClick={() => {
-                        rejectPending(m.id)
-                        setLocalQueue((l) => l.filter((x) => x.id !== m.id))
-                        show('已删除本机留言')
+                        void rejectPending(m.id)
+                          .then(() => {
+                            setLocalQueue((l) => l.filter((x) => x.id !== m.id))
+                            show('已删除这条留言')
+                          })
+                          .catch((err: Error) => show(`删除失败：${err.message}`))
                       }}
                     >
                       <Trash2 size={11} />
@@ -204,7 +211,7 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
               </div>
             )}
             <p className="mt-3 font-mono text-[9px] text-admin-muted">
-              数据源：services/guestbook.ts · localGuestbook（预置种子弹幕不在此列）
+              数据源：services/guestbook.ts · {realMode ? '服务端 pending（需登录）' : '本机留言（预置种子弹幕不在此列）'}
             </p>
           </Panel>
 

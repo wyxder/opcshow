@@ -5,12 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && npm run gen:seo && vite build",
+    "build": "tsc -b && npm run gen:seo && vite build && npm run prerender",
     "preview": "vite preview",
     "gen:seo": "node scripts/gen-seo.mjs",
+    "prerender": "node scripts/prerender.mjs",
+    "api": "node server/index.mjs",
+    "gen:content": "node scripts/gen-content-snapshot.mjs",
+    "eval:ai": "node scripts/eval-ai.mjs",
+    "check:api": "node scripts/check-api.mjs",
     "check:data": "node scripts/check-data.mjs",
     "check:contrast": "node scripts/contrast-check.mjs",
-    "check": "npm run check:data && npm run check:contrast"
+    "check:budget": "node scripts/check-budget.mjs",
+    "check": "npm run check:data && npm run check:contrast && npm run check:budget"
   },
   "dependencies": {
     "framer-motion": "^11.11.17",

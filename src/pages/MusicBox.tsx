@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, Heart, ListMusic, Music2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
+import { AlertCircle, ArrowRight, Heart, ListMusic, Music2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PageHead, Plate } from '@/components/ui/primitives'
 import { playlist } from '@/data/life'
 import { cn, fmtDuration, useLocalStorage, usePrefersReducedMotion } from '@/lib/utils'
 import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
 import { useSeo } from '@/lib/seo'
-import { loadAudioManifest, resolveAudio } from '@/services/audio'
+import { audioEnabled, audioNotice, loadAudioManifest, resolveAudio } from '@/services/audio'
 
 export default function MusicBox() {
   const [index, setIndex] = useState(0)
@@ -16,6 +16,9 @@ export default function MusicBox() {
   const [shuffle, setShuffle] = useState(false)
   const [repeat, setRepeat] = useState(true)
   const [favorites, setFavorites] = useLocalStorage<string[]>(STORAGE_KEYS.musicFav, ['p1', 'p4'], isStringArray)
+  /** F-09：manifest 加载完成后要触发一次重渲染，否则 resolveAudio 永远返回 null */
+  const [manifestReady, setManifestReady] = useState(false)
+  const [audioFailed, setAudioFailed] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
   // fx.md R2：把原本没人用的 useMediaQuery 真正用在频谱动画上
   const reduced = usePrefersReducedMotion()
@@ -23,17 +26,23 @@ export default function MusicBox() {
   const track = playlist[index]
   const lyricLine = Math.min(track.lyric.length - 1, Math.floor((progress / track.duration) * track.lyric.length))
   /** F3：有真实音频就走 play/pause/seek，没有就继续用模拟时钟并标注「试听暂缺」 */
-  const src = resolveAudio(track.id)?.url ?? null
+  const src = manifestReady ? (resolveAudio(track.id)?.url ?? null) : null
 
   useSeo({
-    title: '音乐盒 · 魏云潇',
+    title: '音乐盒 · 晓叶',
     description: '六首歌，对应六种状态：写需求、跑评测、改 bug、想她、想家、夜骑。',
     path: '/life/music',
   })
 
   useEffect(() => {
-    // manifest 只在配了音频前缀时才去拉，避免 404 日志
-    void loadAudioManifest()
+    // manifest 只在配了音频前缀时才去拉，避免 404 日志；返回 null 也要落下 ready
+    let alive = true
+    void loadAudioManifest().then(() => {
+      if (alive) setManifestReady(true)
+    })
+    return () => {
+      alive = false
+    }
   }, [])
 
   useEffect(() => {
@@ -64,12 +73,15 @@ export default function MusicBox() {
 
   useEffect(() => {
     setProgress(0)
+    setAudioFailed(false)
     audioRef.current?.pause()
   }, [index])
 
   const jump = (dir: number) => {
-    setIndex((i) => (i + dir + playlist.length) % playlist.length)
-    setPlaying(true)
+    const nextIndex = (index + dir + playlist.length) % playlist.length
+    setIndex(nextIndex)
+    // 目标曲目没有试听片段就不要假装开始播放
+    setPlaying(Boolean(resolveAudio(playlist[nextIndex].id)))
   }
 
   const totalDuration = useMemo(() => playlist.reduce((s, t) => s + t.duration, 0), [])
@@ -100,15 +112,32 @@ export default function MusicBox() {
             </div>
             <span className="flex items-center gap-1.5 rounded-full border border-paper/20 px-2 py-0.5 font-mono text-[9.5px] text-paper/50">
               <span className={cn('h-1.5 w-1.5 rounded-full', playing ? 'animate-blink bg-lime' : 'bg-paper/30')} />
-              {src ? (playing ? 'PLAYING' : 'PAUSED') : playing ? 'SIMULATED' : 'PAUSED'}
+              {src ? (playing ? 'PLAYING' : 'PAUSED') : 'NO PREVIEW'}
             </span>
           </div>
+
+          {!src && (
+            <p className="relative mt-3 flex items-start gap-1.5 rounded-lg border border-paper/15 bg-paper/[0.04] px-3 py-2 text-[10.5px] leading-relaxed text-paper/45">
+              <AlertCircle size={12} className="mt-0.5 shrink-0" />
+              {audioEnabled() ? `${audioNotice.configured}，但这首还没有片段` : audioNotice.missing}
+            </p>
+          )}
+          {audioFailed && (
+            <p role="alert" className="relative mt-2 flex items-start gap-1.5 rounded-lg border border-coral/40 bg-coral/10 px-3 py-2 text-[10.5px] leading-relaxed text-coral">
+              <AlertCircle size={12} className="mt-0.5 shrink-0" />
+              试听加载失败：检查 VITE_AUDIO_BASE 是否可访问，或稍后重试。
+            </p>
+          )}
 
           {src ? (
             <audio
               ref={audioRef}
               src={src}
               preload="none"
+              onError={() => {
+                setAudioFailed(true)
+                setPlaying(false)
+              }}
               onTimeUpdate={(e) => setProgress(Math.floor(e.currentTarget.currentTime))}
               onEnded={() => {
                 const el = audioRef.current
@@ -160,7 +189,8 @@ export default function MusicBox() {
           {/* progress */}
           <div className="relative mt-5">
             <button
-              className="group block w-full"
+              className="group block w-full disabled:cursor-not-allowed"
+              disabled={!src}
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect()
                 const next = Math.round(((e.clientX - rect.left) / rect.width) * track.duration)
@@ -219,8 +249,10 @@ export default function MusicBox() {
               </button>
               <button
                 onClick={() => setPlaying((v) => !v)}
-                className="flex h-12 w-12 items-center justify-center rounded-full border-1.5 border-paper bg-lime text-ink transition hover:scale-105"
-                aria-label={playing ? '暂停' : '播放'}
+                disabled={!src}
+                title={!src ? '试听暂缺：未接入音频源' : undefined}
+                className="flex h-12 w-12 items-center justify-center rounded-full border-1.5 border-paper bg-lime text-ink transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+                aria-label={!src ? '试听暂缺，播放不可用' : playing ? '暂停' : '播放'}
               >
                 {playing ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
               </button>
@@ -272,7 +304,7 @@ export default function MusicBox() {
                   <button
                     onClick={() => {
                       setIndex(i)
-                      setPlaying(true)
+                      setPlaying(Boolean(resolveAudio(t.id)))
                     }}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink bg-cream"
                     style={{ background: isActive ? t.color : undefined }}
@@ -283,7 +315,7 @@ export default function MusicBox() {
                   <button
                     onClick={() => {
                       setIndex(i)
-                      setPlaying(true)
+                      setPlaying(Boolean(resolveAudio(t.id)))
                     }}
                     className="min-w-0 flex-1 text-left"
                   >
@@ -314,8 +346,9 @@ export default function MusicBox() {
 
           <button
             onClick={() => {
-              setIndex(Math.floor(Math.random() * playlist.length))
-              setPlaying(true)
+              const next = Math.floor(Math.random() * playlist.length)
+              setIndex(next)
+              setPlaying(Boolean(resolveAudio(playlist[next].id)))
             }}
             className="mt-2 flex w-full items-center justify-between rounded-xl border border-ink/15 bg-paper px-3 py-2.5 text-[11px] transition hover:border-ink hover:bg-lime/40"
           >

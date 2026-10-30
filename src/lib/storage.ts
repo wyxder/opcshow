@@ -25,6 +25,10 @@ export const STORAGE_KEYS = {
   musicFav: namespaced('music-fav'),
   /** 埋点本地样本（B7 的降级实现，无 Cookie，只统计本机会话） */
   analytics: namespaced('analytics'),
+  /** 文章阅读位置（F-06） */
+  readingPos: namespaced('reading-pos'),
+  /** ⌘K 最近搜索（F-11） */
+  recentSearch: namespaced('recent-search'),
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]

@@ -56,11 +56,12 @@ export const navItems: NavItem[] = [
     label: '生活',
     en: 'LIFE',
     index: '04',
-    to: '/life/love',
+    // 默认入口 = 朋友圈（菜单第一项），/life 会在 App 路由里重定向到这里
+    to: '/life/moments',
     children: [
-      { label: '恋爱记录', desc: '1240 天的异地手记', to: '/life/love', icon: 'heart' },
-      { label: '朋友圈', desc: '碎碎念与深夜复盘', to: '/life/moments', icon: 'chat' },
+      { label: '朋友圈', desc: '碎碎念与深夜复盘 · 默认入口', to: '/life/moments', icon: 'chat' },
       { label: '旅拍相册', desc: '地图上的 11 座城市', to: '/life/travel', icon: 'map' },
+      { label: '恋爱记录', desc: '1240 天的异地手记', to: '/life/love', icon: 'heart' },
       { label: '音乐盒', desc: '写代码时在听什么', to: '/life/music', icon: 'music' },
     ],
   },

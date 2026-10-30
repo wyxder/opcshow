@@ -6,7 +6,7 @@ import { useSeo } from '@/lib/seo'
 
 export default function Friends() {
   useSeo({
-    title: '友链 · 魏云潇',
+    title: '友链 · 晓叶',
     description: '一起打过比赛的、一起改过稿的、在我卡住时给我答案的人。',
     path: '/me/friends',
   })

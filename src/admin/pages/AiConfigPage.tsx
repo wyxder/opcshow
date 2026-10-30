@@ -1,6 +1,8 @@
 import { Activity, Bot, Check, Cpu, KeyRound, Plus, Sparkles, Wand2, Zap } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { aiModels as modelSeed, aiUsage, prompts as promptSeed } from '@/admin/data'
+import { serverConfig } from '@/services/config'
+import { apiJson } from '@/services/http'
 import {
   AButton,
   AdminModal,
@@ -24,19 +26,135 @@ import {
 import { cn, newId } from '@/lib/utils'
 
 type Tab = 'models' | 'prompts' | 'usage'
+type ModelRow = (typeof modelSeed)[number]
+type PromptRow = (typeof promptSeed)[number]
+
+/** 服务端只返回配置本身（不含密钥），这里补齐列表页需要的展示字段 */
+type ServerModel = { id: string; name: string; provider: string; model: string; enabled: boolean; isDefault: boolean; source?: string }
+type ServerPrompt = { id: string; name: string; scene: string; version: number; body: string; active: boolean; updatedAt: string }
+type UsageSummary = {
+  monthTokens: number
+  monthCost: number
+  avgLatency: number
+  successRate: number
+  budget: number
+  dailyQuota: number
+  daily: { date: string; tokens: number; cost: number; calls: number }[]
+  byModel: { label: string; value: number }[]
+  recent: { ts: string; model: string; tokens: number; latency: number; ok: boolean; source: string }[]
+}
+
+const toModelRow = (m: ServerModel): ModelRow => ({
+  id: m.id,
+  name: m.name,
+  provider: m.provider,
+  model: m.model,
+  key: m.source === 'env' ? 'env · 服务端环境变量' : '服务端托管',
+  enabled: Boolean(m.enabled),
+  isDefault: Boolean(m.isDefault),
+  latency: '—',
+  cost: '按官方计价',
+  context: '—',
+  calls: 0,
+})
+
+const toPromptRow = (p: ServerPrompt): PromptRow => ({
+  id: p.id,
+  name: p.name,
+  scene: p.scene,
+  model: `v${p.version}`,
+  updated: p.updatedAt.slice(0, 10),
+  enabled: Boolean(p.active),
+  tokens: Math.round(p.body.length / 2),
+  body: p.body,
+})
+
+const fmtTokens = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
+
+const DEMO_USAGE = {
+  monthTokens: aiUsage.monthTokens,
+  monthCost: aiUsage.monthCost,
+  avgLatency: aiUsage.avgLatency,
+  successRate: aiUsage.successRate,
+  limit: aiUsage.limit,
+  usedTokens: aiUsage.usedTokens,
+  calls: 2370,
+  daily: aiUsage.daily.map((d) => ({ ...d, calls: 0 })),
+  byModel: aiUsage.byModel,
+  recent: [] as UsageSummary['recent'],
+}
 
 export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: (t: Tab) => void; show: (m: string) => void }) {
-  const [models, setModels] = useState(modelSeed)
-  const [prompts, setPrompts] = useState(promptSeed)
+  const real = serverConfig.enabled
+  const [models, setModels] = useState<ModelRow[]>(modelSeed)
+  const [prompts, setPrompts] = useState<PromptRow[]>(promptSeed)
+  const [usage, setUsage] = useState<UsageSummary | null>(null)
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState({ name: '', provider: 'DeepSeek', model: '', key: '', context: '64k' })
-  const [editingPrompt, setEditingPrompt] = useState<(typeof promptSeed)[number] | null>(null)
+  const [editingPrompt, setEditingPrompt] = useState<PromptRow | null>(null)
   const [promptDraft, setPromptDraft] = useState({ name: '', scene: '', model: '', body: '' })
   const [limit, setLimit] = useState('3000000')
 
+  /** F-01：配置页接服务端真实读写；未接服务端时保持纯演示态并在文案里说清楚 */
+  useEffect(() => {
+    if (!real) return
+    let alive = true
+    void Promise.all([
+      apiJson<{ models: ServerModel[] }>('/api/ai/models').catch(() => null),
+      apiJson<ServerPrompt[]>('/api/ai/prompts').catch(() => null),
+      apiJson<UsageSummary>('/api/ai/usage').catch(() => null),
+    ]).then(([m, p, u]) => {
+      if (!alive) return
+      if (m?.models) setModels(m.models.map(toModelRow))
+      if (p) setPrompts(p.map(toPromptRow))
+      if (u) setUsage(u)
+    })
+    return () => {
+      alive = false
+    }
+  }, [real])
+
   const enabled = models.filter((m) => m.enabled)
   const defaultModel = models.find((m) => m.isDefault)
-  const tokenPercent = Math.round((aiUsage.usedTokens / Number(limit || 1)) * 100)
+  const view = usage
+    ? {
+        monthTokens: fmtTokens(usage.monthTokens),
+        monthCost: `¥ ${usage.monthCost.toFixed(2)}`,
+        avgLatency: usage.avgLatency ? `${usage.avgLatency}ms` : '—',
+        successRate: `${usage.successRate}%`,
+        limit: usage.budget,
+        usedTokens: usage.monthTokens,
+        calls: usage.daily.reduce((s, d) => s + d.calls, 0),
+        daily: usage.daily.map((d) => ({ date: d.date.slice(5), tokens: d.tokens, cost: d.cost, calls: d.calls })),
+        byModel: usage.byModel.map((m, i) => ({ ...m, color: ['rgb(var(--c-coral))', 'rgb(var(--c-blue))', 'rgb(var(--c-amber))'][i % 3] })),
+        recent: usage.recent,
+      }
+    : DEMO_USAGE
+  const tokenPercent = Math.round((view.usedTokens / Number(limit || 1)) * 100)
+
+  /** 真实模式下写操作必须等服务端返回成功再提示 */
+  const patchModel = async (id: string, patch: { enabled?: boolean; isDefault?: boolean }, okMsg: string) => {
+    if (!real) {
+      setModels((l) =>
+        l.map((x) =>
+          patch.isDefault
+            ? { ...x, isDefault: x.id === id, enabled: x.id === id ? true : x.enabled }
+            : x.id === id
+              ? { ...x, enabled: patch.enabled ?? x.enabled, isDefault: patch.enabled === false ? false : x.isDefault }
+              : x,
+        ),
+      )
+      show(`${okMsg}（演示：仅本页）`)
+      return
+    }
+    try {
+      const updated = await apiJson<ServerModel>(`/api/ai/models/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
+      setModels((l) => l.map((x) => (x.id === id ? { ...x, enabled: updated.enabled, isDefault: updated.isDefault } : patch.isDefault ? { ...x, isDefault: false } : x)))
+      show(okMsg)
+    } catch (err) {
+      show(`保存失败：${(err as Error).message}`)
+    }
+  }
 
   const openPrompt = (p: (typeof promptSeed)[number]) => {
     setPromptDraft({ name: p.name, scene: p.scene, model: p.model, body: p.body })
@@ -48,7 +166,11 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
       <PageTitle
         kicker="AI"
         title="AI 配置"
-        desc="站点助手的模型、提示词与用量都在这里管理，改动会即刻影响线上会话。"
+        desc={
+          real
+            ? '模型与提示词写入服务端配置，保存后下一次对话生效；密钥只在服务端环境变量里。'
+            : '未配置服务端：这里的改动只存在当前页面，刷新即丢失，不会影响任何线上会话。'
+        }
         right={
           <>
             <Badge tone="teal">默认 {defaultModel?.name ?? '未设置'}</Badge>
@@ -75,8 +197,8 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
             {[
               ['默认模型', defaultModel?.name ?? '—', defaultModel?.provider ?? ''],
               ['启用模型', `${enabled.length} / ${models.length}`, '可随时切换'],
-              ['本月调用', '2,370', '+12.4% 环比'],
-              ['平均延迟', aiUsage.avgLatency, 'P95 1.6s'],
+              ['本月调用', view.calls ? view.calls.toLocaleString() : '—', real ? '来自服务端记账' : '预置演示值'],
+              ['平均延迟', view.avgLatency, real ? '月度均值' : 'P95 1.6s'],
             ].map(([l, v, n]) => (
               <div key={l} className="rounded-[18px] border-1.5 border-ink bg-cream px-3.5 py-3 shadow-hard-sm">
                 <p className="text-[10.5px] text-admin-muted">{l}</p>
@@ -115,8 +237,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                       <span className="font-mono text-[9px] text-admin-muted">{m.cost}</span>
                       <button
                         onClick={() => {
-                          setModels((l) => l.map((x) => ({ ...x, isDefault: x.id === m.id, enabled: x.id === m.id ? true : x.enabled })))
-                          show(`${m.name} 已设为默认模型`)
+                          void patchModel(m.id, { isDefault: true }, `${m.name} 已设为默认模型`)
                         }}
                         className={cn(
                           'flex h-5 w-5 items-center justify-center rounded-full border transition',
@@ -130,8 +251,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                         on={m.enabled}
                         label={m.name}
                         onChange={(v) => {
-                          setModels((l) => l.map((x) => (x.id === m.id ? { ...x, enabled: v, isDefault: v ? x.isDefault : false } : x)))
-                          show(v ? `${m.name} 已启用` : `${m.name} 已停用`)
+                          void patchModel(m.id, { enabled: v }, v ? `${m.name} 已启用` : `${m.name} 已停用`)
                         }}
                       />
                     </div>
@@ -171,10 +291,25 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                   </div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <AButton size="sm" icon={<Zap size={11} />} onClick={() => show('连接测试通过 · 820ms')}>
+                  <AButton
+                    size="sm"
+                    icon={<Zap size={11} />}
+                    onClick={() => {
+                      if (!real) return show('连接测试通过（演示，未真实请求）')
+                      void apiJson<{ mode: string; model: string; index?: { chunks?: number } }>('/api/ai/health')
+                        .then((h) =>
+                          show(
+                            h.mode === 'model'
+                              ? `网关正常 · 模型可用 · 索引 ${h.index?.chunks ?? 0} 块`
+                              : '网关正常 · 未配置模型密钥，当前走站内检索摘录',
+                          ),
+                        )
+                        .catch((err: Error) => show(`连接失败：${err.message}`))
+                    }}
+                  >
                     测试连接
                   </AButton>
-                  <AButton size="sm" variant="soft" onClick={() => show('已切换至备用模型（演示）')}>
+                  <AButton size="sm" variant="soft" onClick={() => show(real ? '故障切换需要服务端路由策略，当前版本未实现' : '已切换至备用模型（演示）')}>
                     故障切换
                   </AButton>
                 </div>
@@ -230,8 +365,17 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                     on={p.enabled}
                     label={p.name}
                     onChange={(v) => {
-                      setPrompts((l) => l.map((x) => (x.id === p.id ? { ...x, enabled: v } : x)))
-                      show(v ? '提示词已启用' : '提示词已停用')
+                      if (!real) {
+                        setPrompts((l) => l.map((x) => (x.id === p.id ? { ...x, enabled: v } : x)))
+                        show(`${v ? '提示词已启用' : '提示词已停用'}（演示：仅本页）`)
+                        return
+                      }
+                      void apiJson(`/api/ai/prompts/${p.id}`, { method: 'PUT', body: JSON.stringify({ active: v }) })
+                        .then(() => {
+                          setPrompts((l) => l.map((x) => (x.id === p.id ? { ...x, enabled: v } : x)))
+                          show(v ? '提示词已启用，下一次对话生效' : '提示词已停用')
+                        })
+                        .catch((err: Error) => show(`保存失败：${err.message}`))
                     }}
                   />
                 </div>
@@ -240,14 +384,15 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
           </Panel>
 
           <div className="space-y-3">
-            <Panel kicker="Guardrails" title="全局约束" desc="所有提示词都会追加这段内容">
+            <Panel kicker="Guardrails" title="全局约束" desc="只读：定义在 server/ai/prompts.mjs，随服务端发布生效">
               <Textarea
                 defaultValue="回答必须基于站内已发布的内容；不确定时直说不知道。不要编造项目指标、获奖或个人信息。涉及联系方式时优先引导到留言板。"
                 rows={6}
-                className="text-[11px]"
+                readOnly
+                className="text-[11px] opacity-80"
               />
-              <AButton className="mt-2 w-full" onClick={() => show('全局约束已保存')}>
-                保存约束
+              <AButton className="mt-2 w-full" onClick={() => show('全局约束在 server/ai/prompts.mjs 中，需随服务端发版修改')}>
+                查看修改方式
               </AButton>
             </Panel>
             <Panel kicker="Vars" title="可用变量">
@@ -268,10 +413,10 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              ['本月 Token', aiUsage.monthTokens, '额度 3M'],
-              ['本月费用', aiUsage.monthCost, '预算 ¥ 50'],
-              ['平均延迟', aiUsage.avgLatency, 'P95 1.6s'],
-              ['成功率', aiUsage.successRate, '失败 3 次'],
+              ['本月 Token', view.monthTokens, real ? '服务端记账' : '预置演示值'],
+              ['本月费用', view.monthCost, real ? '按服务端单价折算' : '预置演示值'],
+              ['平均延迟', view.avgLatency, real ? '月度均值' : 'P95 1.6s'],
+              ['成功率', view.successRate, real ? '本月成功率' : '预置演示值'],
             ].map(([l, v, n]) => (
               <div key={l} className="rounded-[18px] border-1.5 border-ink bg-cream px-3.5 py-3 shadow-hard-sm">
                 <p className="text-[10.5px] text-admin-muted">{l}</p>
@@ -282,20 +427,27 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
           </div>
 
           <div className="grid gap-3 xl:grid-cols-[1.6fr_1fr]">
-            <Panel kicker="Daily" title="近 7 天 Token 消耗" desc="柱高为 token，橙线为折算费用（角）">
-              <MiniBars data={aiUsage.daily.map((d) => d.tokens)} height={110} color="rgb(var(--c-coral))" />
+            <Panel kicker="Daily" title={`近 ${view.daily.length} 天 Token 消耗`} desc="柱高为 token">
+              <MiniBars data={view.daily.map((d) => d.tokens)} height={110} color="rgb(var(--c-coral))" />
               <div className="mt-2 flex justify-between font-mono text-[9px] text-admin-muted">
-                {aiUsage.daily.map((d) => (
+                {view.daily.map((d) => (
                   <span key={d.date}>{d.date}</span>
                 ))}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {[
-                  ['最高单日', '84k'],
-                  ['最低单日', '26k'],
-                  ['日均', '43k'],
-                  ['估算费用', '¥ 4.7'],
-                ].map(([l, v]) => (
+                {(() => {
+                  const tokens = view.daily.map((d) => d.tokens)
+                  const max = tokens.length ? Math.max(...tokens) : 0
+                  const min = tokens.length ? Math.min(...tokens) : 0
+                  const avg = tokens.length ? Math.round(tokens.reduce((s, v) => s + v, 0) / tokens.length) : 0
+                  const cost = view.daily.reduce((s, d) => s + d.cost, 0)
+                  return [
+                    ['最高单日', fmtTokens(max)],
+                    ['最低单日', fmtTokens(min)],
+                    ['日均', fmtTokens(avg)],
+                    ['区间费用', `¥ ${cost.toFixed(2)}`],
+                  ]
+                })().map(([l, v]) => (
                   <div key={l} className="rounded-lg bg-paper px-2.5 py-2">
                     <p className="text-[9px] text-admin-muted">{l}</p>
                     <p className="mt-0.5 font-mono text-[11px]">{v}</p>
@@ -306,28 +458,34 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
 
             <Panel kicker="By model" title="模型占比">
               <div className="flex items-center gap-4">
-                <Donut data={aiUsage.byModel} size={118} thickness={14} centerValue={aiUsage.monthTokens} centerLabel="TOKENS" />
-                <Legend className="flex-1" data={aiUsage.byModel.map((m) => ({ label: m.label, value: `${m.value}%`, color: m.color }))} />
-              </div>
-              <div className="mt-3 flex items-center justify-between border-t border-dashed border-ink/15 pt-2 text-[10px]">
-                <span className="text-admin-muted">OpenAI 费用占比</span>
-                <span className="font-mono">¥ 6.4</span>
+                <Donut data={view.byModel} size={118} thickness={14} centerValue={view.monthTokens} centerLabel="TOKENS" />
+                <Legend className="flex-1" data={view.byModel.map((m) => ({ label: m.label, value: `${m.value}%`, color: m.color }))} />
               </div>
             </Panel>
           </div>
 
           <div className="grid gap-3 xl:grid-cols-[1.55fr_1fr]">
-            <Panel kicker="Logs" title="调用日志" desc="最近 5 次请求" flush>
+            <Panel kicker="Logs" title="调用日志" desc={real ? '最近 8 次真实请求（服务端记账）' : '预置演示数据'} flush>
               <div className="overflow-x-auto no-scrollbar">
                 <div className="admin-zebra min-w-[620px]">
                   <TableHead cols={['时间', '模型', '场景', 'Token', '耗时', '状态']} template="120px 150px minmax(0,1fr) 72px 66px 72px" />
-                  {[
-                    ['10-30 10:21', 'DeepSeek Chat', '站点助手 · 简历问答', '1,842', '820ms', '成功'],
-                    ['10-30 10:18', 'DeepSeek Chat', '站点助手 · 项目咨询', '2,410', '1.1s', '成功'],
-                    ['10-30 09:56', 'GPT-4o mini', '简历摘要生成', '3,208', '1.4s', '成功'],
-                    ['10-30 09:40', 'DeepSeek Chat', '留言审核分类', '486', '640ms', '成功'],
-                    ['10-30 09:12', 'DeepSeek Chat', '站点助手 · 超时重试', '—', '3.0s', '超时'],
-                  ].map((r) => (
+                  {(real && view.recent.length
+                    ? view.recent.slice(0, 8).map((r) => [
+                        new Date(r.ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }),
+                        r.model,
+                        r.source === 'retrieval' ? '站内检索摘录' : '模型生成',
+                        String(r.tokens ?? 0),
+                        `${r.latency ?? 0}ms`,
+                        r.ok ? '成功' : '失败',
+                      ])
+                    : [
+                        ['10-30 10:21', 'DeepSeek Chat', '站点助手 · 简历问答', '1,842', '820ms', '成功'],
+                        ['10-30 10:18', 'DeepSeek Chat', '站点助手 · 项目咨询', '2,410', '1.1s', '成功'],
+                        ['10-30 09:56', 'GPT-4o mini', '简历摘要生成', '3,208', '1.4s', '成功'],
+                        ['10-30 09:40', 'DeepSeek Chat', '留言审核分类', '486', '640ms', '成功'],
+                        ['10-30 09:12', 'DeepSeek Chat', '站点助手 · 超时重试', '—', '3.0s', '超时'],
+                      ]
+                  ).map((r) => (
                     <div
                       key={r[0] + r[2]}
                       className="grid grid-cols-[120px_150px_minmax(0,1fr)_72px_66px_72px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[10.5px] last:border-0 hover:bg-lime/20"
@@ -348,7 +506,9 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
               <Panel kicker="Quota" title="额度与限流">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-admin-muted">本月已用</span>
-                  <span className="font-mono">{aiUsage.monthTokens} / 3M</span>
+                  <span className="font-mono">
+                    {view.monthTokens} / {fmtTokens(view.limit)}
+                  </span>
                 </div>
                 <Meter value={tokenPercent} color={tokenPercent > 80 ? 'rgb(var(--c-coral))' : 'rgb(var(--c-teal))'} className="mt-2 h-2" />
                 <div className="mt-3 grid gap-3">
@@ -363,7 +523,12 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                     </Select>
                   </Field>
                 </div>
-                <AButton variant="primary" className="mt-3 w-full" icon={<Activity size={12} />} onClick={() => show('额度设置已保存')}>
+                <AButton
+                  variant="primary"
+                  className="mt-3 w-full"
+                  icon={<Activity size={12} />}
+                  onClick={() => show('额度与日限流由服务端环境变量控制（AI_DAILY_QUOTA / AI_MONTHLY_TOKEN_BUDGET），后台暂不支持热改')}
+                >
                   保存设置
                 </AButton>
               </Panel>
@@ -399,24 +564,35 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
               variant="primary"
               onClick={() => {
                 if (!draft.name.trim() || !draft.model.trim()) return show('请填写名称与模型 ID')
-                setModels((l) => [
-                  ...l,
-                  {
-                    id: newId('m'),
-                    name: draft.name,
-                    provider: draft.provider,
-                    model: draft.model,
-                    key: `sk-••••••••${Math.random().toString(16).slice(2, 6)}`,
-                    enabled: false,
-                    isDefault: false,
-                    latency: '—',
-                    cost: '按官方计价',
-                    context: draft.context,
-                    calls: 0,
-                  },
-                ])
-                setAdding(false)
-                show('模型已接入，默认停用')
+                const row: ModelRow = {
+                  id: newId('m'),
+                  name: draft.name,
+                  provider: draft.provider,
+                  model: draft.model,
+                  key: real ? '服务端托管' : `sk-••••••••${Math.random().toString(16).slice(2, 6)}`,
+                  enabled: false,
+                  isDefault: false,
+                  latency: '—',
+                  cost: '按官方计价',
+                  context: draft.context,
+                  calls: 0,
+                }
+                if (!real) {
+                  setModels((l) => [...l, row])
+                  setAdding(false)
+                  show('模型已加入本页（演示：刷新丢失）')
+                  return
+                }
+                void apiJson<ServerModel>('/api/ai/models', {
+                  method: 'POST',
+                  body: JSON.stringify({ name: draft.name, provider: draft.provider, model: draft.model }),
+                })
+                  .then((created) => {
+                    setModels((l) => [...l, { ...row, ...toModelRow(created), context: draft.context }])
+                    setAdding(false)
+                    show('模型已写入服务端，默认停用；密钥请配到服务端环境变量')
+                  })
+                  .catch((err: Error) => show(`接入失败：${err.message}`))
               }}
             >
               测试并保存
@@ -466,26 +642,40 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
               onClick={() => {
                 const name = promptDraft.name.trim()
                 if (!name) return show('请填写名称')
-                setPrompts((l) => {
-                  if (editingPrompt && editingPrompt.id !== 'new') {
-                    return l.map((x) => (x.id === editingPrompt.id ? { ...x, name, scene: promptDraft.scene, model: promptDraft.model, body: promptDraft.body, updated: '刚刚' } : x))
-                  }
-                  return [
-                    {
-                      id: newId('p'),
-                      name,
-                      scene: promptDraft.scene || '全站对话',
-                      model: promptDraft.model || 'DeepSeek Chat',
-                      updated: '刚刚',
-                      enabled: true,
-                      tokens: Math.round(promptDraft.body.length / 2),
-                      body: promptDraft.body,
-                    },
-                    ...l,
-                  ]
-                })
-                setEditingPrompt(null)
-                show('提示词已保存')
+                const isNew = !editingPrompt || editingPrompt.id === 'new'
+                const localRow: PromptRow = {
+                  id: isNew ? newId('p') : (editingPrompt?.id as string),
+                  name,
+                  scene: promptDraft.scene || '全站对话',
+                  model: promptDraft.model || 'DeepSeek Chat',
+                  updated: new Date().toISOString().slice(0, 10),
+                  enabled: isNew ? true : promptDraft.body.trim().length > 0,
+                  tokens: Math.round(promptDraft.body.length / 2),
+                  body: promptDraft.body,
+                }
+                if (!real) {
+                  setPrompts((l) => (isNew ? [localRow, ...l] : l.map((x) => (x.id === localRow.id ? { ...x, ...localRow } : x))))
+                  setEditingPrompt(null)
+                  show('提示词已保存（演示：仅本页）')
+                  return
+                }
+                const req = isNew
+                  ? apiJson<{ id: string; version: number }>('/api/ai/prompts', {
+                      method: 'POST',
+                      body: JSON.stringify({ name, scene: localRow.scene, body: promptDraft.body }),
+                    })
+                  : apiJson<{ id: string; version: number; active: boolean }>(`/api/ai/prompts/${localRow.id}`, {
+                      method: 'PUT',
+                      body: JSON.stringify({ name, body: promptDraft.body }),
+                    })
+                void req
+                  .then((res) => {
+                    const saved: PromptRow = { ...localRow, id: res.id, model: `v${res.version}` }
+                    setPrompts((l) => (isNew ? [saved, ...l] : l.map((x) => (x.id === saved.id ? { ...x, ...saved } : x))))
+                    setEditingPrompt(null)
+                    show(`提示词已保存到服务端 · 版本 v${res.version}，下一次对话生效`)
+                  })
+                  .catch((err: Error) => show(`保存失败：${err.message}`))
               }}
             >
               保存模板

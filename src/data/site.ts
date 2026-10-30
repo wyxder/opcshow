@@ -7,10 +7,10 @@ import type { ThemeId } from '@/theme/theme'
 /** 域名、默认主题与 SEO 缺省文案。useSeo 与后台 SettingsPage 都读这里。 */
 export const siteMeta = {
   name: 'WYX.SPACE',
-  author: '魏云潇',
+  author: '晓叶',
   url: 'https://wyx.space',
-  title: '魏云潇 · WYX.SPACE',
-  description: '魏云潇的个人动态主页 — AI 全栈 / 智能体开发。项目、学习笔记、生活碎片与成长时间轴。',
+  title: '晓叶 · WYX.SPACE',
+  description: '晓叶的个人动态主页 — AI 全栈 / 智能体开发。项目、学习笔记、生活碎片与成长时间轴。',
   /** 站点缺省主题：没有本地选择的访客用这个（T5：与 wyx:theme 个人覆盖分层） */
   defaultTheme: 'paper' as ThemeId,
   build: '2026.10.29',
@@ -53,7 +53,7 @@ export const figures = {
 } as const
 
 export const profile = {
-  name: '魏云潇',
+  name: '晓叶',
   latin: 'WEI YUNXIAO',
   handle: 'wyx',
   role: 'AI 全栈 / 智能体开发',

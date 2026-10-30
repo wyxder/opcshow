@@ -34,6 +34,8 @@ export function SmartImage({
     <div className={cn('relative overflow-hidden', className)}>
       <img
         src={asset.src}
+        srcSet={asset.srcSet}
+        sizes={asset.sizes}
         alt={asset.alt}
         width={asset.width}
         height={asset.height}

@@ -23,7 +23,7 @@ export default function Resume() {
   const { node } = useToast()
 
   useSeo({
-    title: '简历 · 魏云潇',
+    title: '简历 · 晓叶',
     description: `${figures.products} 个项目、2 段实习、3 段科研、${figures.awards} 项竞赛。可打印成 A4，也可直接下载简历原件。`,
     path: '/work/resume',
   })
@@ -59,7 +59,7 @@ export default function Resume() {
                 <span className="relative font-display text-xl font-extrabold">魏</span>
               </div>
               <div>
-                <h1 className="text-[22px] font-extrabold leading-none">魏云潇</h1>
+                <h1 className="text-[22px] font-extrabold leading-none">晓叶</h1>
                 <p className="mt-1 font-mono text-[9px] tracking-[0.18em] text-ink/40">AI FULLSTACK · 2028 届</p>
               </div>
             </div>

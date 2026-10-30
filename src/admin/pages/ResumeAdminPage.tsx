@@ -15,8 +15,10 @@ import {
   Trophy,
   UserRound,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { resumeModules, resumeParse, resumeVersions } from '@/admin/data'
+import { serverConfig } from '@/services/config'
+import { apiJson } from '@/services/http'
 import {
   AButton,
   AdminModal,
@@ -47,13 +49,27 @@ const moduleIcons: Record<string, typeof UserRound> = {
   heart: Heart,
 }
 
+type Job = {
+  id: string
+  status: string
+  result?: { fileName?: string; fields?: { key: string; value: string; confidence: number }[]; engine?: string }
+  error?: string
+}
+
 export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTab: (t: Tab) => void; show: (m: string) => void }) {
+  const real = serverConfig.enabled
   const [parsing, setParsing] = useState(false)
   const [modules, setModules] = useState(resumeModules)
   const [versions, setVersions] = useState(resumeVersions)
   const [rollback, setRollback] = useState<string | null>(null)
   const [releasing, setReleasing] = useState(false)
   const [release, setRelease] = useState({ version: 'v1.3', note: '' })
+  /** 服务端解析结果覆盖预置字段；null 表示仍在用预置演示数据 */
+  const [fields, setFields] = useState<{ key: string; value: string; confidence: number }[] | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [jobNote, setJobNote] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const lastText = useRef('')
 
   const enabledCount = modules.filter((m) => m.enabled).length
 
@@ -65,12 +81,66 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
     setModules(next)
   }
 
-  const runParse = () => {
+  /** 提交文本 → 轮询 GET /api/jobs/:id，直到成功/失败 */
+  const submitParse = async (text: string, name: string) => {
+    if (text.trim().length < 10) return show('文本太短，至少 10 个字符')
     setParsing(true)
-    window.setTimeout(() => {
+    setJobNote(null)
+    try {
+      const job = await apiJson<Job>('/api/resume/parse', {
+        method: 'POST',
+        body: JSON.stringify({ text, fileName: name }),
+      })
+      for (let i = 0; i < 12; i += 1) {
+        const cur = await apiJson<Job>(`/api/jobs/${job.id}`)
+        if (cur.status === 'done') {
+          setFields(cur.result?.fields ?? null)
+          setFileName(cur.result?.fileName ?? name)
+          setJobNote(`服务端解析（${cur.result?.engine ?? 'local-rules'}）：${cur.result?.fields?.length ?? 0} 个字段`)
+          show('解析完成，字段已刷新')
+          return
+        }
+        if (cur.status === 'dead') {
+          setJobNote(`任务失败：${cur.error ?? '未知原因'}`)
+          show(`解析失败：${cur.error ?? '未知原因'}`)
+          return
+        }
+        await new Promise((r) => window.setTimeout(r, 600))
+      }
+      setJobNote('任务仍在队列中，可稍后刷新查看')
+      show('解析任务已提交，仍在处理')
+    } catch (err) {
+      setJobNote(`提交失败：${(err as Error).message}`)
+      show(`解析失败：${(err as Error).message}`)
+    } finally {
       setParsing(false)
-      show('解析完成：识别到 7 个项目、12 条量化指标')
-    }, 1200)
+    }
+  }
+
+  const runParse = () => {
+    if (!real) {
+      setParsing(true)
+      window.setTimeout(() => {
+        setParsing(false)
+        show('解析完成：识别到 7 个项目、12 条量化指标（演示数据）')
+      }, 1200)
+      return
+    }
+    if (lastText.current) return void submitParse(lastText.current, fileName ?? 'resume.txt')
+    fileRef.current?.click()
+  }
+
+  const pickFile = async (file: File | undefined) => {
+    if (!file) return
+    const isText = /\.(txt|md|markdown)$/i.test(file.name)
+    if (!isText) {
+      show('服务端目前只能解析纯文本（.txt / .md）；PDF/DOCX 需要 pdfjs/mammoth 解析库，尚未接入')
+      return
+    }
+    const text = await file.text()
+    lastText.current = text
+    setFileName(file.name)
+    await submitParse(text, file.name)
   }
 
   return (
@@ -78,7 +148,11 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
       <PageTitle
         kicker="Resume"
         title="简历管理"
-        desc="上传 PDF 自动解析为结构化数据，模块开关决定前台简历的展示内容。"
+        desc={
+          real
+            ? '上传纯文本简历 → 服务端任务解析为结构化字段；模块开关决定前台简历的展示内容。'
+            : '未配置服务端：解析按钮只演示流程，字段与数字为预置数据，刷新即恢复。'
+        }
         right={
           <>
             <AButton icon={<Download size={13} />} onClick={() => show('简历 PDF 已开始下载')}>
@@ -110,13 +184,24 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                   <FileText size={18} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] font-medium">{resumeParse.file}</p>
+                  <p className="truncate text-[12px] font-medium">{fileName ?? resumeParse.file}</p>
                   <p className="mt-0.5 font-mono text-[9.5px] text-admin-muted">
                     {resumeParse.size} · {resumeParse.pages} 页 · 更新于 {resumeParse.updated}
                   </p>
                 </div>
-                <Status>{resumeParse.state}</Status>
+                <Status>{parsing ? '解析中' : fields ? '已解析' : resumeParse.state}</Status>
               </div>
+              {jobNote && <p className="mt-2 font-mono text-[9.5px] text-admin-muted">{jobNote}</p>}
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".txt,.md,.markdown,.pdf,.doc,.docx"
+                className="hidden"
+                onChange={(e) => {
+                  void pickFile(e.target.files?.[0])
+                  e.target.value = ''
+                }}
+              />
 
               <div className="mt-3 rounded-xl border-1.5 border-ink/20 p-3">
                 <div className="flex items-center justify-between text-[11px]">
@@ -126,10 +211,10 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                 <Meter value={parsing ? 62 : 100} color={parsing ? 'rgb(var(--c-amber))' : 'rgb(var(--c-teal))'} className="mt-2 h-2" />
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
-                    ['解析耗时', '4.2s'],
-                    ['识别准确率', '96%'],
-                    ['结构化字段', '18'],
-                    ['使用模型', 'DeepSeek'],
+                    ['解析耗时', fields ? '见任务记录' : '4.2s'],
+                    ['识别准确率', fields ? '按字段置信度' : '96%'],
+                    ['结构化字段', fields ? String(fields.length) : '18'],
+                    ['使用引擎', fields ? 'local-rules' : '预置演示'],
                   ].map(([l, v]) => (
                     <div key={l} className="rounded-lg border border-ink/10 bg-paper px-2 py-1.5">
                       <p className="text-[9.5px] text-admin-muted">{l}</p>
@@ -143,7 +228,7 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                 <AButton icon={<Sparkles size={12} />} onClick={runParse} disabled={parsing}>
                   {parsing ? '解析中…' : '用 AI 重新解析'}
                 </AButton>
-                <AButton onClick={() => show('上传新简历（演示）')}>上传新文件</AButton>
+                <AButton onClick={() => (real ? fileRef.current?.click() : show('上传新简历（演示：仅本页）'))}>上传新文件</AButton>
                 <AButton variant="soft" onClick={() => show('已打开原文件预览')}>
                   预览原文
                 </AButton>
@@ -176,10 +261,10 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
               kicker="Extracted"
               title="抽取结果"
               desc="置信度低于 90% 的字段建议人工核对"
-              right={<Badge tone="teal">{resumeParse.extracted.length} 个字段</Badge>}
+              right={<Badge tone={fields ? 'teal' : 'neutral'}>{fields ? '服务端结果' : '预置'} · {(fields ?? resumeParse.extracted).length} 个字段</Badge>}
             >
               <div className="space-y-2.5">
-                {resumeParse.extracted.map((e) => (
+                {(fields ?? resumeParse.extracted).map((e) => (
                   <div key={e.key} className="rounded-lg border border-ink/15 px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[10px] text-admin-muted">{e.key}</span>
@@ -192,7 +277,14 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                   </div>
                 ))}
               </div>
-              <AButton variant="primary" className="mt-3 w-full" icon={<Check size={13} />} onClick={() => show('结构化数据已同步到个人中心')}>
+              <AButton
+                variant="primary"
+                className="mt-3 w-full"
+                icon={<Check size={13} />}
+                onClick={() =>
+                  show(fields ? '字段已保存在本次会话；写入前台简历数据表需要内容写接口（B-03），当前未接' : '当前展示的是预置数据，先上传一份简历并解析')
+                }
+              >
                 同步到简历数据
               </AButton>
             </Panel>
@@ -365,7 +457,7 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
         open={rollback !== null}
         onClose={() => setRollback(null)}
         title={`回滚到 ${rollback ?? ''}`}
-        desc="回滚后前台立即生效，当前版本会自动归档。"
+        desc={real ? '服务端还没有简历版本表，回滚目前只改本页状态。' : '演示模式：回滚只改本页状态，刷新即恢复。'}
         footer={
           <>
             <AButton onClick={() => setRollback(null)}>取消</AButton>
@@ -376,7 +468,7 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                 const target = rollback
                 setRollback(null)
                 setVersions((l) => l.map((v) => ({ ...v, status: v.version === target ? '当前版本' : v.status === '当前版本' ? '已归档' : v.status })))
-                show(`已回滚到 ${target}`)
+                show(`已回滚到 ${target}（仅本页，未写入服务端）`)
               }}
             >
               确认回滚
@@ -404,7 +496,7 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                   {
                     version: release.version,
                     date: '2026-10-30',
-                    author: '魏云潇',
+                    author: '晓叶',
                     status: '当前版本',
                     size: '1.2 MB',
                     downloads: 0,

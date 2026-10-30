@@ -10,6 +10,7 @@ import {
   Eye,
   ListTree,
   Share2,
+  Type,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -20,6 +21,7 @@ import { articleById, articles, type Block } from '@/data/articles'
 import { profile } from '@/data/site'
 import { cn } from '@/lib/utils'
 import { articleJsonLd, useSeo } from '@/lib/seo'
+import { STORAGE_KEYS, isRecordOf, readStored, writeStored } from '@/lib/storage'
 
 function CodeBlock({ block }: { block: Extract<Block, { t: 'code' }> }) {
   const [copied, setCopied] = useState(false)
@@ -114,11 +116,13 @@ export default function Reader() {
   const [active, setActive] = useState('')
   const [progress, setProgress] = useState(0)
   const [tocOpen, setTocOpen] = useState(false)
+  /** F-06 字号三档：只影响正文，不改标题层级 */
+  const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md')
   const bodyRef = useRef<HTMLDivElement>(null)
 
   // fx.md S3 / S4：文章页自己的一套 title/description + Article 结构化数据
   useSeo({
-    title: article ? `${article.title} · 魏云潇` : '文章不存在 · 魏云潇',
+    title: article ? `${article.title} · 晓叶` : '文章不存在 · 晓叶',
     description: article?.abstract,
     ogType: article ? 'article' : 'website',
     jsonLd: article
@@ -137,11 +141,43 @@ export default function Reader() {
     [article],
   )
 
-  // 助手浮标现在全局挂在 Layout，这里只声明「正在阅读」上下文
+  // F-06 / X-05：助手上下文精确到当前小节，不再只传标题
   useEffect(() => {
-    setAssistantContext(article ? article.title : '')
-    return () => setAssistantContext('')
+    if (!article) return
+    const section = article.sections.find((s) => s.id === active || s.subs.some((x) => x.id === active))
+    const sub = section?.subs.find((x) => x.id === active)
+    setAssistantContext({
+      articleId: article.id,
+      articleTitle: article.title,
+      sectionId: active || section?.id,
+      sectionTitle: sub?.title ?? section?.title,
+    })
+  }, [article, active])
+
+  useEffect(() => () => setAssistantContext({}), [])
+
+  // 切换文章时清掉上一章的小节，避免助手短暂带着错误上下文
+  useEffect(() => {
+    setActive('')
+  }, [article?.id])
+
+  // F-06 阅读位置：进入文章时若有记录且没有锚点，恢复到上次读到的小节
+  useEffect(() => {
+    if (!article || window.location.hash) return
+    const saved = readStored<Record<string, string>>(STORAGE_KEYS.readingPos, {}, isRecordOf((v) => typeof v === 'string'))[article.id]
+    if (!saved) return
+    const timer = window.setTimeout(() => {
+      document.getElementById(saved)?.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'start' })
+    }, 320)
+    return () => window.clearTimeout(timer)
   }, [article])
+
+  // 记住当前小节；IntersectionObserver 已节流，写入频率不会失控
+  useEffect(() => {
+    if (!article || !active) return
+    const map = readStored<Record<string, string>>(STORAGE_KEYS.readingPos, {}, isRecordOf((v) => typeof v === 'string'))
+    writeStored(STORAGE_KEYS.readingPos, { ...map, [article.id]: active })
+  }, [article, active])
 
   useEffect(() => {
     if (!article) return
@@ -190,6 +226,17 @@ export default function Reader() {
   const index = articles.findIndex((a) => a.id === article.id)
   const prev = articles[index - 1]
   const next = articles[index + 1]
+
+  // F-06 相关推荐：按共享 tag 数排序，最多 3 篇
+  const related = articles
+    .filter((a) => a.id !== article.id)
+    .map((a) => ({ article: a, shared: a.tags.filter((t) => article.tags.includes(t)) }))
+    .filter((x) => x.shared.length > 0)
+    .sort((a, b) => b.shared.length - a.shared.length)
+    .slice(0, 3)
+
+  const fontLabel = { sm: '小', md: '中', lg: '大' }[fontSize]
+  const cycleFont = () => setFontSize((s) => (s === 'sm' ? 'md' : s === 'md' ? 'lg' : 'sm'))
 
   const TocTree = ({ onNavigate }: { onNavigate?: () => void }) => (
     <div className="space-y-1">
@@ -292,6 +339,13 @@ export default function Reader() {
                   >
                     <Share2 size={10} /> 复制链接
                   </button>
+                  <button
+                    onClick={cycleFont}
+                    aria-label={`切换正文字号，当前${fontLabel}`}
+                    className="flex items-center gap-1 rounded-full border border-ink/20 px-2 py-0.5 transition hover:bg-lime/40"
+                  >
+                    <Type size={10} /> 字号 · {fontLabel}
+                  </button>
                 </div>
               </div>
             </div>
@@ -302,7 +356,10 @@ export default function Reader() {
             <p className="mt-1.5 text-[13px] leading-relaxed text-ink/75">{article.abstract}</p>
           </div>
 
-          <div ref={bodyRef} className="prose-read mt-8">
+          <div
+            ref={bodyRef}
+            className={cn('prose-read mt-8', fontSize === 'sm' && 'reader-sm', fontSize === 'lg' && 'reader-lg')}
+          >
             {article.sections.map((s) => (
               <section key={s.id}>
                 <h2 id={s.id} className="scroll-mt-28">
@@ -328,7 +385,7 @@ export default function Reader() {
               读到这儿了，说明你和我关心的是同一类问题。欢迎邮件聊聊。
             </p>
             <a href={`mailto:${profile.email}`} className="btn-ink !text-[12px]">
-              发邮件给魏云潇 <ArrowRight size={13} />
+              发邮件给晓叶 <ArrowRight size={13} />
             </a>
           </div>
 
@@ -350,6 +407,25 @@ export default function Reader() {
               </Link>
             )}
           </div>
+
+          {related.length > 0 && (
+            <section className="mt-8">
+              <p className="font-mono text-[9px] tracking-[0.2em] text-ink/35">RELATED · 相关阅读</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                {related.map(({ article: item, shared }) => (
+                  <Link
+                    key={item.id}
+                    to={`/learn/${item.id}`}
+                    className="group rounded-xl border-1.5 border-ink/15 bg-cream p-3.5 transition hover:border-ink hover:shadow-hard-sm"
+                  >
+                    <span className="font-mono text-[9px] tracking-wide text-ink/40">{item.category}</span>
+                    <p className="mt-1.5 line-clamp-2 text-[12.5px] font-semibold leading-snug group-hover:underline">{item.title}</p>
+                    <p className="mt-2 font-mono text-[9px] text-ink/30">#{shared.join(' · ')}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
         </article>
 
         {/* right rail */}

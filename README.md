@@ -1,4 +1,4 @@
-# 🚀 WYX.SPACE · 魏云潇个人站
+# 🚀 WYX.SPACE · 晓叶个人站
 
 一个把「简历 + 作品集 + 博客 + 生活记录 + 管理后台」装进同一套界面的**纯前端单页应用**。
 支持 5 套可切换主题（令牌化设计系统）、6 篇结构化长文阅读、⌘K 全局检索、浮屏 AI 助手与留言弹幕墙。
@@ -76,7 +76,7 @@ resume1/
 ├─ postcss.config.js           # tailwind + autoprefixer
 ├─ tsconfig.json               # strict + noUnusedLocals=false，paths 映射 @/*
 ├─ package.json                # dev / build(tsc -b && vite build) / preview
-├─ AI全栈开发-魏云潇-研2.docx   # 简历原稿（后台「解析」流程的输入素材）
+├─ AI全栈开发-晓叶-研2.docx   # 简历原稿（后台「解析」流程的输入素材）
 ├─ theme-preview/              # 🎨 8 款主题设计稿（同内容换皮对比页，含未上线的 04/07/08）
 │  └─ index.html
 ├─ dist/                       # 构建产物（.gitignore 忽略）

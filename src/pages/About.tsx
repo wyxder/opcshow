@@ -12,7 +12,7 @@ export default function About() {
   const active = aboutCards.find((c) => c.key === openKey)
 
   useSeo({
-    title: '自我介绍 · 魏云潇',
+    title: '自我介绍 · 晓叶',
     description: '四张卡片认识我：我是谁、在做什么、怎么工作、一点私货。',
     path: '/me',
   })
@@ -41,7 +41,7 @@ export default function About() {
                   </div>
                   <div>
                     <p className="font-mono text-[9px] tracking-[0.24em] text-lime">PERSONAL ID / 2026</p>
-                    <h1 className="mt-1 text-[28px] font-extrabold leading-none">魏云潇</h1>
+                    <h1 className="mt-1 text-[28px] font-extrabold leading-none">晓叶</h1>
                     <p className="mt-1 font-mono text-[9.5px] tracking-[0.18em] text-paper/45">WEI YUNXIAO · AI FULLSTACK</p>
                   </div>
                 </div>

@@ -1,6 +1,19 @@
 import { Check, Copy, Download, Link2, Plus, RefreshCw, Share2, Trash2, UploadCloud } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { adminFiles, shares as shareSeed, storage, uploadQueue as queueSeed } from '@/admin/data'
+import { serverConfig } from '@/services/config'
+import {
+  createShareLink,
+  deleteShare,
+  listFiles,
+  listShares,
+  requestUploadTicket,
+  setVisibility,
+  shareHref,
+  trashFile,
+  uploadToTicket,
+  type ServerFile,
+} from '@/services/files'
 import {
   AButton,
   AdminModal,
@@ -23,6 +36,28 @@ import { cn, newId } from '@/lib/utils'
 
 type Tab = 'upload' | 'share' | 'clean'
 type FileRow = (typeof adminFiles)[number]
+/** 真实模式下多一个下载地址（服务端返回的相对路径） */
+type Row = FileRow & { url?: string }
+
+/** 服务端 ext/category 是自由字符串，这里收敛到列表页支持的枚举值 */
+const KNOWN_EXT = ['md', 'pdf', 'zip', 'fig', 'py', 'pptx', 'xlsx', 'docx', 'csv'] as const
+const KNOWN_CATEGORY = ['简历与作品集', '课程与讲义', '数据集', '模板', '源码'] as const
+const pickExt = (v: string): FileRow['ext'] => (KNOWN_EXT as readonly string[]).includes(v) ? (v as FileRow['ext']) : 'pdf'
+const pickCategory = (v: string): FileRow['category'] =>
+  (KNOWN_CATEGORY as readonly string[]).includes(v) ? (v as FileRow['category']) : '数据集'
+
+const rowFromServer = (f: ServerFile): Row => ({
+  id: f.id,
+  name: f.name,
+  ext: pickExt(f.ext),
+  size: f.size,
+  category: pickCategory(f.category),
+  downloads: f.downloads,
+  date: f.date,
+  visibility: f.visibility === 'public' ? '公开' : '私密',
+  shared: false,
+  url: f.url,
+})
 
 const extColor: Record<string, string> = {
   pdf: 'bg-coral/15 text-admin-danger',
@@ -35,39 +70,114 @@ const extColor: Record<string, string> = {
 }
 
 export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab: (t: Tab) => void; show: (m: string) => void }) {
-  const [files, setFiles] = useState<FileRow[]>(adminFiles)
+  const real = serverConfig.enabled
+  const [files, setFiles] = useState<Row[]>(adminFiles)
   const [queue, setQueue] = useState(queueSeed)
   const [query, setQuery] = useState('')
   const [shares, setShares] = useState(shareSeed)
   const [creating, setCreating] = useState(false)
   const [shareDraft, setShareDraft] = useState({ file: adminFiles[0].name, password: '', expires: '永久' })
   const [trash, setTrash] = useState(storage.trash)
+  const [shareLinks, setShareLinks] = useState<Record<string, string>>({})
   const inputRef = useRef<HTMLInputElement>(null)
 
   const filtered = files.filter((f) => (f.name + f.category).toLowerCase().includes(query.trim().toLowerCase()))
   const usedPercent = Math.round((storage.used / storage.total) * 100)
+  const expiresDays = { 永久: 0, '7 天': 7, '30 天': 30, '90 天': 90 }[shareDraft.expires] ?? 0
 
-  const onPick = (list: FileList | null) => {
+  // 真实模式：进页面拉一次服务端文件与分享列表
+  useEffect(() => {
+    if (!real) return
+    let alive = true
+    void (async () => {
+      try {
+        const [list, links] = await Promise.all([listFiles(), listShares()])
+        if (!alive) return
+        setFiles(list.map(rowFromServer))
+        setShares(
+          links.map((s) => ({
+            id: s.id,
+            file: s.name,
+            token: s.token,
+            password: '由服务端校验',
+            expires: s.expiresAt ? s.expiresAt.slice(0, 10) : '永久',
+            visits: s.visits,
+            created: s.createdAt.slice(0, 10),
+          })),
+        )
+        setShareLinks(Object.fromEntries(links.map((s) => [s.id, `/api/files/download/${s.token}`])))
+      } catch {
+        show('读取文件列表失败：服务端不可用，已保留演示数据')
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [real, show])
+
+  const onPick = async (list: FileList | null) => {
     if (!list?.length) return
-    const added = Array.from(list).map((f, i) => ({
-      id: newId('up'),
-      name: f.name,
-      size: `${(f.size / 1024 / 1024).toFixed(1)} MB`,
-      progress: 100,
-      state: '完成',
-    }))
-    setQueue((q) => [...added, ...q.map((x) => (x.state === '上传中' ? { ...x, progress: 100, state: '完成' } : x))])
-    show(`已上传 ${added.length} 个文件（演示）`)
+    if (!real) {
+      const added = Array.from(list).map((f) => ({
+        id: newId('up'),
+        name: f.name,
+        size: `${(f.size / 1024 / 1024).toFixed(1)} MB`,
+        progress: 100,
+        state: '完成',
+      }))
+      setQueue((q) => [...added, ...q.map((x) => (x.state === '上传中' ? { ...x, progress: 100, state: '完成' } : x))])
+      show(`演示模式：${added.length} 个文件只进了队列，刷新后丢失`)
+      return
+    }
+    for (const file of Array.from(list)) {
+      try {
+        const ticket = await requestUploadTicket({ name: file.name, size: file.size, type: file.type })
+        const uploaded = await uploadToTicket(ticket, file, { category: '未分类' })
+        setQueue((q) => [{ id: uploaded.id, name: file.name, size: uploaded.size, progress: 100, state: '完成' }, ...q])
+      } catch (err) {
+        show(`上传失败：${(err as Error).message}`)
+      }
+    }
+    const refreshed = await listFiles().catch(() => null)
+    if (refreshed) setFiles(refreshed.map(rowFromServer))
   }
 
-  const createShare = () => {
-    const token = newId('wyx').slice(0, 12)
-    setShares((l) => [
-      { id: newId('s'), file: shareDraft.file, token, password: shareDraft.password || '无', expires: shareDraft.expires, visits: 0, created: '2026-10-30' },
-      ...l,
-    ])
-    setCreating(false)
-    show('分享链接已生成')
+  const createShare = async () => {
+    const target = files.find((f) => f.name === shareDraft.file)
+    if (!real) {
+      const token = newId('wyx').slice(0, 12)
+      setShares((l) => [
+        { id: newId('s'), file: shareDraft.file, token, password: shareDraft.password || '无', expires: shareDraft.expires, visits: 0, created: '2026-10-30' },
+        ...l,
+      ])
+      setCreating(false)
+      show('演示模式：链接只在本次会话可见，未落库')
+      return
+    }
+    if (!target) {
+      show('分享失败：找不到这个文件的服务端记录')
+      return
+    }
+    try {
+      const link = await createShareLink({ fileId: target.id, password: shareDraft.password || undefined, expiresDays })
+      setShares((l) => [
+        {
+          id: link.id ?? newId('s'),
+          file: shareDraft.file,
+          token: link.token,
+          password: shareDraft.password || '无',
+          expires: link.expiresAt ? link.expiresAt.slice(0, 10) : '永久',
+          visits: 0,
+          created: new Date().toISOString().slice(0, 10),
+        },
+        ...l,
+      ])
+      setShareLinks((m) => ({ ...m, [link.id ?? link.token]: link.url }))
+      setCreating(false)
+      show('分享链接已生成')
+    } catch (err) {
+      show(`分享失败：${(err as Error).message}`)
+    }
   }
 
   return (
@@ -75,7 +185,11 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
       <PageTitle
         kicker="Files"
         title="文件资源"
-        desc="统一管理简历附件、课程讲义与数据集；公开文件会出现在前台文件页。"
+        desc={
+          real
+            ? '统一管理简历附件、课程讲义与数据集；公开文件会出现在前台文件页。'
+            : '演示模式：上传、分享、可见性只改本页状态，不会保存；配置 VITE_API_BASE 后走真实接口。'
+        }
         right={
           <>
             <AButton icon={<RefreshCw size={13} />} onClick={() => show('存储用量已刷新')}>
@@ -84,7 +198,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
             <AButton variant="primary" icon={<UploadCloud size={13} />} onClick={() => inputRef.current?.click()}>
               上传文件
             </AButton>
-            <input ref={inputRef} type="file" multiple hidden onChange={(e) => onPick(e.target.files)} />
+            <input ref={inputRef} type="file" multiple hidden onChange={(e) => void onPick(e.target.files)} />
           </>
         }
       />
@@ -108,7 +222,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault()
-                  onPick(e.dataTransfer.files)
+                  void onPick(e.dataTransfer.files)
                 }}
                 className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-ink/25 bg-paper py-8 transition hover:border-ink hover:bg-lime/15"
               >
@@ -170,15 +284,30 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                       <span className="font-mono text-[10px] text-admin-muted">{f.downloads}</span>
                       <button
                         onClick={() => {
-                          setFiles((l) => l.map((x) => (x.id === f.id ? { ...x, visibility: x.visibility === '公开' ? '私密' : '公开' } : x)))
-                          show(f.visibility === '公开' ? '已设为私密' : '已设为公开')
+                          if (!real) {
+                            setFiles((l) => l.map((x) => (x.id === f.id ? { ...x, visibility: x.visibility === '公开' ? '私密' : '公开' } : x)))
+                            show('演示模式：可见性只改本页，刷新后恢复')
+                            return
+                          }
+                          void setVisibility(f.id, f.visibility === '公开' ? 'private' : 'public')
+                            .then(() => {
+                              setFiles((l) => l.map((x) => (x.id === f.id ? { ...x, visibility: x.visibility === '公开' ? '私密' : '公开' } : x)))
+                              show(f.visibility === '公开' ? '已设为私密' : '已设为公开')
+                            })
+                            .catch((err: Error) => show(`设置失败：${err.message}`))
                         }}
                         className={cn('w-fit rounded-full px-2 py-0.5 text-[9.5px]', f.visibility === '公开' ? 'bg-lime/50 text-admin-moss' : 'bg-sand/55 text-admin-muted')}
                       >
                         {f.visibility}
                       </button>
                       <div className="flex items-center justify-end gap-1">
-                        <IconButton label="下载" onClick={() => show('开始下载（演示）')}>
+                        <IconButton
+                          label="下载"
+                          onClick={() => {
+                            if (f.url) window.open(`${serverConfig.baseUrl}${f.url}`, '_blank', 'noopener')
+                            else show('演示模式：该文件没有服务端存储，无法下载')
+                          }}
+                        >
                           <Download size={11} />
                         </IconButton>
                         <IconButton
@@ -194,8 +323,17 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                           label="删除"
                           className="hover:border-coral/60 hover:text-admin-danger"
                           onClick={() => {
-                            setFiles((l) => l.filter((x) => x.id !== f.id))
-                            show('已移入回收站')
+                            if (!real) {
+                              setFiles((l) => l.filter((x) => x.id !== f.id))
+                              show('演示模式：仅从本页移除')
+                              return
+                            }
+                            void trashFile(f.id)
+                              .then(() => {
+                                setFiles((l) => l.filter((x) => x.id !== f.id))
+                                show('已移入回收站')
+                              })
+                              .catch((err: Error) => show(`删除失败：${err.message}`))
                           }}
                         >
                           <Trash2 size={11} />
@@ -281,8 +419,15 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                       <IconButton
                         label="复制链接"
                         onClick={() => {
-                          navigator.clipboard?.writeText(`https://wyx.space/s/${s.token}`)
-                          show('链接已复制')
+                          const href = shareLinks[s.id]
+                          if (!real || !href) {
+                            show('演示模式：没有真实分享地址可复制')
+                            return
+                          }
+                          void navigator.clipboard?.writeText(shareHref(href)).then(
+                            () => show('链接已复制'),
+                            () => show('浏览器不允许写入剪贴板，请手动复制'),
+                          )
                         }}
                       >
                         <Copy size={11} />
@@ -291,8 +436,17 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                         label="关闭分享"
                         className="hover:border-coral/60 hover:text-admin-danger"
                         onClick={() => {
-                          setShares((l) => l.filter((x) => x.id !== s.id))
-                          show('分享已关闭')
+                          if (!real) {
+                            setShares((l) => l.filter((x) => x.id !== s.id))
+                            show('演示模式：仅从本页移除')
+                            return
+                          }
+                          void deleteShare(s.token)
+                            .then(() => {
+                              setShares((l) => l.filter((x) => x.id !== s.id))
+                              show('分享已关闭')
+                            })
+                            .catch((err: Error) => show(`关闭失败：${err.message}`))
                         }}
                       >
                         <Trash2 size={11} />

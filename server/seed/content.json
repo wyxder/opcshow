@@ -1,0 +1,2482 @@
+{
+  "generatedAt": "2026-10-30T15:44:16.004Z",
+  "articles": [
+    {
+      "id": "rag-engineering",
+      "title": "RAG 工程化：从切片到溯源的 7 个决策",
+      "subtitle": "把 Demo 级检索做成能上生产的知识库，靠的从来不是换个更大的模型。",
+      "category": "RAG 工程化",
+      "tags": [
+        "RAG",
+        "检索",
+        "评测"
+      ],
+      "date": "2026-09-18",
+      "readMin": 12,
+      "views": 4210,
+      "accent": "rgb(var(--c-blue))",
+      "abstract": "在字节的电商客服项目里，我把 Recall@5 从 0.72 推到 0.93。真正起作用的不是换模型，而是七个工程决策：切片粒度、元数据、双路召回、融合、重排、溯源与回归评测。",
+      "sections": [
+        {
+          "id": "s1",
+          "title": "01 切片：先想清楚「一个可回答单元」",
+          "lead": "分块不是文本长度的数学题，而是业务语义题。",
+          "subs": [
+            {
+              "id": "s1-1",
+              "title": "按文档结构切，而不是按字符数切",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "最常见的失败是 512 token 固定窗口。它会把一张表格切成两半，把「3.2 退款条件」的标题和内容分到两个 chunk 里。检索时命中标题却没有正文，模型只能瞎编。"
+                },
+                {
+                  "t": "p",
+                  "v": "我的做法是先用解析器恢复结构：标题层级、列表、表格、图片说明。然后以「最小完整语义单元」为切片边界——一个条款、一段问答、一张表。超长单元再按句号与列表项二次切。"
+                },
+                {
+                  "t": "code",
+                  "lang": "python",
+                  "v": "def adaptive_chunk(node, limit=420):\n    # 结构优先：标题 + 正文构成一个语义单元\n    if node.is_heading_group and node.tokens <= limit:\n        return [build_chunk(node, meta=node.path)]\n    # 超长时按句子边界退让，保留父子引用\n    pieces = split_by_sentence(node.text, limit)\n    return [build_chunk(p, parent=node.id) for p in pieces]"
+                },
+                {
+                  "t": "note",
+                  "title": "经验值",
+                  "v": "电商客服类文档 300–450 token 效果最好；法律/医疗条款可以更短，因为一条就是一个可回答单元。"
+                }
+              ]
+            },
+            {
+              "id": "s1-2",
+              "title": "元数据决定你能不能溯源",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "每个 chunk 必须带：文档 ID、页码、标题路径、生效时间、业务域。少一个，你在做「来源追溯」时就得回头重跑全量入库。"
+                },
+                {
+                  "t": "list",
+                  "items": [
+                    "doc_id / chunk_id：用于前端高亮定位原文",
+                    "page + bbox：PDF 直接跳到对应页",
+                    "path：标题路径，让模型知道这段在讲什么层级的内容",
+                    "effective_at：政策类文档必须带，否则新旧条款会互相污染"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "title": "02 召回：双路 + 融合 + 重排",
+          "lead": "单一向量召回只解决「像」，解决不了「准」。",
+          "subs": [
+            {
+              "id": "s2-1",
+              "title": "BM25 与向量的分工",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "向量擅长语义近似，BM25 擅长精确命中（订单号、政策编号、专有名词）。用户问「S6 系列退货政策」时，BM25 把精确词抓回来，向量补足「退货」与「七天无理由」的语义桥接。"
+                },
+                {
+                  "t": "code",
+                  "lang": "python",
+                  "v": "dense = index.search(vec, k=40)      # 语义召回\nsparse = bm25.search(query, k=40)    # 关键词召回\nfused = rrf([dense, sparse], k=60)   # Reciprocal Rank Fusion\ntop = reranker.rerank(query, fused[:20])[:6]"
+                },
+                {
+                  "t": "p",
+                  "v": "RRF 的价值在于不需要把两路分数归一化，只融合排名，稳定且几乎不用调参。k=60 是论文默认值，我在业务集上试过 30/60/100，差异在 0.01 以内。"
+                }
+              ]
+            },
+            {
+              "id": "s2-2",
+              "title": "重排是性价比最高的一步",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "把 Top-20 交给 cross-encoder 重排到 Top-6，比换 Embedding 模型便宜得多，而且收益立刻体现在 Recall@5 和答案忠实度上。"
+                },
+                {
+                  "t": "table",
+                  "head": [
+                    "策略",
+                    "Recall@5",
+                    "首字延迟",
+                    "备注"
+                  ],
+                  "rows": [
+                    [
+                      "纯向量 Top-5",
+                      "0.72",
+                      "320ms",
+                      "基线"
+                    ],
+                    [
+                      "双路 + RRF",
+                      "0.84",
+                      "390ms",
+                      "改动最小"
+                    ],
+                    [
+                      "双路 + RRF + 重排",
+                      "0.93",
+                      "640ms",
+                      "上线方案"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "s3",
+          "title": "03 溯源：让用户敢信",
+          "lead": "没有引用的 RAG，只是一个更会说谎的搜索框。",
+          "subs": [
+            {
+              "id": "s3-1",
+              "title": "引用不是装饰，是契约",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "回答的每一句关键结论都该绑定 chunk_id。前端把引用渲染成可点击的胶囊，点开定位原文并高亮。做不到这一点，客服场景就没法上线。"
+                },
+                {
+                  "t": "quote",
+                  "v": "当模型知道「说出来就要拿出处」时，它的拒答率会上升，但用户信任度会翻倍。"
+                }
+              ]
+            },
+            {
+              "id": "s3-2",
+              "title": "评测集要跟着业务长",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "8 类业务场景、200 条评测样本、30 条人工校准。每次改切片或模型都全量回归，指标不许降。"
+                },
+                {
+                  "t": "list",
+                  "items": [
+                    "Recall@5 / MRR：检索层",
+                    "Faithfulness / Answer Relevancy：生成层",
+                    "拒答正确率：该说不的时候说不",
+                    "人工校准：Judge 打分的下限保护"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "agent-eval",
+      "title": "Agent 评测别玄学：22 个指标怎么选",
+      "subtitle": "从「感觉变好了」到「pass_rate 涨了 0.07」，中间隔着一整套指标体系。",
+      "category": "Agent 评测",
+      "tags": [
+        "评测",
+        "LLM-as-a-Judge",
+        "指标体系"
+      ],
+      "date": "2026-09-02",
+      "readMin": 10,
+      "views": 3180,
+      "accent": "rgb(var(--c-grape))",
+      "abstract": "在评测中台项目里我沉淀了 22 个内置指标。指标不在多，在于每个都能回答一个业务问题，并且稳定可复现。",
+      "sections": [
+        {
+          "id": "e1",
+          "title": "01 先分层，再选指标",
+          "subs": [
+            {
+              "id": "e1-1",
+              "title": "三层指标：检索 / 生成 / 行为",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "检索层看有没有找对材料，生成层看有没有用对材料，行为层看工具调用与任务是否完成。三层混在一起，你就永远不知道问题出在哪。"
+                },
+                {
+                  "t": "table",
+                  "head": [
+                    "层级",
+                    "代表指标",
+                    "是否确定性"
+                  ],
+                  "rows": [
+                    [
+                      "检索",
+                      "HitRate@K / MRR / Context Precision",
+                      "确定性"
+                    ],
+                    [
+                      "生成",
+                      "Faithfulness / Relevancy / 术语一致性",
+                      "Judge"
+                    ],
+                    [
+                      "行为",
+                      "Task Completion / Tool Correctness",
+                      "确定性 + Judge"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "e1-2",
+              "title": "确定性指标优先",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "能算出来的不要问模型。工具名对不对、参数结构对不对、JSON 能不能解析，这些用代码判定，零成本且不漂移。"
+                },
+                {
+                  "t": "code",
+                  "lang": "python",
+                  "v": "def tool_correctness(call, expected):\n    name_ok = call.name == expected.name\n    args_ok = all(call.args.get(k) == v for k, v in expected.args.items())\n    return 1.0 if name_ok and args_ok else 0.0"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "e2",
+          "title": "02 打分理由必须落库",
+          "subs": [
+            {
+              "id": "e2-1",
+              "title": "没有理由的分数无法复盘",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "每条 Judge 评分都持久化 score 与 ≤800 字理由。出问题时你能看到模型为什么给 0.4，而不是重跑一次祈祷它变好。"
+                },
+                {
+                  "t": "note",
+                  "title": "反模式",
+                  "v": "只存平均分。平均分掩盖了长尾崩塌，而 Agent 的失败几乎总是长尾。"
+                }
+              ]
+            },
+            {
+              "id": "e2-2",
+              "title": "人工校准是护栏",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "随机抽 30 条人工打分，与 Judge 的一致性低于阈值时，先修 prompt 或指标定义，不要相信批量结果。"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "e3",
+          "title": "03 A/B 盲测补上「人类偏好」",
+          "subs": [
+            {
+              "id": "e3-1",
+              "title": "用哈希打乱左右",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "MD5(sample_id) 的奇偶决定 A/B 展示顺序，避免位置偏置。输出结构化对比与胜率，和自动指标互为证据。"
+                },
+                {
+                  "t": "code",
+                  "lang": "ts",
+                  "v": "const flip = md5(String(row.id)).charCodeAt(0) % 2 === 0\nconst left = flip ? row.b : row.a\nconst right = flip ? row.a : row.b"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "harness",
+      "title": "Harness：给 Agent 装上方向盘",
+      "subtitle": "Agent 能力的天花板由模型决定，稳定性由 Harness 决定。",
+      "category": "Agent 评测",
+      "tags": [
+        "Harness",
+        "工程",
+        "可靠性"
+      ],
+      "date": "2026-08-21",
+      "readMin": 9,
+      "views": 2760,
+      "accent": "rgb(var(--c-coral))",
+      "abstract": "Harness 不是框架，是约束。它负责把不确定的模型输出，变成可追踪、可回归、可回滚的工程行为。",
+      "sections": [
+        {
+          "id": "h1",
+          "title": "01 Harness 到底管什么",
+          "subs": [
+            {
+              "id": "h1-1",
+              "title": "四个抓手：上下文 / 工具 / 预算 / 验收",
+              "blocks": [
+                {
+                  "t": "list",
+                  "items": [
+                    "上下文：注入什么、裁剪什么、什么时候压缩",
+                    "工具：权限边界、参数校验、失败重试",
+                    "预算：token、步数、时长三重熔断",
+                    "验收：每次运行留痕，可回归"
+                  ]
+                },
+                {
+                  "t": "p",
+                  "v": "把这四件事写进代码而不是 prompt，Agent 才不会在长会话里「逐渐失控」。"
+                }
+              ]
+            },
+            {
+              "id": "h1-2",
+              "title": "越权就返回 404",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "工具层做租户隔离与资源鉴权，越权直接拒绝，而不是让模型「礼貌地」跳过。安全靠代码，不靠提示词。"
+                },
+                {
+                  "t": "code",
+                  "lang": "ts",
+                  "v": "if (!ctx.ownedResources.has(resourceId)) {\n  throw new NotFoundError() // 不暴露存在性\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "h2",
+          "title": "02 回归用例进 CI",
+          "subs": [
+            {
+              "id": "h2-1",
+              "title": "12 条用例，比 1000 条灵感有用",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "挑最容易坏、影响最大的路径写成回归用例：越权、空知识库、工具超时、上下文超长、拒答诚实度。每次 PR 跑一遍，红了就修。"
+                },
+                {
+                  "t": "note",
+                  "title": "门槛设多少",
+                  "v": "关键路径 pass_rate 必须 100%，其他指标允许下降 0.02 以内。"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "rsi-loop",
+      "title": "RSI 自进化：让评测反向修改系统",
+      "subtitle": "评测不只是打分，它可以是产品的第二套训练回路。",
+      "category": "RAG 工程化",
+      "tags": [
+        "RSI",
+        "闭环",
+        "可回滚"
+      ],
+      "date": "2026-08-08",
+      "readMin": 11,
+      "views": 1990,
+      "accent": "rgb(var(--c-lime))",
+      "abstract": "把「失败归因 → 优化提案 → 影子回归 → 验收写回」做成流水线，指标才能自己往上走。前提是可审批、可回滚、可审计。",
+      "sections": [
+        {
+          "id": "r1",
+          "title": "01 四步闭环",
+          "subs": [
+            {
+              "id": "r1-1",
+              "title": "失败归因要机器可读",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "把 badcase 归到具体维度：检索缺失、引用错误、工具参数错、拒答失败。归因维度固定，优化提案才能被自动化生成。"
+                },
+                {
+                  "t": "code",
+                  "lang": "json",
+                  "v": "{\n  \"case_id\": \"eval_0341\",\n  \"failure_class\": \"retrieval_miss\",\n  \"evidence_ids\": [\"doc_88#p3\"],\n  \"proposal\": { \"kind\": \"chunking\", \"from\": 512, \"to\": 384 }\n}"
+                }
+              ]
+            },
+            {
+              "id": "r1-2",
+              "title": "影子回归与验收口径",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "任何提案先在影子环境跑全量评测：目标指标增益 ≥ 0.03，受保护指标降幅 ≤ 0.02，否则自动拒绝。通过后写回并要求人工审批。"
+                },
+                {
+                  "t": "list",
+                  "items": [
+                    "目标增益 ≥ 0.03",
+                    "受保护指标降幅 ≤ 0.02",
+                    "每次变更保留 diff 与评测快照",
+                    "一键回滚到上一个稳定版本"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "r2",
+          "title": "02 别让系统自己放飞",
+          "subs": [
+            {
+              "id": "r2-1",
+              "title": "三层刹车",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "白名单提案类型、收益门槛、人工审批。三层刹车缺一层，自进化就会变成自走炮。"
+                },
+                {
+                  "t": "quote",
+                  "v": "自动化的边界，是你敢不敢让它半夜改生产。"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "vibe-coding",
+      "title": "Vibe Coding 的正确姿势：AI 编程的边界感",
+      "subtitle": "写得快不等于写得对。和模型协作，最重要的是知道什么时候自己上手。",
+      "category": "工程手记",
+      "tags": [
+        "AI 编程",
+        "工作流",
+        "Codex"
+      ],
+      "date": "2026-07-19",
+      "readMin": 8,
+      "views": 5340,
+      "accent": "rgb(var(--c-sky))",
+      "abstract": "上线过 7 款付费产品之后，我大概摸清了：哪些活交出去，哪些必须自己写。",
+      "sections": [
+        {
+          "id": "v1",
+          "title": "01 交给 AI 的三类活",
+          "subs": [
+            {
+              "id": "v1-1",
+              "title": "样板代码、迁移、测试",
+              "blocks": [
+                {
+                  "t": "list",
+                  "items": [
+                    "CRUD 与表单：模式固定，改起来快",
+                    "框架迁移与版本升级：机械但需要耐心",
+                    "测试用例与 mock 数据：覆盖比创意重要",
+                    "文案与多语言：接近零风险"
+                  ]
+                },
+                {
+                  "t": "p",
+                  "v": "这些工作的验收标准明确，错了立刻能看出来，是 AI 最舒服的区间。"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "v2",
+          "title": "02 必须自己写的三类活",
+          "subs": [
+            {
+              "id": "v2-1",
+              "title": "状态机、并发、计费",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "涉及钱、涉及并发、涉及不可逆副作用的逻辑，我会自己写，然后让 AI 帮我找漏洞。顺序反了，宕机的时候你不知道该怪谁。"
+                },
+                {
+                  "t": "note",
+                  "title": "我的检查清单",
+                  "v": "幂等键、失败补偿、超时与重试上限、日志里能不能定位到那一次请求。"
+                }
+              ]
+            },
+            {
+              "id": "v2-2",
+              "title": "给 AI 的上下文要像交接文档",
+              "blocks": [
+                {
+                  "t": "code",
+                  "lang": "md",
+                  "v": "## 目标\n把支付回调的积分发放改成幂等\n## 约束\n- 不改表结构，复用 attempt_id\n- 失败必须可补偿，写 workflow_log\n## 验收\n- 同一 attempt 重复回调只发一次积分\n- 单测覆盖 3 种重复场景"
+                },
+                {
+                  "t": "p",
+                  "v": "约束写清楚，返工就少一半。这也是 Harness 思路在人际协作上的投影。"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "multimodal-cost",
+      "title": "多模态应用的 3 个「看不见」的成本",
+      "subtitle": "图片、语音、视频接进来，账单和体验都会变。",
+      "category": "工程手记",
+      "tags": [
+        "多模态",
+        "成本",
+        "架构"
+      ],
+      "date": "2026-06-30",
+      "readMin": 7,
+      "views": 1620,
+      "accent": "rgb(var(--c-rose))",
+      "abstract": "做数字人导游和带货视频平台时踩过的坑：转码、轮询、失败重试，才是多模态真正的成本中心。",
+      "sections": [
+        {
+          "id": "m1",
+          "title": "01 异步任务的三个陷阱",
+          "subs": [
+            {
+              "id": "m1-1",
+              "title": "轮询要有退避，失败要有补偿",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "视频生成动辄 30s 以上，前端轮询必须指数退避。后端要记录 attempt 与最后一次状态，用户刷新页面也能接着看。"
+                },
+                {
+                  "t": "list",
+                  "items": [
+                    "统一任务模型：queued / running / succeeded / failed",
+                    "结果持久化到对象存储，别放内存",
+                    "失败可重试，重试要幂等",
+                    "前端订阅事件，而不是傻轮询"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "m1-2",
+              "title": "把模型差异关在网关里",
+              "blocks": [
+                {
+                  "t": "p",
+                  "v": "不同厂商的字段、状态码、超时都不同。用一个内部标准接口把差异吃掉，上层只认一种协议，换模型才不痛。"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "status": "published",
+      "version": 1
+    }
+  ],
+  "projects": [
+    {
+      "id": "aigc-commerce",
+      "title": "跨境电商 AIGC 带货视频创作平台",
+      "en": "COMMERCE STUDIO",
+      "role": "AI 全栈开发",
+      "period": "2026.05 — 至今",
+      "category": "AI 全栈",
+      "award": "上海星火 OPC 决赛第一名 · 最佳商业价值奖",
+      "stack": [
+        "React",
+        "FastAPI",
+        "LangGraph",
+        "Java",
+        "Spring Boot",
+        "Redis",
+        "PostgreSQL",
+        "Supabase",
+        "RAG",
+        "Skills",
+        "Seedance 2.5"
+      ],
+      "summary": "一款跨境电商带货视频 AI 生成工具，跑通「商品 URL 卖点提取 → 数字人口播 → AI 带货视频生成 → 云端剪辑 → 多平台分发」的闭环。",
+      "bullets": [
+        {
+          "k": "智能选品",
+          "v": "规划全球商品选品模块，接入三方数据引擎实时追踪，支持 URL 一键解析与 CSV 批量导入。"
+        },
+        {
+          "k": "Agent 创作区",
+          "v": "开发 AIGC 带货视频工作台，支持分镜编辑与 7+ AI 场景工作箱，沉淀 Prompt 至知识库。"
+        },
+        {
+          "k": "多轨道剪辑台",
+          "v": "React + Framer Motion 实现时间轴拖拽、对齐与参数调节，剪辑时长缩短 60%。"
+        },
+        {
+          "k": "带货 AI 主播",
+          "v": "NLP 情感时间轴标注关联 StepAudio 2.5 语调参数与数字人表情姿态，拟真度提升 40%。"
+        },
+        {
+          "k": "数据运营后台",
+          "v": "Workflow 日志详情与退款控制器，对接 Attempt 捕获逻辑，支持算力积分冲正退回。"
+        },
+        {
+          "k": "付费闭环",
+          "v": "会员订阅 + 积分加油包 + 邀请裂变三级模式，完成支付宝 AI 付接入，上线收益 1.2w。"
+        }
+      ],
+      "metrics": [
+        {
+          "label": "制作周期",
+          "value": "2 天 → 3 分钟"
+        },
+        {
+          "label": "单条成本",
+          "value": "≈ 2 元"
+        },
+        {
+          "label": "上线收益",
+          "value": "1.2w"
+        },
+        {
+          "label": "决赛名次",
+          "value": "第一名"
+        }
+      ],
+      "tags": [
+        "商业化落地",
+        "视频生成",
+        "订阅制"
+      ],
+      "accent": "rgb(var(--c-coral))",
+      "motif": "wave",
+      "featured": true,
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "douyin-rag",
+      "title": "抖音电商 RAG 企业客服与智慧运营系统",
+      "en": "RAG SERVICE DESK",
+      "role": "AI 应用开发",
+      "period": "2025.06 — 2025.09",
+      "category": "Agent 开发",
+      "award": "字节跳动 AI 工程训练营 · 试点商家接待量下降 45%",
+      "stack": [
+        "Python",
+        "CrewAI",
+        "RAG",
+        "Puppeteer",
+        "Embedding",
+        "RRF",
+        "SSE",
+        "RAGAS"
+      ],
+      "summary": "面向 B 端的生产级智能客服产品，集成多模态 AI、多智能体意图识别与 RAG 知识库问答，解决商家人工客服成本高、知识分散的痛点。",
+      "bullets": [
+        {
+          "k": "爬虫入库",
+          "v": "Puppeteer 抓取抖音电商中心 250+ 份 PDF，格式标准化后自动入库，整理效率提升约 60%。"
+        },
+        {
+          "k": "RAG 知识库",
+          "v": "「切片-索引-匹配-溯源」工作流，双路召回 + RRF 融合（k=60），检索命中率提升至 92%。"
+        },
+        {
+          "k": "Multi-Agent",
+          "v": "CrewAI 实现「意图识别官 → 客服执行员」协同，按三类意图分发工具调用，降低异常中断。"
+        },
+        {
+          "k": "多模态输入",
+          "v": "图片/视频解析、语音 ASR 模块，支持多轮对话与上下文记忆，回答严格溯源原文档链接。"
+        },
+        {
+          "k": "数据大屏",
+          "v": "InsightsSidebar 封装 Top10 高频问题柱状图与 30 天知识引用热力图，迭代效率提升 50%。"
+        },
+        {
+          "k": "Harness 评测",
+          "v": "自研 4 维 RAGAS 脚本，8 类场景 200 条评测集 + LLM-as-Judge + 30 条人工校准，Recall@5 0.72 → 0.93。"
+        }
+      ],
+      "metrics": [
+        {
+          "label": "Recall@5",
+          "value": "0.93"
+        },
+        {
+          "label": "响应时间",
+          "value": "60s → 3s"
+        },
+        {
+          "label": "接待量",
+          "value": "↓ 45%"
+        },
+        {
+          "label": "文档入库",
+          "value": "250+"
+        }
+      ],
+      "tags": [
+        "RAG",
+        "多智能体",
+        "生产级"
+      ],
+      "accent": "rgb(var(--c-blue))",
+      "motif": "orbit",
+      "featured": true,
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "eval-rsi",
+      "title": "Agent 与 RSI 自进化评测中台",
+      "en": "EVAL & RSI LAB",
+      "role": "Agent 开发",
+      "period": "2026.08 — 至今",
+      "category": "Agent 开发",
+      "award": "长沙 CSDN Agent 创新大赛决赛第二名",
+      "stack": [
+        "FastAPI",
+        "Native Agent",
+        "LLM-as-a-Judge",
+        "React",
+        "TypeScript",
+        "SQLite",
+        "Pydantic",
+        "Asyncio",
+        "PyMuPDF"
+      ],
+      "summary": "面向 RAG、AI Agent、多轮对话的评测工作台，把「数据 → 场景指标 → Judge 模型 → 自动执行 → 人工复核 → 报告」串成一条流水线。",
+      "bullets": [
+        {
+          "k": "指标体系",
+          "v": "预置 3 类场景模板，prompt_override 覆盖业务规则，按指标输出 mean / min / max / pass_rate / error。"
+        },
+        {
+          "k": "RAG 评估",
+          "v": "PDF 解析 + 结构化/长度双模式分块，携带 reference_context_ids 证据分片，支持 HitRate@K、MRR 等 8 个指标。"
+        },
+        {
+          "k": "Agent 评估",
+          "v": "3 个 LLM 侧指标 + 5 个确定性指标（工具名与参数匹配），保证评测可复现。"
+        },
+        {
+          "k": "原生引擎",
+          "v": "自研 LLM-as-a-Judge 引擎沉淀 22 个内置指标，每条评分持久化理由（≤800 字），可解释可追溯。"
+        },
+        {
+          "k": "A/B 盲测",
+          "v": "MD5 哈希随机化展示顺序，支持 LLM vs Endpoint vs 自身三类对比，输出胜率统计。"
+        },
+        {
+          "k": "RSI 自进化",
+          "v": "「失败归因 → 优化提案 → 影子回归 → 验收写回」闭环，4 张数据表、7 个组件、16 个接口、42 个用例。"
+        }
+      ],
+      "metrics": [
+        {
+          "label": "内置指标",
+          "value": "22"
+        },
+        {
+          "label": "REST 接口",
+          "value": "16"
+        },
+        {
+          "label": "用例覆盖",
+          "value": "42"
+        },
+        {
+          "label": "目标增益",
+          "value": "≥ 0.03"
+        }
+      ],
+      "tags": [
+        "评测",
+        "RSI",
+        "可审计"
+      ],
+      "accent": "rgb(var(--c-grape))",
+      "motif": "bars",
+      "featured": true,
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "harness-research",
+      "title": "Harness 驱动的多智能体科研 AI 工作台",
+      "en": "RESEARCH HARNESS",
+      "role": "AI 全栈开发",
+      "period": "2026.06 — 至今",
+      "category": "AI 全栈",
+      "award": "南京阿里中心 AI 黑客松决赛入围 · 西安黑客松 AI 软件赛道第二名",
+      "stack": [
+        "React",
+        "TypeScript",
+        "Node.js",
+        "Express",
+        "FastAPI",
+        "DeepSeek",
+        "Multi-Agent",
+        "RAG",
+        "MCP Server"
+      ],
+      "summary": "一站式科研 AI 工作台，覆盖「选题 → 文献 → 复现 → 实验 → 分析 → 写作 → 投稿」全生命周期，让知识库数据可追溯、可沉淀。",
+      "bullets": [
+        {
+          "k": "8 大对话模式",
+          "v": "General / ReAct / CodeAct 等 8 类模式，各自独立推理链与输出形态，推理过程可见，越权返回 404。"
+        },
+        {
+          "k": "多 Agent 评审",
+          "v": "理论/方法/实验/写作/伦理 5 类专家团 + 主席合议，输出 6 维评分报告。"
+        },
+        {
+          "k": "文献研读",
+          "v": "MCP Server 接入 arXiv / OpenAlex，三栏论文窗口与 3D 参考文献引用图谱。"
+        },
+        {
+          "k": "Harness 评测",
+          "v": "术语一致性、拒答诚实度等指标接入 12 条 CI 回归用例；320 条标注集 Recall@5 0.71 → 0.92、MRR 0.66 → 0.85。"
+        },
+        {
+          "k": "RAG 检索",
+          "v": "结构化评分检索 + Embedding 语义召回，reference 事件附带文档 ID、页码与原文片段，Top-3 命中率 76% → 93%。"
+        },
+        {
+          "k": "实验复现",
+          "v": "参数看板、消融矩阵、SOTA 对比，对接 CCF 期刊倒计时与 image2.5 学术图表生成。"
+        }
+      ],
+      "metrics": [
+        {
+          "label": "Recall@5",
+          "value": "0.92"
+        },
+        {
+          "label": "MRR",
+          "value": "0.85"
+        },
+        {
+          "label": "Top-3",
+          "value": "93%"
+        },
+        {
+          "label": "CI 回归",
+          "value": "12 条"
+        }
+      ],
+      "tags": [
+        "科研提效",
+        "MCP",
+        "知识图谱"
+      ],
+      "accent": "rgb(var(--c-ink))",
+      "motif": "grid",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "coder-platform",
+      "title": "Coder 企业零代码 AI 应用生成平台",
+      "en": "CODER PLATFORM",
+      "role": "AI 后端开发",
+      "period": "2024.05 — 2024.08",
+      "category": "AI 后端",
+      "award": "西安粤嵌信息科技 · 独立部署上线",
+      "stack": [
+        "Java",
+        "Spring Cloud Alibaba",
+        "Dubbo3",
+        "LangGraph4j",
+        "Redis",
+        "Caffeine",
+        "Vue"
+      ],
+      "summary": "一句话描述需求即可生成可运行 Web 页面，支持可视化编辑、智能路由生成、预览部署与域名分享的 AI 应用生成平台。",
+      "bullets": [
+        {
+          "k": "AI 代码生成",
+          "v": "LangGraph4j 构建「提示词增强 → 智能路由 → 代码生成 → 质检」状态图，节点间传递工作流上下文。"
+        },
+        {
+          "k": "Tool 调用",
+          "v": "文件读/写/改/删、目录读取、任务退出共 6 类 @Tool，@ToolMemoryId 按 appId 隔离多租户调用。"
+        },
+        {
+          "k": "可视化编辑",
+          "v": "首页、对话生成、应用管理、后台管理等 10+ 页面，元素选中可视化编辑，修改生效率 90%+。"
+        },
+        {
+          "k": "微服务架构",
+          "v": "拆分用户/应用/AI 生成等 4 个独立服务，Nacos 注册配置 + Dubbo3 RPC，可独立部署扩容。"
+        },
+        {
+          "k": "缓存优化",
+          "v": "Caffeine 本地缓存使实例重建率降低 60%；Redis 缓存把响应从 200ms 压到 20ms 以内。"
+        },
+        {
+          "k": "一键部署",
+          "v": "deployKey → 构建 → 产物复制 → URL 生成链路，一次性构建成功率提升至 95%+。"
+        }
+      ],
+      "metrics": [
+        {
+          "label": "生效率",
+          "value": "90%+"
+        },
+        {
+          "label": "构建成功率",
+          "value": "95%+"
+        },
+        {
+          "label": "响应耗时",
+          "value": "200ms → 20ms"
+        },
+        {
+          "label": "微服务",
+          "value": "4 个"
+        }
+      ],
+      "tags": [
+        "低代码",
+        "微服务",
+        "多租户"
+      ],
+      "accent": "rgb(var(--c-lime))",
+      "motif": "stack",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "canvas-director",
+      "title": "基于五模态的无限画布 AIGC 导演台",
+      "en": "INFINITE CANVAS",
+      "role": "AI 前端开发",
+      "period": "2026.03 — 2026.05",
+      "category": "AI 前端",
+      "award": "腾讯 PCG 校园 AI 产品创意大赛",
+      "stack": [
+        "React 19",
+        "Next.js 16",
+        "TypeScript",
+        "Three.js",
+        "Zustand",
+        "Go",
+        "MySQL",
+        "MCP Server"
+      ],
+      "summary": "一站式 5 模态 AI 视觉创作：无限画布、图片/音频/视频生成、3D 导演台、720 全景与素材沉淀的完整 Agent 创作链路。",
+      "bullets": [
+        {
+          "k": "无限画布",
+          "v": "坐标变换实现视口虚拟化 + Zustand 细粒度订阅，小地图、框选、复制粘贴，200+ 节点保持 60fps。"
+        },
+        {
+          "k": "多模态 AI",
+          "v": "Go 后端统一 3 类模态任务模型、全局轮询与结果持久化，任务中断率降低约 30%。"
+        },
+        {
+          "k": "3D 导演台",
+          "v": "Three.js 场景树管理角色/群演/机位，30fps 关键帧时间轴与画面截图复用。"
+        },
+        {
+          "k": "多协议网关",
+          "v": "统一 OpenAI 兼容 Chat/Images/Videos 为内部标准接口，全量落日志，支持 10+ 模型、5 类媒体能力。"
+        },
+        {
+          "k": "Skills 体系",
+          "v": "沉淀视频创作、3D 动画、品牌广告等内置 Skills，用户可复用导入，输出格式统一。"
+        },
+        {
+          "k": "AI 评测",
+          "v": "Langfuse 全链路 Trace + DeepEval 12 条学术质量用例，接入 Harness 回归与 CI 门禁。"
+        }
+      ],
+      "metrics": [
+        {
+          "label": "画布节点",
+          "value": "200+"
+        },
+        {
+          "label": "帧率",
+          "value": "60fps"
+        },
+        {
+          "label": "接入模型",
+          "value": "10+"
+        },
+        {
+          "label": "中断率",
+          "value": "↓ 30%"
+        }
+      ],
+      "tags": [
+        "Three.js",
+        "无限画布",
+        "Skills"
+      ],
+      "accent": "rgb(var(--c-sky))",
+      "motif": "rings",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "digital-tour-guide",
+      "title": "多模态 AI 数字人导游与智慧运营 Agent",
+      "en": "DIGITAL GUIDE",
+      "role": "Agent 开发",
+      "period": "2026.05 — 2026.07",
+      "category": "Agent 开发",
+      "award": "字节 TRAE AI 创造力大赛 Top300 入围（1.3%）",
+      "stack": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "Node.js",
+        "PostgreSQL",
+        "ASR/TTS",
+        "Live2D",
+        "DeepSeek",
+        "RAG"
+      ],
+      "summary": "面向 C 端游客与 B 端运营后台的 AI 数字人导游，集成高德 IP 服务、RAG 与 VR3D 识景，提供热门景点攻略与行程规划。",
+      "bullets": [
+        {
+          "k": "架构设计",
+          "v": "Next.js 14 + TypeScript 严密类型定义，模块化 API Route，统一异常处理与 Zod 校验。"
+        },
+        {
+          "k": "景点内容",
+          "v": "梳理 14 大核心城市，完成 70+ 精选景点高清图核查、简介编辑、标签分类与坐标归档。"
+        },
+        {
+          "k": "RAG 知识库",
+          "v": "「角色设定 + 文化背景」Prompt 模板，280 条人工标注集上 Top-3 命中率 71% → 92%。"
+        },
+        {
+          "k": "数字人导游",
+          "v": "Live2D IP 形象 + 实时语音对谈与微表情触发，使用率提升 62%，陪伴时长增加 3.5 分钟。"
+        },
+        {
+          "k": "运营后台",
+          "v": "游客情感指数、热搜词云、客流量图表，知识库分级上传与数字人音色配置中心。"
+        }
+      ],
+      "metrics": [
+        {
+          "label": "Top-3 命中",
+          "value": "92%"
+        },
+        {
+          "label": "使用率",
+          "value": "↑ 62%"
+        },
+        {
+          "label": "满意度",
+          "value": "96.5%"
+        },
+        {
+          "label": "入围率",
+          "value": "1.3%"
+        }
+      ],
+      "tags": [
+        "数字人",
+        "Live2D",
+        "C/B 双端"
+      ],
+      "accent": "rgb(var(--c-rose))",
+      "motif": "orbit",
+      "status": "published",
+      "version": 1
+    }
+  ],
+  "moments": [
+    {
+      "id": "m1",
+      "time": "今天 01:42",
+      "text": "把评测中台的第 42 个用例写完了。RSI 闭环终于能自己跑完一整轮，看着 pass_rate 从 0.71 爬到 0.93，比喝咖啡还提神。",
+      "place": "西安 · 实验室",
+      "likes": 128,
+      "accent": "rgb(var(--c-grape))",
+      "media": [
+        {
+          "label": "eval-report.png",
+          "kind": "photo"
+        }
+      ],
+      "comments": [
+        {
+          "user": "老陈",
+          "text": "这个曲线可以发朋友圈了"
+        },
+        {
+          "user": "小羊",
+          "text": "又是凌晨一点，记得睡觉"
+        }
+      ],
+      "tags": [
+        "深夜 coding"
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "m2",
+      "time": "昨天 19:20",
+      "text": "长沙决赛结束，第二名。评委问「你的自进化会不会自己乱改生产」，我说有三层刹车。他笑了，我也笑了。",
+      "place": "长沙 · 马栏山",
+      "likes": 342,
+      "accent": "rgb(var(--c-coral))",
+      "media": [
+        {
+          "label": "csdn-final.jpg",
+          "kind": "photo"
+        },
+        {
+          "label": "score-card",
+          "kind": "note"
+        }
+      ],
+      "comments": [
+        {
+          "user": "阿哲",
+          "text": "下次带我们一起飞"
+        }
+      ],
+      "tags": [
+        "黑客松",
+        "长沙"
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "m3",
+      "time": "3 天前",
+      "text": "黑了一整天：多轨道时间轴的拖拽在 Safari 上位置差了 12px。最后发现是 transform-origin 和 rem 换算的问题。前端真的是一门玄学。",
+      "likes": 96,
+      "accent": "rgb(var(--c-sky))",
+      "media": [
+        {
+          "label": "timeline-bug.mov",
+          "kind": "photo"
+        }
+      ],
+      "comments": [
+        {
+          "user": "前端群友",
+          "text": "12px 我可以作证，是 rem"
+        },
+        {
+          "user": "小羊",
+          "text": "注意眼睛"
+        }
+      ],
+      "tags": [
+        "debug 日常"
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "m4",
+      "time": "2026.09.18",
+      "text": "第一次给线下 80 个人讲 Agent Harness。讲到「工具越权要返回 404」的时候，前排有个同学疯狂点头，那一刻觉得做内容是有意义的。",
+      "place": "杭州 · 初芯 OPC",
+      "likes": 512,
+      "accent": "rgb(var(--c-lime))",
+      "media": [
+        {
+          "label": "opc-talk.jpg",
+          "kind": "photo"
+        }
+      ],
+      "comments": [
+        {
+          "user": "初芯小编",
+          "text": "回放已经剪好了，等你的教程"
+        },
+        {
+          "user": "Lily",
+          "text": "求 PPT"
+        }
+      ],
+      "tags": [
+        "分享",
+        "杭州"
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "m5",
+      "time": "2026.09.02",
+      "text": "骑车 42 公里环了西安一圈，从大唐不夜城到浐灞，在河边坐着看落日。写代码之外，城市也需要被阅读。",
+      "place": "西安 · 浐灞",
+      "likes": 208,
+      "accent": "rgb(var(--c-rose))",
+      "media": [
+        {
+          "label": "cycling-42km.jpg",
+          "kind": "photo"
+        },
+        {
+          "label": "sunset.heic",
+          "kind": "photo"
+        }
+      ],
+      "comments": [
+        {
+          "user": "小羊",
+          "text": "下次带我，我骑得慢你等我"
+        }
+      ],
+      "tags": [
+        "骑行",
+        "日落"
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "m6",
+      "time": "2026.08.11",
+      "text": "给开源项目补了 README 和 3 个 demo。凌晨收到第一个 star，比拿奖还开心一点。",
+      "likes": 174,
+      "accent": "rgb(var(--c-blue))",
+      "media": [
+        {
+          "label": "github-star.png",
+          "kind": "note"
+        }
+      ],
+      "comments": [
+        {
+          "user": "匿名网友",
+          "text": "demo 直接能跑，赞"
+        }
+      ],
+      "tags": [
+        "开源"
+      ],
+      "status": "published",
+      "version": 1
+    }
+  ],
+  "trips": [
+    {
+      "id": "t1",
+      "city": "西安",
+      "spot": "大雁塔 · 大唐不夜城",
+      "lon": 108.96,
+      "lat": 34.22,
+      "date": "2026.09.02",
+      "days": 1,
+      "companion": "自己",
+      "note": "骑行 42km 的终点，日落把塔身染成橘色。",
+      "tag": "城市漫游",
+      "color": "rgb(var(--c-coral))",
+      "size": "lg",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "t2",
+      "city": "重庆",
+      "spot": "万州 · 长江边",
+      "lon": 108.4,
+      "lat": 30.8,
+      "date": "2025.05.01",
+      "days": 5,
+      "companion": "小羊",
+      "note": "带她回家吃外婆做的饭，江风把她的头发吹得很乱。",
+      "tag": "家乡",
+      "color": "rgb(var(--c-lime))",
+      "size": "lg",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "t3",
+      "city": "成都",
+      "spot": "东安湖体育公园",
+      "lon": 104.07,
+      "lat": 30.57,
+      "date": "2024.07.21",
+      "days": 3,
+      "companion": "小羊",
+      "note": "第一场演唱会，副歌的时候她哭了。",
+      "tag": "演唱会",
+      "color": "rgb(var(--c-grape))",
+      "size": "md",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "t4",
+      "city": "杭州",
+      "spot": "西湖 · 断桥",
+      "lon": 120.05,
+      "lat": 30.35,
+      "date": "2026.09.17",
+      "days": 4,
+      "companion": "OPC 同行",
+      "note": "分享完第二天早起绕湖跑了一圈，雾很大。",
+      "tag": "出差",
+      "color": "rgb(var(--c-sky))",
+      "size": "md",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "t5",
+      "city": "长沙",
+      "spot": "马栏山视频文创园",
+      "lon": 113.03,
+      "lat": 28.22,
+      "date": "2026.08.08",
+      "days": 3,
+      "companion": "队友",
+      "note": "决赛前夜在便利店改 PPT 到两点。",
+      "tag": "黑客松",
+      "color": "rgb(var(--c-rose))",
+      "size": "md",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "t6",
+      "city": "北京",
+      "spot": "798 艺术区",
+      "lon": 116.49,
+      "lat": 39.98,
+      "date": "2026.01.01",
+      "days": 4,
+      "companion": "小羊",
+      "note": "跨年黑客松拿了最佳实践奖，奖金请她吃了顿好的。",
+      "tag": "跨年",
+      "color": "rgb(var(--c-blue))",
+      "size": "md",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "t7",
+      "city": "南京",
+      "spot": "阿里中心 · 建邺",
+      "lon": 118.73,
+      "lat": 32,
+      "date": "2026.06.14",
+      "days": 3,
+      "companion": "队友",
+      "note": "路演完在秦淮河边走了很久。",
+      "tag": "黑客松",
+      "color": "rgb(var(--c-lime))",
+      "size": "sm",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "t8",
+      "city": "上海",
+      "spot": "张江科学城",
+      "lon": 121.4,
+      "lat": 31.15,
+      "date": "2026.05.25",
+      "days": 4,
+      "companion": "团队",
+      "note": "星火 OPC 决赛，第一次在投资人面前讲收费模型。",
+      "tag": "决赛",
+      "color": "rgb(var(--c-coral))",
+      "size": "md",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "t9",
+      "city": "深圳",
+      "spot": "南山区 · 深圳湾",
+      "lon": 113.93,
+      "lat": 22.53,
+      "date": "2025.12.12",
+      "days": 3,
+      "companion": "自己",
+      "note": "看海的时候想通了一个架构问题。",
+      "tag": "灵感",
+      "color": "rgb(var(--c-sky))",
+      "size": "sm",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "t10",
+      "city": "厦门",
+      "spot": "鼓浪屿",
+      "lon": 117.95,
+      "lat": 24.5,
+      "date": "2024.08.02",
+      "days": 4,
+      "companion": "小羊",
+      "note": "岛上没有车，走了两万步，吃了三碗沙茶面。",
+      "tag": "旅行",
+      "color": "rgb(var(--c-rose))",
+      "size": "md",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "t11",
+      "city": "乌鲁木齐",
+      "spot": "天山天池",
+      "lon": 88.13,
+      "lat": 43.88,
+      "date": "2023.08.10",
+      "days": 7,
+      "companion": "家人",
+      "note": "本科毕业旅行，海拔 1900 米的风很干净。",
+      "tag": "毕业旅行",
+      "color": "rgb(var(--c-lime))",
+      "size": "sm",
+      "status": "published",
+      "version": 1
+    }
+  ],
+  "tracks": [
+    {
+      "id": "p1",
+      "title": "橘色落日",
+      "artist": "房东的猫",
+      "album": "云烟成雨",
+      "duration": 245,
+      "mood": "写代码时的背景",
+      "color": "rgb(var(--c-coral))",
+      "lyric": [
+        "风把云吹成一条河",
+        "我把今天写完一半",
+        "剩下的留给明天",
+        "留给落日和你说晚安"
+      ],
+      "bars": [
+        18,
+        34,
+        52,
+        40,
+        66,
+        48,
+        72,
+        30,
+        58,
+        44,
+        68,
+        38
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "p2",
+      "title": "Midnight Commit",
+      "artist": "Lofi Dev",
+      "album": "Deploy at 3am",
+      "duration": 198,
+      "mood": "凌晨跑评测",
+      "color": "rgb(var(--c-grape))",
+      "lyric": [
+        "build passed in the dark",
+        "the logs are singing low",
+        "one more test to go",
+        "then I let the server go"
+      ],
+      "bars": [
+        24,
+        46,
+        30,
+        62,
+        38,
+        54,
+        26,
+        70,
+        34,
+        58,
+        42,
+        64
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "p3",
+      "title": "长安夜骑",
+      "artist": "陈鸿宇",
+      "album": "一如年少模样",
+      "duration": 262,
+      "mood": "夜骑 42km",
+      "color": "rgb(var(--c-lime))",
+      "lyric": [
+        "城墙的影子被灯拉长",
+        "风从钟楼吹到浐灞",
+        "我踩着 pedal 数着里程",
+        "把这座城读了一遍"
+      ],
+      "bars": [
+        52,
+        30,
+        68,
+        44,
+        60,
+        36,
+        74,
+        48,
+        56,
+        32,
+        66,
+        40
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "p4",
+      "title": "异地信号",
+      "artist": "落日飞车",
+      "album": "Cassa Nova",
+      "duration": 231,
+      "mood": "想她的时候",
+      "color": "rgb(var(--c-rose))",
+      "lyric": [
+        "一千一百公里的距离",
+        "被一句晚安折叠起来",
+        "你的呼吸有点延迟",
+        "但心跳没有"
+      ],
+      "bars": [
+        36,
+        58,
+        44,
+        70,
+        28,
+        52,
+        40,
+        66,
+        46,
+        60,
+        34,
+        72
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "p5",
+      "title": "Token 雨",
+      "artist": "Yat Yat",
+      "album": "Context Window",
+      "duration": 214,
+      "mood": "调 Harness",
+      "color": "rgb(var(--c-blue))",
+      "lyric": [
+        "上下文在下雨",
+        "我把窗口开得很小",
+        "只留下最重要的那一行",
+        "然后让它自己跑"
+      ],
+      "bars": [
+        64,
+        40,
+        56,
+        28,
+        72,
+        46,
+        62,
+        34,
+        68,
+        42,
+        58,
+        30
+      ],
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "p6",
+      "title": "外婆的灶台",
+      "artist": "野孩子",
+      "album": "黄河谣",
+      "duration": 289,
+      "mood": "想家的时候",
+      "color": "rgb(var(--c-surface-2))",
+      "lyric": [
+        "灶上的水一直开着",
+        "腊肉的味道穿过院子",
+        "她说多吃一点",
+        "回去就吃不到了"
+      ],
+      "bars": [
+        30,
+        44,
+        58,
+        36,
+        52,
+        66,
+        40,
+        56,
+        48,
+        62,
+        34,
+        50
+      ],
+      "status": "published",
+      "version": 1
+    }
+  ],
+  "friends": [
+    {
+      "id": "f1",
+      "name": "初芯 OPC",
+      "desc": "杭州的 AI 创业者社区，我在那里讲过 Harness。",
+      "url": null,
+      "tag": "社区",
+      "color": "rgb(var(--c-lime))",
+      "avatar": "初",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f2",
+      "name": "老陈的炼丹炉",
+      "desc": "做多模态的师兄，微表情数据集的另一位贡献者。",
+      "url": null,
+      "tag": "同门",
+      "color": "rgb(var(--c-sky))",
+      "avatar": "陈",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f3",
+      "name": "阿哲",
+      "desc": "黑客松固定队友，前端手速比我快一倍。",
+      "url": null,
+      "tag": "队友",
+      "color": "rgb(var(--c-rose))",
+      "avatar": "哲",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f4",
+      "name": "DeepEval 中文社区",
+      "desc": "评测工具的中文文档与案例，我的评测启蒙。",
+      "url": "https://deepeval.com",
+      "tag": "开源",
+      "color": "rgb(var(--c-grape))",
+      "avatar": "DE",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f5",
+      "name": "西交 AI 俱乐部",
+      "desc": "高校 AI 黑客松的组织方，认识了很多同频的人。",
+      "url": null,
+      "tag": "社团",
+      "color": "rgb(var(--c-coral))",
+      "avatar": "XJ",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f6",
+      "name": "小羊的相机",
+      "desc": "她的胶片日记，我的站内照片一半来自这里。",
+      "url": null,
+      "tag": "生活",
+      "color": "rgb(var(--c-surface-2))",
+      "avatar": "羊",
+      "status": "published",
+      "version": 1
+    }
+  ],
+  "awards": [
+    {
+      "name": "2026 上海星火计划 OPC 超级个体",
+      "rank": "国赛一等奖",
+      "year": "2026",
+      "type": "国赛",
+      "id": "awards-1",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "2026 高校 AI 黑客松 · 西安交通大学站",
+      "rank": "第一名",
+      "year": "2026",
+      "type": "黑客松",
+      "id": "awards-2",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "2026 长沙 CSDN Agent 创新大赛",
+      "rank": "决赛第二名",
+      "year": "2026",
+      "type": "国赛",
+      "id": "awards-3",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "第十届高校计算机大赛 AIGC 创新",
+      "rank": "国赛二等奖",
+      "year": "2026",
+      "type": "国赛",
+      "id": "awards-4",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "第九届「远见者」杯创新就业大赛",
+      "rank": "国赛二等奖",
+      "year": "2026",
+      "type": "国赛",
+      "id": "awards-5",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "第十五届蓝桥杯 人工智能设计+",
+      "rank": "国赛二等奖",
+      "year": "2026",
+      "type": "国赛",
+      "id": "awards-6",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "第十二届数字媒体科技创意竞赛",
+      "rank": "省赛一等奖",
+      "year": "2025",
+      "type": "省赛",
+      "id": "awards-7",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "第八届传智杯 AI 大模型创新应用赛",
+      "rank": "一等奖",
+      "year": "2025",
+      "type": "省赛",
+      "id": "awards-8",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "2026 环球杭州 AI 黑客松",
+      "rank": "第三名",
+      "year": "2026",
+      "type": "黑客松",
+      "id": "awards-9",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "2026 北京跨年黑客松",
+      "rank": "最佳实践奖",
+      "year": "2026",
+      "type": "黑客松",
+      "id": "awards-10",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "2026 直通乌镇 OPC 全球互联网",
+      "rank": "决赛入围",
+      "year": "2026",
+      "type": "决赛",
+      "id": "awards-11",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "2026 字节 TRAE AI 创造力大赛",
+      "rank": "Top300 入围 (1.3%)",
+      "year": "2026",
+      "type": "决赛",
+      "id": "awards-12",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "2026 南京 Flux 阿里中心 AI 黑客松",
+      "rank": "决赛入围",
+      "year": "2026",
+      "type": "决赛",
+      "id": "awards-13",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "2026 WAIC 世界人工智能大会",
+      "rank": "企业路演",
+      "year": "2026",
+      "type": "实践",
+      "id": "awards-14",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "第七届全国高校计算机能力挑战赛",
+      "rank": "Python 省二等奖",
+      "year": "2025",
+      "type": "省赛",
+      "id": "awards-15",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "name": "2026 腾讯 PCG 校园 AI 产品创意大赛",
+      "rank": "优秀作品",
+      "year": "2026",
+      "type": "决赛",
+      "id": "awards-16",
+      "status": "published",
+      "version": 1
+    }
+  ],
+  "skills": [
+    {
+      "key": "rag",
+      "title": "RAG 技术",
+      "color": "lime",
+      "level": 92,
+      "summary": "文档切片、分块策略、Embedding 向量库、Top-K 召回重排，具备来源追溯与问题排查能力。",
+      "points": [
+        "切片/分块策略",
+        "双路召回 + RRF 融合",
+        "来源追溯与引用",
+        "RAGAS 四维评测"
+      ],
+      "id": "skills-1",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "key": "agent",
+      "title": "Agent 开发",
+      "color": "coral",
+      "level": 94,
+      "summary": "Harness、Multi-Agent、RSI 自进化、MCP/Skills 模块化、Coze 智能体的完整实践。",
+      "points": [
+        "ReAct / Tool Calling",
+        "多智能体合议",
+        "Skills 模块化沉淀",
+        "自进化回归闭环"
+      ],
+      "id": "skills-2",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "key": "fullstack",
+      "title": "全栈开发",
+      "color": "blue",
+      "level": 88,
+      "summary": "Python、Java、Vue、uni-app，拥有 H5 / Android / Harmony / 小程序跨端落地经验。",
+      "points": [
+        "React / Vue 双栈",
+        "Spring Cloud + Dubbo3",
+        "FastAPI / LangGraph",
+        "多端适配"
+      ],
+      "id": "skills-3",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "key": "eval",
+      "title": "评测迭代",
+      "color": "grape",
+      "level": 86,
+      "summary": "构建业务量化指标与数据集，用 badcase、人工校验和埋点反馈驱动产品迭代。",
+      "points": [
+        "指标体系设计",
+        "LLM-as-a-Judge",
+        "人工校准集",
+        "A/B 盲测"
+      ],
+      "id": "skills-4",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "key": "llm",
+      "title": "大模型原理",
+      "color": "rose",
+      "level": 82,
+      "summary": "LLM、Transformer、MoE、GRPO、VLM、LoRA 微调与多模态，理解幻觉与能力边界。",
+      "points": [
+        "Transformer / MoE",
+        "LoRA 微调",
+        "VLM 多模态",
+        "上下文窗口管理"
+      ],
+      "id": "skills-5",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "key": "vibe",
+      "title": "AI 编程",
+      "color": "sky",
+      "level": 96,
+      "summary": "深度使用 Codex、WorkBuddy 等工具，快速部署 Demo 并上线，保持良好代码风格。",
+      "points": [
+        "快速原型到上线",
+        "7 款付费产品",
+        "开源 20+ 项目",
+        "Debug 与重构"
+      ],
+      "id": "skills-6",
+      "status": "published",
+      "version": 1
+    }
+  ],
+  "resources": [
+    {
+      "id": "f1",
+      "name": "晓叶-AI全栈开发-简历",
+      "ext": "docx",
+      "size": "199 KB",
+      "date": "2026.10.12",
+      "category": "简历与作品集",
+      "desc": "最新版简历原件（含 7 个项目与技术栈索引）。",
+      "downloads": 386,
+      "starred": true,
+      "url": "/files/wyx-resume-2026.docx",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f2",
+      "name": "作品集 2026 · 项目长图",
+      "ext": "pdf",
+      "size": "8.4 MB",
+      "date": "2026.10.08",
+      "category": "简历与作品集",
+      "desc": "7 个项目的设计稿与指标图汇编。",
+      "downloads": 214,
+      "starred": true,
+      "pending": "需要真实设计导出件 + 对象存储（B6），先留位",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f3",
+      "name": "Agent 评测中台 · 架构图",
+      "ext": "fig",
+      "size": "24 MB",
+      "date": "2026.09.21",
+      "category": "模板",
+      "desc": "评测流水线与 RSI 四张数据表的完整 ER 图。",
+      "downloads": 132,
+      "pending": "Figma 源文件无法静态托管，需 B6 签名下载",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f4",
+      "name": "RAG 工程化讲义（杭州 OPC）",
+      "ext": "pptx",
+      "size": "18 MB",
+      "date": "2026.09.18",
+      "category": "课程与讲义",
+      "desc": "线下 80 人分享的原始课件。",
+      "downloads": 468,
+      "starred": true,
+      "pending": "课件原件待上传；文字版可先看资源中心的教程合集",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f5",
+      "name": "FDE 教程合集 · 结构与写作规范",
+      "ext": "md",
+      "size": "2.9 KB",
+      "date": "2026.09.05",
+      "category": "课程与讲义",
+      "desc": "89 篇教程的分类体系与单篇写作模板（可直接拿去套）。",
+      "downloads": 921,
+      "url": "/files/fde-tutorials-structure.md",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f6",
+      "name": "微表情数据清洗脚本模板",
+      "ext": "py",
+      "size": "7.1 KB",
+      "date": "2026.08.30",
+      "category": "源码",
+      "desc": "光流特征提取 + 标注校验 + 批量重采样的可跑骨架。",
+      "downloads": 176,
+      "url": "/files/micro-expression-clean.py",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f7",
+      "name": "电商客服评测集（脱敏样例 24 条）",
+      "ext": "csv",
+      "size": "4.5 KB",
+      "date": "2026.08.12",
+      "category": "数据集",
+      "desc": "含 reference_context_ids，可直接跑 RAGAS。",
+      "downloads": 305,
+      "starred": true,
+      "url": "/files/ecommerce-eval-sample.csv",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f8",
+      "name": "Harness 回归用例模板",
+      "ext": "zip",
+      "size": "12.2 KB",
+      "date": "2026.07.28",
+      "category": "模板",
+      "desc": "12 条 CI 回归用例与 mock 工具服务。",
+      "downloads": 198,
+      "url": "/files/harness-regression-template.zip",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "f9",
+      "name": "无限画布最小实现",
+      "ext": "zip",
+      "size": "5.7 MB",
+      "date": "2026.06.02",
+      "category": "源码",
+      "desc": "React + Zustand 的视口/框选/小地图 demo。",
+      "downloads": 264,
+      "pending": "完整仓库未发布，先看 GitHub 上的开源仓库",
+      "status": "published",
+      "version": 1
+    }
+  ],
+  "toolboxGroups": [
+    {
+      "key": "prompt",
+      "title": "Prompt 仓库",
+      "desc": "反复用、改了十几次的提示词，直接抄。",
+      "color": "rgb(var(--c-lime))",
+      "items": [
+        {
+          "id": "p1",
+          "title": "RAG 引用约束 Prompt",
+          "desc": "强制每句结论绑定 chunk_id，不允许无源回答。",
+          "tag": "RAG",
+          "link": "#",
+          "stars": 42,
+          "hot": true
+        },
+        {
+          "id": "p2",
+          "title": "Judge 评分模板 v3",
+          "desc": "带 rubric 与反例的 6 维评分，附 ±0.05 校准方法。",
+          "tag": "评测",
+          "link": "#",
+          "stars": 37
+        },
+        {
+          "id": "p3",
+          "title": "Agent 交接文档生成器",
+          "desc": "把需求变成「目标/约束/验收」三段式。",
+          "tag": "协作",
+          "link": "#",
+          "stars": 28
+        },
+        {
+          "id": "p4",
+          "title": "多智能体主席合议 Prompt",
+          "desc": "5 类专家 + 主席汇总，输出可问责结论。",
+          "tag": "Agent",
+          "link": "#",
+          "stars": 31
+        }
+      ]
+    },
+    {
+      "key": "code",
+      "title": "代码片段",
+      "desc": "复制就能跑的小组件，都是线上磨过的。",
+      "color": "rgb(var(--c-sky))",
+      "items": [
+        {
+          "id": "c1",
+          "title": "RRF 融合实现（Python）",
+          "desc": "双路召回排名融合，k 可配，30 行搞定。",
+          "tag": "RAG",
+          "link": "#",
+          "stars": 56,
+          "hot": true
+        },
+        {
+          "id": "c2",
+          "title": "SSE 流式对话 Hook",
+          "desc": "断线重连、节流、卸载清理一次处理完。",
+          "tag": "React",
+          "link": "#",
+          "stars": 48
+        },
+        {
+          "id": "c3",
+          "title": "Zod 校验的 API Route",
+          "desc": "Next.js 统一异常处理 + 类型守卫。",
+          "tag": "Node",
+          "link": "#",
+          "stars": 26
+        },
+        {
+          "id": "c4",
+          "title": "无限画布视口变换",
+          "desc": "坐标转换 + 虚拟化，200 节点不掉帧。",
+          "tag": "Canvas",
+          "link": "#",
+          "stars": 33
+        }
+      ]
+    },
+    {
+      "key": "design",
+      "title": "设计资产",
+      "desc": "配色、字体、组件规范，做作品集直接拿。",
+      "color": "rgb(var(--c-rose))",
+      "items": [
+        {
+          "id": "d1",
+          "title": "Paper Brutal 色板",
+          "desc": "米白纸感 + 墨黑硬边 + 酸性绿点缀。",
+          "tag": "配色",
+          "link": "#",
+          "stars": 64
+        },
+        {
+          "id": "d2",
+          "title": "卡片硬阴影规范",
+          "desc": "2/4/8px 三档硬阴影，hover 位移 3px。",
+          "tag": "UI",
+          "link": "#",
+          "stars": 22
+        },
+        {
+          "id": "d3",
+          "title": "杂志式版式栅格",
+          "desc": "12 列非对称栅格，适合信息密度高的首页。",
+          "tag": "版式",
+          "link": "#",
+          "stars": 19
+        }
+      ]
+    },
+    {
+      "key": "reading",
+      "title": "在读 / 在听",
+      "desc": "最近喂养大脑的东西。",
+      "color": "rgb(var(--c-grape))",
+      "items": [
+        {
+          "id": "r1",
+          "title": "《Building LLM Apps》",
+          "desc": "工程视角讲评测与可观测性，第三章反复读。",
+          "tag": "书",
+          "link": "#",
+          "stars": 15
+        },
+        {
+          "id": "r2",
+          "title": "Anthropic: Building effective agents",
+          "desc": "少即是多，能不用框架就不用框架。",
+          "tag": "论文",
+          "link": "#",
+          "stars": 41
+        },
+        {
+          "id": "r3",
+          "title": "Latent Space 播客",
+          "desc": "通勤路上听，采访比教程真实。",
+          "tag": "播客",
+          "link": "#",
+          "stars": 12
+        }
+      ]
+    }
+  ],
+  "education": [
+    {
+      "school": "陕西科技大学",
+      "degree": "信息与通信工程 · 硕士",
+      "direction": "多模态 AI 方向",
+      "period": "2025.09 — 2028.07",
+      "badge": "在读",
+      "points": [
+        "主修 Python、机器学习、深度学习、计算机视觉、自然语言处理、智能语音处理、大数据分析与挖掘、软件体系结构",
+        "参与线下黑客松 10+ 次，WAIC 世界人工智能大会企业路演、NVIDIA 中国开发者黑客松决赛、Eazo 全球社区大使"
+      ]
+    },
+    {
+      "school": "西安科技大学",
+      "degree": "通信工程 · 本科",
+      "direction": "国家特色专业",
+      "period": "2021.09 — 2025.07",
+      "badge": "综测 1/193",
+      "points": [
+        "综测 1/193：国奖 9 项、省奖 15 项、校奖 27 项，软著及发明专利 2 项",
+        "连续 4 次国家励志奖学金、校级一等奖学金、年度科技创新奖",
+        "字节跳动工程训练营、腾讯未来产品及 AI 全栈训练营优秀学员，华为开发者高级认证、工信部计算机视觉架构中级认证"
+      ]
+    }
+  ],
+  "research": [
+    {
+      "title": "基于光流特征与多智能体知识增强的微表情识别方法研究",
+      "venue": "CCF-A · ICCV 2027 在投",
+      "role": "学生一作",
+      "points": [
+        "提出 KAMER 方案，在识别、可解释、应用三个层面实现微表情闭环",
+        "UF1 = 90.25%、ACC = 89.45%，领先当前 SOTA 指标"
+      ]
+    },
+    {
+      "title": "基于多模态 AI 的数字医生心理健康检测与疗愈软硬件平台",
+      "venue": "计算机专利、软著 2 项",
+      "role": "高校 AI 黑客松西安交大站第一名",
+      "points": [
+        "B 端 + C 端多模态情绪评估（文本 / 语音 / 微表情），联动手环生理数据",
+        "个性化疗愈、健康报告，实现高效率初筛并对接医生"
+      ]
+    },
+    {
+      "title": "面向科研场景的 AI 大模型与智能体原理与实践指南",
+      "venue": "杭州初芯 OPC 嘉宾分享 · 7.9w 播放",
+      "role": "原创 AI 开源教程",
+      "points": [
+        "3 个案例项目，覆盖大模型与 Agent 基础原理与应用",
+        "Vibe coding 教学、GPU 环境配置、从选题到投稿的提效教程"
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "value": 7,
+      "suffix": "款",
+      "label": "已上线 AI 产品",
+      "note": "全部为付费闭环"
+    },
+    {
+      "value": 16,
+      "suffix": "项",
+      "label": "竞赛获奖",
+      "note": "国赛 6 项"
+    },
+    {
+      "value": 23,
+      "suffix": "k",
+      "label": "主阵地粉丝",
+      "note": "AI 教程 / 开源"
+    },
+    {
+      "value": 7,
+      "suffix": "场",
+      "label": "2026 黑客松现场",
+      "note": "6 场进决赛"
+    }
+  ],
+  "growthTimeline": [
+    {
+      "id": "g1",
+      "date": "2018.09",
+      "year": "2018",
+      "title": "高中毕业，第一次自己装机",
+      "org": "重庆万州",
+      "desc": "为了打游戏装了第一台电脑，结果把主板装坏了两次。从那时起开始折腾硬件和脚本。",
+      "tag": "生活"
+    },
+    {
+      "id": "g2",
+      "date": "2021.09",
+      "year": "2021",
+      "title": "进入西安科技大学通信工程",
+      "org": "国家特色专业",
+      "desc": "大一写 C 语言作业写到凌晨，第一次体会到「跑通」的快乐。",
+      "tag": "学习"
+    },
+    {
+      "id": "g3",
+      "date": "2022.11",
+      "year": "2022",
+      "title": "第一段实习，写 Java 后端",
+      "org": "西安 · 校招前的试炼",
+      "desc": "第一次接触真实需求与线上问题，学会了看日志、复现 bug、写清楚提交信息。",
+      "tag": "学习"
+    },
+    {
+      "id": "g4",
+      "date": "2023.05",
+      "year": "2023",
+      "title": "遇到小羊",
+      "org": "图书馆四楼",
+      "desc": "借走同一本《深度学习》，然后被要求「必须看完」。",
+      "tag": "生活",
+      "highlight": true
+    },
+    {
+      "id": "g5",
+      "date": "2024.05",
+      "year": "2024",
+      "title": "Coder 零代码 AI 应用平台上线",
+      "org": "西安粤嵌信息科技",
+      "desc": "LangGraph4j + 微服务 + 一键部署，第一次把 AI 能力做成别人能用的产品。",
+      "tag": "项目"
+    },
+    {
+      "id": "g6",
+      "date": "2024.12",
+      "year": "2024",
+      "title": "开始做 AI 自媒体",
+      "org": "小红书 / B站 / 公众号",
+      "desc": "第一篇 FDE 教程只有 200 播放，第 20 篇破了 10w。现在累计 2.3w 粉。",
+      "tag": "内容"
+    },
+    {
+      "id": "g7",
+      "date": "2025.06",
+      "year": "2025",
+      "title": "字节跳动 · 电商 RAG 客服",
+      "org": "北京字跳网络技术",
+      "desc": "把 Recall@5 从 0.72 推到 0.93，第一次理解「评测驱动」是什么意思。",
+      "tag": "项目",
+      "highlight": true
+    },
+    {
+      "id": "g8",
+      "date": "2025.09",
+      "year": "2025",
+      "title": "保研陕西科技大学，转向多模态",
+      "org": "信息与通信工程 · 硕士",
+      "desc": "微表情识别课题投 ICCV 2027，UF1 90.25%，开始做「能发论文也能落地」的研究。",
+      "tag": "学习",
+      "highlight": true
+    },
+    {
+      "id": "g9",
+      "date": "2026.05",
+      "year": "2026",
+      "title": "7 场黑客松，6 次决赛",
+      "org": "上海 / 长沙 / 南京 / 西安 / 杭州",
+      "desc": "星火 OPC 国赛一等奖、西安交大站第一名、CSDN 决赛第二名。作品开始有人愿意付费。",
+      "tag": "竞赛",
+      "highlight": true
+    },
+    {
+      "id": "g10",
+      "date": "2026.10",
+      "year": "2026",
+      "title": "在准备下一段实习",
+      "org": "AI 全栈 / 智能体开发",
+      "desc": "作品集更新到这一页。希望下一站，能把 Agent 做到真正被日常使用。",
+      "tag": "项目"
+    }
+  ],
+  "profile": {
+    "name": "晓叶",
+    "latin": "WEI YUNXIAO",
+    "handle": "wyx",
+    "role": "AI 全栈 / 智能体开发",
+    "tagline": "把想法做成能上线的东西。",
+    "location": "西安 · 陕西科技大学",
+    "hometown": "重庆万州",
+    "age": 24,
+    "status": "在读研二 · 寻找 AI 全栈实习",
+    "availability": "6 个月以上 · 5 天/周 · 随时到岗",
+    "email": "wyxcode@qq.com",
+    "wechat": "wyx200265",
+    "phone": "18323765634",
+    "bio": [
+      "信息与通信工程硕士在读，多模态 AI 方向。写代码之前先想清楚「谁会用、用完得到什么」，所以我的项目大多从一句真实需求开始，最后落到一个能付费、能被评测的线上产品。",
+      "上过 7 款 AI 付费产品，打过 7 场线下黑客松，也是一个 2.3w 粉的 AI 内容创作者。白天写 Agent，晚上剪视频，剩下的时间在西安的巷子里找面吃。"
+    ],
+    "keywords": [
+      "RAG",
+      "Multi-Agent",
+      "Harness",
+      "全栈",
+      "多模态",
+      "评测驱动"
+    ],
+    "socials": [
+      {
+        "label": "Email",
+        "value": "wyxcode@qq.com",
+        "href": "mailto:wyxcode@qq.com",
+        "icon": "mail"
+      },
+      {
+        "label": "GitHub",
+        "value": "@wyx-code",
+        "href": "https://github.com/wyx-code",
+        "icon": "github"
+      },
+      {
+        "label": "小红书",
+        "value": "2.3w 粉",
+        "href": null,
+        "icon": "book"
+      },
+      {
+        "label": "微信",
+        "value": "wyx200265",
+        "href": null,
+        "icon": "chat"
+      }
+    ]
+  },
+  "siteMeta": {
+    "name": "WYX.SPACE",
+    "author": "晓叶",
+    "url": "https://wyx.space",
+    "title": "晓叶 · WYX.SPACE",
+    "description": "晓叶的个人动态主页 — AI 全栈 / 智能体开发。项目、学习笔记、生活碎片与成长时间轴。",
+    "defaultTheme": "paper",
+    "build": "2026.10.29"
+  }
+}

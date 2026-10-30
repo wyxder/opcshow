@@ -19,12 +19,16 @@ import {
   Textarea,
 } from '@/admin/ui'
 import { cn, newId } from '@/lib/utils'
+import { contents, toServerStatus } from '@/services/content'
+import { serverConfig } from '@/services/config'
 
 type Tab = 'articles' | 'projects' | 'moments'
 type ArticleRow = (typeof adminArticles)[number]
 type PostRow = (typeof adminPosts)[number]
 
 const statusFilters = ['全部', '已发布', '草稿', '待审核']
+/** 演示模式写操作的统一说法：不伪装成功 */
+const demoNote = '演示模式：只改本次会话，刷新后丢失'
 
 export default function ContentPage({
   tab,
@@ -66,28 +70,43 @@ export default function ContentPage({
     setEditing(a)
   }
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!draft.title.trim()) return show('标题不能为空')
-    if (editing) {
-      setArticles((l) => l.map((a) => (a.id === editing.id ? { ...a, title: draft.title, category: draft.category, status: draft.status as ArticleRow['status'] } : a)))
+    const payload = {
+      title: draft.title,
+      category: draft.category,
+      abstract: draft.abstract,
+      status: toServerStatus(draft.status),
+    }
+    if (!serverConfig.enabled) {
+      if (editing) {
+        setArticles((l) => l.map((a) => (a.id === editing.id ? { ...a, title: draft.title, category: draft.category, status: draft.status as ArticleRow['status'] } : a)))
+        setEditing(null)
+      } else {
+        setArticles((l) => [
+          { id: newId('new'), title: draft.title, category: draft.category, status: draft.status as ArticleRow['status'], views: 0, comments: 0, date: '2026-10-30', words: 0 },
+          ...l,
+        ])
+        setCreating(false)
+      }
+      return show(`已更新界面 · ${demoNote}`)
+    }
+    try {
+      const id = editing?.id ?? newId('article')
+      await contents.upsert('articles', id, payload)
+      if (editing) {
+        setArticles((l) => l.map((a) => (a.id === editing.id ? { ...a, title: draft.title, category: draft.category, status: draft.status as ArticleRow['status'] } : a)))
+      } else {
+        setArticles((l) => [
+          { id, title: draft.title, category: draft.category, status: draft.status as ArticleRow['status'], views: 0, comments: 0, date: '2026-10-30', words: 0 },
+          ...l,
+        ])
+      }
       setEditing(null)
-      show('文章已更新')
-    } else {
-      setArticles((l) => [
-        {
-          id: newId('new'),
-          title: draft.title,
-          category: draft.category,
-          status: draft.status as ArticleRow['status'],
-          views: 0,
-          comments: 0,
-          date: '2026-10-30',
-          words: 0,
-        },
-        ...l,
-      ])
       setCreating(false)
-      show(draft.status === '已发布' ? '文章已发布' : '草稿已创建')
+      show('已保存到服务端')
+    } catch (err) {
+      show(`保存失败：${(err as Error).message}`)
     }
   }
 
@@ -115,7 +134,7 @@ export default function ContentPage({
       <PageTitle
         kicker="Content"
         title="内容管理"
-        desc="文章、项目与动态共用一套内容模型，发布后会即时出现在前台对应栏目。"
+        desc={serverConfig.enabled ? '发布后会即时出现在前台对应栏目。' : '当前未接服务端：列表为演示数据，写操作只改本次会话。'}
         right={
           <>
             <Link to="/learn" className="text-[11.5px] text-admin-muted transition hover:text-admin-ink">
@@ -203,7 +222,7 @@ export default function ContentPage({
                       className="hover:border-coral/60 hover:text-admin-danger"
                       onClick={() => {
                         setArticles((l) => l.filter((x) => x.id !== a.id))
-                        show('已删除（演示）')
+                        show(`已从列表移除 · ${demoNote}`)
                       }}
                     >
                       <Trash2 size={12} />

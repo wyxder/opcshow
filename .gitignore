@@ -2,6 +2,9 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +25,10 @@ write-test.txt
 # 构建期生成，不入库（npm run gen:seo）
 public/sitemap.xml
 public/rss.xml
+
+# 构建期生成，不入库（npm run prerender）
+public/og/
+
+# 服务端运行数据（fx1 B-12）：JSON 持久化 + 评测报告
+server/data/
+server/eval-report.json

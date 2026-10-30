@@ -1,15 +1,16 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUp, Bot, ExternalLink, Loader2, Minus, Sparkles, X } from 'lucide-react'
+import { ArrowUp, Bot, ExternalLink, Loader2, Minus, RotateCcw, Sparkles, Square, X } from 'lucide-react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
-import { cn, newId } from '@/lib/utils'
-import { getAssistantContext, subscribeAssistantContext } from '@/lib/assistant'
+import { useFocusTrap } from '@/lib/a11y'
+import { cn, newId, usePrefersReducedMotion } from '@/lib/utils'
+import { describeContext, getAssistantContextSnapshot, subscribeAssistantContext } from '@/lib/assistant'
 import { askSite, quickPrompts, type AnswerSource, type ChatReference } from '@/services/ai'
 import { serverConfig } from '@/services/config'
 
 /** 「正在阅读」上下文：由页面通过 setAssistantContext() 写入 */
 function useAssistantContext() {
-  return useSyncExternalStore(subscribeAssistantContext, getAssistantContext, () => '')
+  return useSyncExternalStore(subscribeAssistantContext, getAssistantContextSnapshot, () => getAssistantContextSnapshot())
 }
 
 type Msg = {
@@ -18,6 +19,13 @@ type Msg = {
   text: string
   source?: AnswerSource
   references?: ChatReference[]
+  degraded?: boolean
+}
+
+const sourceLabel = (source: AnswerSource, degraded?: boolean) => {
+  if (source === 'model') return degraded ? '模型生成（引用未校验通过，可能不准确）' : '模型生成，可能不准确'
+  if (source === 'retrieval') return '站内检索摘录 · 未接模型'
+  return '预置问答 · 作者手写'
 }
 
 const greeting = (live: boolean): Msg => ({
@@ -31,13 +39,21 @@ const greeting = (live: boolean): Msg => ({
 
 export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
+  const reduce = usePrefersReducedMotion()
   const context = useAssistantContext()
+  const contextText = describeContext(context)
   const [msgs, setMsgs] = useState<Msg[]>([greeting(serverConfig.enabled)])
   const [draft, setDraft] = useState('')
   const [typing, setTyping] = useState(false)
   const [lastSource, setLastSource] = useState<AnswerSource>(serverConfig.enabled ? 'model' : 'preset')
+  const [degraded, setDegraded] = useState(false)
+  const [lastAsk, setLastAsk] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const cancelRef = useRef<null | (() => void)>(null)
+
+  useFocusTrap(open, panelRef)
 
   useEffect(() => {
     if (defaultOpen) setOpen(true)
@@ -53,25 +69,57 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [msgs, typing, open])
 
-  // 卸载 / 关闭时取消进行中的回答，避免定时器与流残留
+  // F-03：关闭 / Esc / 卸载都终止进行中的流，避免残留 token 与定时器
+  const stop = () => {
+    cancelRef.current?.()
+    cancelRef.current = null
+    setTyping(false)
+  }
+
+  const close = () => {
+    stop()
+    setOpen(false)
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && open) close()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   useEffect(() => () => cancelRef.current?.(), [])
 
   const reply = (input: string) => {
     const id = newId('bot')
     setTyping(true)
+    setFailed(false)
+    setLastAsk(input)
     setMsgs((m) => [...m, { id, role: 'bot', text: '' }])
 
     cancelRef.current = askSite(
-      { input, context, history: msgs.map((m) => ({ role: m.role === 'bot' ? ('assistant' as const) : ('user' as const), content: m.text })) },
       {
-        onDelta: (text) => {
+        input,
+        context: contextText,
+        contextId: context.articleId,
+        history: msgs.map((m) => ({ role: m.role === 'bot' ? ('assistant' as const) : ('user' as const), content: m.text })),
+      },
+      {
+        onDelta: (text, meta) => {
           setTyping(false)
-          setMsgs((m) => m.map((msg) => (msg.id === id ? { ...msg, text } : msg)))
+          setMsgs((m) => m.map((msg) => (msg.id === id ? { ...msg, text, source: meta?.source ?? msg.source } : msg)))
         },
-        onDone: ({ source, references }) => {
+        onDone: ({ source, references, degraded: degradedResult }) => {
           setTyping(false)
           setLastSource(source)
-          setMsgs((m) => m.map((msg) => (msg.id === id ? { ...msg, text: msg.text, source, references } : msg)))
+          setDegraded(Boolean(degradedResult))
+          setMsgs((m) => m.map((msg) => (msg.id === id ? { ...msg, source, references, degraded: degradedResult } : msg)))
+        },
+        onError: () => {
+          setTyping(false)
+          setFailed(true)
+          setMsgs((m) => m.filter((msg) => msg.id !== id))
         },
       },
     )
@@ -85,16 +133,27 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
     reply(text)
   }
 
+  const retry = () => {
+    if (!lastAsk || typing) return
+    const idx = msgs.map((m) => m.role).lastIndexOf('user')
+    if (idx === -1) return
+    setMsgs((m) => m.slice(0, idx + 1))
+    reply(lastAsk)
+  }
+
   return (
     <>
-      <AnimatePresence>
-        {!open && (
+      {/* 单一 AnimatePresence + mode="wait"：浮标完全退场后面板才入场，一次点击只播一次入场动画，不会重叠闪现 */}
+      <AnimatePresence mode="wait">
+        {!open ? (
           <motion.button
+            key="assistant-fab"
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
+            exit={{ scale: 0.85, opacity: 0 }}
+            transition={{ duration: 0.15 }}
             onClick={() => setOpen(true)}
-            className="group fixed bottom-5 right-5 z-[60] flex items-center gap-2.5 rounded-full border-1.5 border-ink bg-lime px-4 py-3 shadow-hard transition hover:-translate-y-0.5"
+            className="group fixed bottom-[calc(88px+env(safe-area-inset-bottom))] right-4 z-[60] flex items-center gap-2.5 rounded-full border-1.5 border-ink bg-lime px-4 py-3 shadow-hard transition hover:-translate-y-0.5 lg:bottom-5 lg:right-5"
           >
             <span className="relative flex h-7 w-7 items-center justify-center rounded-full border-1.5 border-ink bg-ink text-lime">
               <Bot size={15} />
@@ -102,18 +161,17 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
             </span>
             <span className="text-[12.5px] font-semibold">问问 AI 助手</span>
           </motion.button>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {open && (
+        ) : (
           <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            key="assistant-panel"
+            ref={panelRef}
+            initial={{ opacity: 0, y: reduce ? 0 : 24, scale: reduce ? 1 : 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.97 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-            className="fixed bottom-4 right-4 z-[65] flex h-[min(560px,78vh)] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream shadow-hard-lg"
+            exit={{ opacity: 0, y: reduce ? 0 : 16, scale: reduce ? 1 : 0.97 }}
+            transition={reduce ? { duration: 0.18 } : { type: 'spring', stiffness: 320, damping: 30 }}
+            className="fixed bottom-[calc(84px+env(safe-area-inset-bottom))] right-4 z-[65] flex h-[min(560px,78vh)] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream shadow-hard-lg lg:bottom-4"
             role="dialog"
+            aria-modal="true"
             aria-label="AI 学习助手"
           >
             <div className="flex items-center justify-between gap-2 border-b-1.5 border-ink bg-ink px-3.5 py-2.5 text-paper">
@@ -122,29 +180,35 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
                   <Sparkles size={14} />
                 </span>
                 <div className="leading-tight">
-                  <p className="text-[12px] font-semibold">云潇的 AI 助手</p>
+                  <p className="text-[12px] font-semibold">晓叶的 AI 助手</p>
                   <p className="font-mono text-[9.5px] tracking-[0.14em] text-paper/40">
                     {serverConfig.enabled ? 'LIVE MODEL' : 'PRESET ANSWERS'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => setOpen(false)} className="flex h-7 w-7 items-center justify-center rounded-full text-paper/60 hover:bg-paper/10 hover:text-paper" aria-label="最小化">
+                <button onClick={close} className="flex h-7 w-7 items-center justify-center rounded-full text-paper/60 hover:bg-paper/10 hover:text-paper" aria-label="最小化">
                   <Minus size={14} />
                 </button>
-                <button onClick={() => setOpen(false)} className="flex h-7 w-7 items-center justify-center rounded-full text-paper/60 hover:bg-paper/10 hover:text-paper" aria-label="关闭">
+                <button onClick={close} className="flex h-7 w-7 items-center justify-center rounded-full text-paper/60 hover:bg-paper/10 hover:text-paper" aria-label="关闭">
                   <X size={14} />
                 </button>
               </div>
             </div>
 
-            {context && (
+            {contextText && (
               <div className="border-b border-ink/10 bg-lime/25 px-3.5 py-1.5 font-mono text-[9px] tracking-wide text-ink/55">
-                正在阅读：{context}
+                正在阅读：{contextText}
               </div>
             )}
 
-            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-3.5 py-3.5 no-scrollbar">
+            <div
+              ref={scrollRef}
+              className="flex-1 space-y-3 overflow-y-auto px-3.5 py-3.5 no-scrollbar"
+              role="log"
+              aria-live="polite"
+              aria-relevant="additions text"
+            >
               {msgs.map((m) => (
                 <div key={m.id} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                   <div
@@ -159,7 +223,7 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
                     {m.role === 'bot' && m.text === '' && <span className="animate-blink">▍</span>}
                     {m.role === 'bot' && m.text !== '' && m.source && (
                       <span className="mt-1.5 flex items-center gap-1 border-t border-dashed border-ink/10 pt-1 font-mono text-[9px] text-ink/35">
-                        {m.source === 'model' ? '模型生成，可能不准确' : '预置问答 · 作者手写'}
+                        {sourceLabel(m.source, m.degraded)}
                       </span>
                     )}
                     {/* AI3：引用锚点。RAG 接通后服务端返回 references，这里直接渲染 */}
@@ -183,6 +247,17 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
               {typing && (
                 <div className="flex items-center gap-2 text-[11px] text-ink/40">
                   <Loader2 size={12} className="animate-spin" /> 正在翻我的笔记…
+                  <button onClick={stop} className="ml-auto flex items-center gap-1 rounded-full border border-ink/20 px-2 py-0.5 text-[10px] text-ink/60 hover:border-ink hover:text-ink">
+                    <Square size={9} /> 停止
+                  </button>
+                </div>
+              )}
+              {failed && !typing && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-coral/40 bg-coral/10 px-2.5 py-2 text-[11px] text-ink/70" role="alert">
+                  模型不可用，已落回预置问答。
+                  <button onClick={retry} className="ml-auto flex items-center gap-1 rounded-full border border-ink/20 px-2 py-0.5 text-[10px] hover:border-ink">
+                    <RotateCcw size={9} /> 重试
+                  </button>
                 </div>
               )}
             </div>
@@ -224,7 +299,15 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
                 </button>
               </div>
               <p className="mt-1.5 text-center font-mono text-[9.5px] tracking-wide text-ink/30">
-                {serverConfig.enabled ? `${lastSource === 'model' ? '实时模型' : '模型不可用，已落回预置问答'}` : '本地预置问答 · 无真实模型调用'}
+                {serverConfig.enabled
+                  ? lastSource === 'model'
+                    ? degraded
+                      ? '模型生成 · 引用未校验通过，可能不准确'
+                      : '模型生成 · 可能不准确'
+                    : lastSource === 'retrieval'
+                      ? '站内检索摘录 · 服务端未接模型'
+                      : '模型不可用，已落回预置问答'
+                  : '本地预置问答 · 无真实模型调用'}
               </p>
             </div>
           </motion.div>

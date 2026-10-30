@@ -35,8 +35,10 @@ export interface ContentRepository {
   origin: 'local' | 'server'
   /** 读：返回与各数据模块同构的数组，页面无感切换 */
   list: <K extends ContentDomain>(domain: K) => Promise<DomainData[K]>
+  /** 后台读：scope=admin 时返回全量（含草稿），需登录 */
+  listAdmin: <K extends ContentDomain>(domain: K) => Promise<DomainData[K]>
   /** 写（B3）：未接入服务端时抛 NotSupportedError */
-  upsert: (domain: ContentDomain, payload: unknown, version?: number) => Promise<unknown>
+  upsert: (domain: ContentDomain, id: string, payload: unknown, version?: number) => Promise<unknown>
   /** 状态机（B3）：草稿 → 待审 → 已发布 → 已隐藏 */
   setStatus: (domain: ContentDomain, id: string, status: PublishStatus) => Promise<unknown>
 }
@@ -70,6 +72,9 @@ export const localContent: ContentRepository = {
   async list(domain) {
     return localSnapshot[domain]
   },
+  async listAdmin(domain) {
+    return localSnapshot[domain]
+  },
   async upsert() {
     throw new NotSupportedError('内容写入')
   },
@@ -85,14 +90,35 @@ export const remoteContent: ContentRepository = {
     // 接口挂了也不能让页面空掉：回落本地快照
     return data ?? (localSnapshot[domain] as DomainData[K])
   },
-  upsert: (domain, payload, version) =>
-    apiJson(`/api/content/${domain}`, { method: 'PUT', body: JSON.stringify({ payload, version }) }),
+  async listAdmin<K extends ContentDomain>(domain: K): Promise<DomainData[K]> {
+    const data = await apiJsonSafe<{ items: DomainData[K] }>(`/api/content/${domain}?scope=admin&limit=200`)
+    return data?.items ?? (localSnapshot[domain] as DomainData[K])
+  },
+  upsert: (domain, id, payload, version) =>
+    apiJson(`/api/content/${domain}/${id}`, {
+      method: 'PUT',
+      headers: version ? { 'If-Match': `"${version}"` } : {},
+      body: JSON.stringify({ payload }),
+    }),
   setStatus: (domain, id, status) =>
     apiJson(`/api/content/${domain}/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
 }
 
 /** 服务端未配置时直接用本地快照，页面永远拿得到数据 */
 export const contents: ContentRepository = serverConfig.enabled ? remoteContent : localContent
+
+/** 后台用中文标签展示状态，接口用英文枚举；两处只在这里转换，避免漂移 */
+export const STATUS_LABELS: Record<PublishStatus, string> = {
+  draft: '草稿',
+  pending: '待审核',
+  published: '已发布',
+  hidden: '已下线',
+}
+
+export function toServerStatus(label: string): PublishStatus {
+  const entry = (Object.entries(STATUS_LABELS) as [PublishStatus, string][]).find(([, v]) => v === label)
+  return entry?.[0] ?? 'draft'
+}
 
 /** 给后台「模块开关」页用的静态概览（B1 接入后换成 /api/content/meta） */
 export const contentMeta = { education, research, stats, toolboxGroups }

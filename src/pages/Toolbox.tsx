@@ -1,9 +1,10 @@
-import { ArrowUpRight, Box, Copy, Flame, Search, Star } from 'lucide-react'
+import { ArrowUpRight, Box, Copy, ExternalLink, Flame, Search, Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Modal } from '@/components/ui/Modal'
 import { PageHead, Reveal } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
-import { toolboxGroups } from '@/data/work'
+import { toolboxGroups, type ToolboxItem } from '@/data/work'
 import { cn, useLocalStorage } from '@/lib/utils'
 import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
 import { useSeo } from '@/lib/seo'
@@ -12,11 +13,13 @@ export default function Toolbox() {
   const [group, setGroup] = useState<string>('all')
   const [q, setQ] = useState('')
   const [onlyStar, setOnlyStar] = useState(false)
+  /** F-05 详情弹窗：卡片点开就能看到完整正文 */
+  const [detail, setDetail] = useState<(ToolboxItem & { group: string; color: string }) | null>(null)
   const [stars, setStars] = useLocalStorage<string[]>(STORAGE_KEYS.toolboxStars, ['p1', 'c1', 'd1'], isStringArray)
   const { show, node } = useToast()
 
   useSeo({
-    title: '百宝箱 · 魏云潇',
+    title: '百宝箱 · 晓叶',
     description: '反复用到的 Prompt、代码片段、设计资产和输入源。',
     path: '/work/toolbox',
   })
@@ -37,14 +40,13 @@ export default function Toolbox() {
     setStars((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
   }
 
-  /** 真复制到剪贴板；非安全上下文下退化为提示手动复制 */
-  const take = async (item: { title: string; desc: string }) => {
-    const text = `${item.title}\n${item.desc}`
+  /** 真复制到剪贴板：复制的是完整正文，不是标题摘要；非安全上下文下如实提示 */
+  const take = async (item: Pick<ToolboxItem, 'title' | 'body'>) => {
     try {
-      await navigator.clipboard.writeText(text)
-      show(`「${item.title}」已复制到剪贴板`)
+      await navigator.clipboard.writeText(item.body)
+      show(`「${item.title}」正文已复制`)
     } catch {
-      show(`浏览器不允许写入剪贴板，手动复制：${item.title}`)
+      show(`浏览器不允许写入剪贴板，可打开详情手动复制：${item.title}`)
     }
   }
 
@@ -134,17 +136,29 @@ export default function Toolbox() {
                   </div>
                 </div>
 
-                <h3 className="mt-2.5 text-[14px] font-bold leading-snug">{item.title}</h3>
+                <button onClick={() => setDetail(item)} className="mt-2.5 text-left">
+                  <span className="block text-[14px] font-bold leading-snug hover:underline">{item.title}</span>
+                </button>
                 <p className="mt-1.5 flex-1 text-[11.5px] leading-relaxed text-ink/50">{item.desc}</p>
 
                 <div className="mt-3 flex items-center justify-between border-t border-dashed border-ink/12 pt-2.5">
-                  <span className="font-mono text-[9px] text-ink/35">{item.stars} 人收藏 · {item.group}</span>
-                  <button
-                    onClick={() => take(item)}
-                    className="flex items-center gap-1 rounded-full border border-ink/20 px-2 py-1 text-[9.5px] transition hover:border-ink hover:bg-lime"
-                  >
-                    <Copy size={10} /> 取用
-                  </button>
+                  <span className="font-mono text-[9px] text-ink/35">
+                    {item.stars} 人收藏 · {item.updated}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setDetail(item)}
+                      className="rounded-full border border-ink/20 px-2 py-1 text-[9.5px] transition hover:border-ink hover:bg-lime"
+                    >
+                      详情
+                    </button>
+                    <button
+                      onClick={() => take(item)}
+                      className="flex items-center gap-1 rounded-full border border-ink/20 px-2 py-1 text-[9.5px] transition hover:border-ink hover:bg-lime"
+                    >
+                      <Copy size={10} /> 取用
+                    </button>
+                  </div>
                 </div>
               </div>
             </Reveal>
@@ -174,6 +188,44 @@ export default function Toolbox() {
           </Link>
         </div>
       </div>
+
+      <Modal open={!!detail} onClose={() => setDetail(null)} title={detail?.title ?? ''} kicker={`TOOLBOX · ${detail?.group ?? ''}`}>
+        {detail && (
+          <div className="px-4 py-4">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[9px] text-ink/40">
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-sm" style={{ background: detail.color }} />
+                {detail.tag}
+              </span>
+              <span>·</span>
+              <span>更新 {detail.updated}</span>
+              <span>·</span>
+              <span>{detail.license}</span>
+            </div>
+            <pre className="mt-3 max-h-[52vh] overflow-auto whitespace-pre-wrap break-words rounded-xl border-1.5 border-ink bg-ink px-4 py-3 font-mono text-[11.5px] leading-relaxed text-paper/85 no-scrollbar">
+              <code>{detail.body}</code>
+            </pre>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => take(detail)}
+                className="flex items-center gap-1.5 rounded-full border-1.5 border-ink bg-lime px-3.5 py-1.5 text-[11.5px] font-medium transition hover:-translate-y-0.5 hover:shadow-hard-sm"
+              >
+                <Copy size={11} /> 复制正文
+              </button>
+              {detail.link && (
+                <a
+                  href={detail.link}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="flex items-center gap-1.5 rounded-full border-1.5 border-ink px-3.5 py-1.5 text-[11.5px] transition hover:-translate-y-0.5 hover:shadow-hard-sm"
+                >
+                  <ExternalLink size={11} /> 打开原文
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {node}
     </div>

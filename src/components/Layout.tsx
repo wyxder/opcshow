@@ -32,14 +32,15 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { navItems } from '@/data/nav'
+import { navItems, type NavChild } from '@/data/nav'
 import { projects } from '@/data/projects'
 import { articleSearchIndex } from '@/data/articles.index'
 import { links, profile, siteMeta } from '@/data/site'
-import { cn } from '@/lib/utils'
+import { cn, usePrefersReducedMotion } from '@/lib/utils'
 import { openAssistant, setAssistantContext } from '@/lib/assistant'
+import { highlightParts, matchScore, pushRecentSearch, readRecentSearches } from '@/lib/search'
 import { Marquee } from '@/components/ui/primitives'
 import { Modal } from '@/components/ui/Modal'
 import { ThemePicker, ThemeSwitcher } from '@/components/ThemeSwitcher'
@@ -111,6 +112,19 @@ function Header() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { pathname } = useLocation()
+  const reduce = usePrefersReducedMotion()
+  const closeTimer = useRef<number | null>(null)
+
+  // hover 意图：进入即刻展开，离开延时 180ms 再收起（期间重新进入则取消）
+  const openNow = (key: string) => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current)
+    setOpenKey(key)
+  }
+  const scheduleClose = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current)
+    closeTimer.current = window.setTimeout(() => setOpenKey(null), 180)
+  }
+  useEffect(() => () => { if (closeTimer.current) window.clearTimeout(closeTimer.current) }, [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16)
@@ -135,8 +149,18 @@ function Header() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // 二级子项命中判定：只高亮与当前 pathname 精确对应的子页
+  // （带 query/hash 的入口如「AI 学习助手」「首页锥点」不参与子项高亮，选中态交给一级）
+  const isChildActive = (child: NavChild) => {
+    if (/[?#]/.test(child.to)) return false
+    const base = child.to.split(/[?#]/)[0]
+    if (base === '/') return false
+    return pathname === base
+  }
   const isActive = (item: (typeof navItems)[number]) =>
-    item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key) || (item.key === 'me' && pathname === '/me')
+    item.to === '/'
+      ? pathname === '/'
+      : pathname.startsWith('/' + item.key) || item.children.some(isChildActive)
 
   return (
     <>
@@ -155,18 +179,40 @@ function Header() {
                 <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-ink bg-lime" />
               </span>
               <span className="leading-none">
-                <span className="block text-[15px] font-extrabold tracking-tight">魏云潇</span>
+                <span className="block text-[15px] font-extrabold tracking-tight">晓叶</span>
                 <span className="mt-1 block font-mono text-[9px] tracking-[0.18em] text-ink/45">WYX.SPACE / 2026</span>
               </span>
             </Link>
 
             {/* desktop nav */}
-            <nav className="hidden items-center gap-1 lg:flex" onMouseLeave={() => setOpenKey(null)} aria-label="主导航">
+            <nav
+              className="hidden items-center gap-1 lg:flex"
+              onMouseLeave={scheduleClose}
+              onBlur={(e) => {
+                // 焦点离开整个导航容器才收起；在一级/二级之间移动不会关
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) scheduleClose()
+              }}
+              aria-label="主导航"
+            >
               {navItems.map((item, i) => (
-                <div key={item.key} className="relative" onMouseEnter={() => setOpenKey(item.key)}>
+                <div
+                  key={item.key}
+                  className="relative"
+                  onMouseEnter={() => openNow(item.key)}
+                  onFocus={() => openNow(item.key)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setOpenKey(null)
+                      ;(e.currentTarget.querySelector('a') as HTMLElement | null)?.focus()
+                    }
+                  }}
+                >
                   <Link
                     to={item.to}
                     aria-current={isActive(item) ? 'page' : undefined}
+                    aria-haspopup="true"
+                    aria-expanded={openKey === item.key}
+                    onClick={() => setOpenKey(openKey === item.key ? null : item.key)}
                     className={cn(
                       'relative flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-medium transition-colors',
                       isActive(item) ? 'text-ink' : 'text-ink/60 hover:text-ink',
@@ -189,7 +235,10 @@ function Header() {
                       直接给 motion 元素挂 -translate-x-1/2 会被覆盖。 */}
                   <div
                     className={cn(
-                      'absolute top-full z-[80] hidden w-[244px] pt-1.5 lg:block',
+                      // -mt-1.5 + pt-1.5 补一段透明桥接热区，消除一级与面板之间因间隙导致的 mouseleave 闪烁；
+                      // 展开项的 wrapper 抬到 z-[95]，避免相邻一级项的桥接热区盖在其之上抢走 hover
+                      'absolute top-full -mt-1.5 hidden w-[244px] pt-1.5 lg:block',
+                      openKey === item.key ? 'z-[95]' : 'z-[80]',
                       i === 0 ? 'left-0' : i === navItems.length - 1 ? 'right-0' : 'left-1/2 -translate-x-1/2',
                     )}
                   >
@@ -197,20 +246,25 @@ function Header() {
                       {openKey === item.key && (
                         <motion.div
                           key={item.key}
-                          initial={{ opacity: 0, y: -4 }}
+                          initial={{ opacity: 0, y: reduce ? 0 : -4 }}
                           animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -4 }}
+                          exit={{ opacity: 0, y: reduce ? 0 : -4 }}
                           transition={{ duration: 0.14, ease: 'easeOut' }}
                         >
                           <div className="overflow-hidden rounded-[14px] border-1.5 border-ink bg-cream shadow-hard-sm">
                             {item.children.map((child) => {
                               const Icon = icons[child.icon ?? 'sparkles'] ?? Sparkles
+                              const childActive = isChildActive(child)
                               return (
                                 <Link
                                   key={child.to}
                                   to={child.to}
                                   onClick={() => setOpenKey(null)}
-                                  className="group flex items-center gap-2.5 border-b border-ink/8 px-2.5 py-1.5 transition-colors last:border-0 hover:bg-lime/25"
+                                  aria-current={childActive ? 'page' : undefined}
+                                  className={cn(
+                                    'group flex items-center gap-2.5 border-b border-ink/8 px-2.5 py-1.5 transition-colors last:border-0 hover:bg-lime/25',
+                                    childActive && 'bg-lime/25',
+                                  )}
                                 >
                                   <Icon size={13} className="shrink-0 text-ink/40 transition group-hover:text-ink" />
                                   <span className="min-w-0 flex-1">
@@ -302,7 +356,11 @@ function Header() {
                         <Link
                           key={c.to}
                           to={c.to}
-                          className="rounded-xl border border-paper/15 px-3 py-2.5 text-[12px] text-paper/75 active:bg-lime active:text-ink"
+                          aria-current={pathname === c.to ? 'page' : undefined}
+                          className={cn(
+                            'rounded-xl border px-3 py-2.5 text-[12px] active:bg-lime active:text-ink',
+                            pathname === c.to ? 'border-lime bg-lime/15 text-lime' : 'border-paper/15 text-paper/75',
+                          )}
                         >
                           {c.label}
                         </Link>
@@ -353,10 +411,17 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
   }, [])
 
   const filtered = useMemo(() => {
-    const key = q.trim().toLowerCase()
+    const key = q.trim()
     if (!key) return items.slice(0, 10)
-    return items.filter((i) => (i.label + i.hint + i.group).toLowerCase().includes(key)).slice(0, 12)
+    return items
+      .map((i) => ({ item: i, score: matchScore(i.label, i.hint + i.group, key) }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12)
+      .map((x) => x.item)
   }, [items, q])
+
+  const recent = useMemo(() => readRecentSearches(), [open])
 
   useEffect(() => {
     if (open) {
@@ -367,6 +432,7 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
 
   const go = (item?: CmdItem) => {
     if (!item) return
+    pushRecentSearch(q)
     navigate(item.to)
     onClose()
   }
@@ -400,7 +466,33 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
           <kbd className="rounded border border-ink/20 px-1.5 py-0.5 font-mono text-[9px] text-ink/40">ESC</kbd>
         </div>
         <div className="max-h-[52vh] overflow-y-auto py-2 no-scrollbar">
-          {filtered.length === 0 && <p className="px-5 py-8 text-center text-[13px] text-ink/40">没有找到，换个词试试。</p>}
+          {!q.trim() && recent.length > 0 && (
+            <div className="px-4 pb-2">
+              <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink/35">最近搜索</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {recent.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      setQ(r)
+                      setCursor(0)
+                    }}
+                    className="rounded-full border border-ink/20 bg-paper px-2 py-0.5 text-[10.5px] text-ink/60 transition hover:border-ink hover:text-ink"
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {filtered.length === 0 && (
+            <div className="px-5 py-8 text-center text-[13px] text-ink/40">
+              没有找到「{q.trim()}」。
+              <p className="mt-2 text-[11.5px] text-ink/35">
+                试试「RAG 切片」「评测指标」「简历」，或按 <kbd className="rounded border border-ink/20 px-1">Esc</kbd> 关掉后问 AI 助手。
+              </p>
+            </div>
+          )}
           {filtered.map((item, i) => {
             const Icon = item.icon
             return (
@@ -417,7 +509,17 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
                   <Icon size={13} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium">{item.label}</span>
+                  <span className="block truncate text-[13px] font-medium">
+                    {highlightParts(item.label, q).map((p, k) =>
+                      p.hit ? (
+                        <mark key={k} className="rounded bg-lime/70 px-0.5 text-ink">
+                          {p.text}
+                        </mark>
+                      ) : (
+                        <span key={k}>{p.text}</span>
+                      ),
+                    )}
+                  </span>
                   <span className="block truncate text-[11px] text-ink/45">{item.hint}</span>
                 </span>
                 <span className="font-mono text-[9px] tracking-widest text-ink/30">{item.group}</span>
@@ -430,7 +532,96 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
   )
 }
 
+/* ------------------------------ mobile tab bar ----------------------------- */
+/* 移动端底部菜单栏：首页 / 学习 / 工作 / 生活 / 我的（lg 以下显示） */
+const tabIcons: Record<string, LucideIcon> = { home: Home, learn: BookOpen, work: FileText, life: Heart, me: User }
+
+function MobileTabBar() {
+  const { pathname } = useLocation()
+  return (
+    <nav
+      aria-label="底部导航"
+      className="fixed inset-x-0 bottom-0 z-[75] px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 lg:hidden"
+    >
+      <div className="mx-auto flex max-w-md items-stretch gap-0.5 rounded-[20px] border-1.5 border-ink bg-cream/95 p-1.5 shadow-hard">
+        {navItems.map((item) => {
+          const Icon = tabIcons[item.key] ?? Sparkles
+          const active = item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key)
+          return (
+            <Link
+              key={item.key}
+              to={item.to}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'relative flex flex-1 flex-col items-center gap-0.5 rounded-[14px] px-1 py-1.5 transition-colors',
+                active ? 'text-ink' : 'text-ink/45',
+              )}
+            >
+              {active && (
+                <motion.span
+                  layoutId="tab-pill"
+                  className="absolute inset-0 -z-10 rounded-[14px] border-1.5 border-ink bg-lime"
+                  transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                />
+              )}
+              <Icon size={16} strokeWidth={active ? 2.4 : 2} />
+              <span className="text-[10px] font-bold leading-none">{item.label}</span>
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}
+
 /* ---------------------------------- footer -------------------------------- */
+/* 同一份 navItems 渲染两套：移动端=胶囊芯片（省空间、可点区域大），桌面=传统链接列表 */
+function FooterNavSection({ item, compact }: { item: (typeof navItems)[number]; compact?: boolean }) {
+  return (
+    <div>
+      <p className={cn('flex items-baseline gap-2 text-[13px] font-bold', compact ? 'mb-2' : 'mb-3')}>
+        <span className="font-mono text-[9px] text-ink/35">{item.index}</span>
+        {item.label}
+      </p>
+      {compact ? (
+        <div className="flex flex-wrap gap-1.5">
+          {item.children.map((c) => (
+            <FooterChildLink key={c.to} child={c} className="rounded-full border border-ink/15 bg-paper px-2.5 py-1 text-[11px] active:bg-lime" />
+          ))}
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {item.children.map((c) => (
+            <li key={c.to}>
+              <FooterChildLink child={c} className="link-underline" />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function FooterChildLink({ child, className }: { child: NavChild; className?: string }) {
+  const { pathname } = useLocation()
+  const target = child.to.split(/[?#]/)[0]
+  const active = target === '/' ? pathname === '/' : pathname === target || pathname.startsWith(target + '/')
+  return (
+    <Link
+      to={child.to}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'inline-flex max-w-full items-center gap-1 text-[12.5px]',
+        active ? 'font-semibold text-ink' : 'text-ink/55 hover:text-ink',
+        className,
+      )}
+    >
+      {active && <span className="h-1 w-1 shrink-0 rounded-full bg-lime" />}
+      <span className="truncate">{child.label}</span>
+    </Link>
+  )
+}
+
 function Footer() {
   return (
     <footer className="relative z-10 mt-20">
@@ -448,22 +639,23 @@ function Footer() {
         />
       </div>
 
-      <div className="shell py-12">
-        <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
+      <div className="shell pb-28 pt-10 lg:pb-12">
+        {/* 联系区：移动端单列紧凑，桌面左侧大标题 */}
+        <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:gap-10">
           <div>
             <p className="kicker mb-3">LET'S BUILD SOMETHING</p>
             <a
               href={`mailto:${profile.email}`}
-              className="group mt-1 block font-display text-[clamp(26px,4vw,40px)] font-extrabold leading-[1.06]"
+              className="group mt-1 block font-display text-[clamp(24px,4vw,40px)] font-extrabold leading-[1.06]"
             >
               一起做点
               <span className="marker ml-1">有用的东西</span>
               <ArrowUpRight className="mb-1.5 ml-1 inline-block transition group-hover:-translate-y-1 group-hover:translate-x-1" size={26} />
             </a>
-            <p className="mt-4 max-w-sm text-[13px] leading-relaxed text-ink-soft">
+            <p className="mt-3 max-w-sm text-[12.5px] leading-relaxed text-ink-soft sm:text-[13px]">
               如果这里有个项目让你觉得「这人可以聊一聊」，直接发邮件。我通常 12 小时内回复。
             </p>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               <a href={`mailto:${profile.email}`} className="tag hover:bg-lime">
                 <Mail size={12} /> {profile.email}
               </a>
@@ -480,28 +672,22 @@ function Footer() {
             </div>
           </div>
 
-          {navItems.map((item) => (
-            <div key={item.key}>
-              <p className="mb-3 flex items-baseline gap-2 text-[13px] font-bold">
-                <span className="font-mono text-[9px] text-ink/35">{item.index}</span>
-                {item.label}
-              </p>
-              <ul className="space-y-2">
-                {item.children.map((c) => (
-                  <li key={c.to}>
-                    <Link to={c.to} className="link-underline text-[12.5px] text-ink/55 hover:text-ink">
-                      {c.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* 导航链接：移动端两列芯片网格，桌面四列链接列表 */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6 lg:hidden">
+            {navItems.map((item) => (
+              <FooterNavSection key={item.key} item={item} compact />
+            ))}
+          </div>
+          <div className="hidden grid-cols-4 gap-6 lg:grid lg:col-span-3">
+            {navItems.map((item) => (
+              <FooterNavSection key={item.key} item={item} />
+            ))}
+          </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-ink/12 pt-5 font-mono text-[10px] text-ink/40 sm:flex-row sm:items-center">
-          <span>© 2026 魏云潇 · 用 React 手搓，AI 只负责打下手</span>
-          <div className="flex items-center gap-4">
+        <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-ink/12 pt-5 font-mono text-[10px] text-ink/40 sm:flex-row sm:items-center">
+          <span>© 2026 晓叶 · 用 React 手搓，AI 只负责打下手</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <span>BUILD {siteMeta.build}</span>
             <a href={links.sitemap} className="hover:text-ink">sitemap</a>
             <a href={links.rss} className="hover:text-ink">RSS</a>
@@ -521,7 +707,7 @@ function GlobalAssistant() {
 
   useEffect(() => {
     // 只有文章阅读页有「正在阅读」上下文，离开时清掉
-    if (!/^\/learn\//.test(pathname)) setAssistantContext('')
+    if (!/^\/learn\//.test(pathname)) setAssistantContext({})
     if (new URLSearchParams(search).get('assistant') === '1') openAssistant()
   }, [pathname, search])
 
@@ -547,6 +733,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <MobileTabBar />
       <GlobalAssistant />
     </div>
   )

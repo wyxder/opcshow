@@ -28,7 +28,7 @@ export default function Moments() {
   const { show, node } = useToast()
 
   useSeo({
-    title: '朋友圈 · 魏云潇',
+    title: '朋友圈 · 晓叶',
     description: '项目的坑、比赛的现场、路上的风景，还有那些不适合放进简历的废话。',
     path: '/life/moments',
   })
@@ -141,7 +141,7 @@ export default function Moments() {
                         魏
                       </div>
                       <div className="leading-tight">
-                        <p className="text-[12.5px] font-bold">魏云潇</p>
+                        <p className="text-[12.5px] font-bold">晓叶</p>
                         <p className="flex items-center gap-1.5 font-mono text-[9px] text-ink/40">
                           {m.time}
                           {m.place && (
@@ -253,7 +253,7 @@ export default function Moments() {
             </div>
             <div className="px-4 pb-4">
               <div className="-mt-6 flex h-12 w-12 items-center justify-center rounded-full border-1.5 border-ink bg-cream font-display text-lg font-extrabold">魏</div>
-              <p className="mt-1.5 text-[13px] font-bold">魏云潇</p>
+              <p className="mt-1.5 text-[13px] font-bold">晓叶</p>
               <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink/45">白天写 Agent，晚上剪视频。朋友圈是我的公开笔记本。</p>
               <div className="mt-3 grid grid-cols-3 gap-1 border-t border-dashed border-ink/15 pt-3 text-center">
                 {[

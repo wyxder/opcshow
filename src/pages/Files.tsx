@@ -76,7 +76,7 @@ export default function Files() {
       }, 0)
 
   useSeo({
-    title: '资源中心 · 魏云潇',
+    title: '资源中心 · 晓叶',
     description: `简历、课件、数据集、模板和源码。${downloadable} 个文件可直接下载，其余标注待上传原因。`,
     path: '/work/files',
   })

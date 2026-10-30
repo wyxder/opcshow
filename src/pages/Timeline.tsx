@@ -21,7 +21,7 @@ export default function Timeline() {
   const list = tag === '全部' ? growthTimeline : growthTimeline.filter((t) => t.tag === tag)
 
   useSeo({
-    title: '成长时间轴 · 魏云潇',
+    title: '成长时间轴 · 晓叶',
     description: `2018 → 2026，${growthTimeline.length} 个节点：学习、项目、竞赛、内容与生活。`,
     path: '/me/timeline',
   })

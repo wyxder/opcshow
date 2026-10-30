@@ -19,6 +19,8 @@ export default defineConfig({
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
           motion: ['framer-motion'],
+          // F-12：图标库单独成块，避免每个页面 chunk 各留一份被入口重复计入
+          icons: ['lucide-react'],
         },
       },
     },

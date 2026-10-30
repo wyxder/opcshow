@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { serverConfig } from '@/services/config'
 import { cn } from '@/lib/utils'
 
 export type TabDef = { key: string; label: string }
@@ -79,7 +80,6 @@ export const sections = [
     label: '互动审核',
     sub: '弹幕 / 留言 / 友链',
     icon: MessagesSquare,
-    badge: 1,
     tabs: [
       { key: 'danmaku', label: '弹幕' },
       { key: 'guestbook', label: '留言' },
@@ -120,15 +120,18 @@ function NavList({
   active,
   onPick,
   compact,
+  pending,
 }: {
   active: SectionKey
   onPick: (key: SectionKey) => void
   compact?: boolean
+  pending?: number | null
 }) {
   return (
     <nav className={cn('space-y-0.5', compact && 'mt-5')}>
       {sections.map((s) => {
         const on = s.key === active
+        const badge = s.key === 'review' ? (pending ?? 0) : 0
         return (
           <button
             key={s.key}
@@ -145,7 +148,11 @@ function NavList({
               </span>
               <span className={cn('mt-0.5 block truncate text-[9.5px]', on ? 'text-ink/80' : 'text-admin-muted')}>{s.sub}</span>
             </span>
-            {'badge' in s && s.badge ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-admin-red" /> : null}
+            {badge ? (
+              <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-admin-red px-1 font-mono text-[8.5px] text-paper">
+                {badge}
+              </span>
+            ) : null}
           </button>
         )
       })}
@@ -156,10 +163,14 @@ function NavList({
 export default function AdminShell({
   section,
   onNavigate,
+  onLogout,
+  pending,
   children,
 }: {
   section: SectionKey
   onNavigate: (key: SectionKey) => void
+  onLogout?: () => void
+  pending?: number | null
   children: ReactNode
 }) {
   const [drawer, setDrawer] = useState(false)
@@ -182,17 +193,22 @@ export default function AdminShell({
         </Link>
 
         <div className="mt-7 flex-1 overflow-y-auto no-scrollbar">
-          <NavList active={section} onPick={onNavigate} />
+          <NavList active={section} onPick={onNavigate} pending={pending} />
         </div>
 
         <div className="mt-3 space-y-1 border-t border-ink/15 pt-3">
           <Link to="/" className="flex items-center justify-between rounded-lg px-2.5 py-2 text-[11.5px] text-ink/80 transition hover:bg-lime/25 hover:text-ink">
             回到前台 <ArrowUpRight size={13} />
           </Link>
-          <button className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[11.5px] text-ink/80 transition hover:bg-lime/25 hover:text-ink">
+          <button
+            onClick={onLogout}
+            className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[11.5px] text-ink/80 transition hover:bg-lime/25 hover:text-ink"
+          >
             退出登录 <LogOut size={13} />
           </button>
-          <p className="px-2.5 pt-2 font-mono text-[8.5px] tracking-[0.14em] text-admin-muted">V1.0 · DEMO · SQLITE</p>
+          <p className="px-2.5 pt-2 font-mono text-[8.5px] tracking-[0.14em] text-admin-muted">
+            {serverConfig.enabled ? 'V1.0 · SERVER MODE' : 'V1.0 · DEMO'}
+          </p>
         </div>
       </aside>
 
@@ -215,11 +231,11 @@ export default function AdminShell({
 
             <div className="ml-auto flex items-center gap-2">
               <span className="hidden items-center gap-1.5 rounded-full border-1.5 border-ink/20 bg-cream px-2.5 py-1 text-[10.5px] text-ink/70 sm:flex">
-                <span className="h-1.5 w-1.5 rounded-full bg-admin-teal" />
-                服务在线
+                <span className={cn('h-1.5 w-1.5 rounded-full', serverConfig.enabled ? 'bg-admin-teal' : 'bg-admin-amber')} />
+                {serverConfig.enabled ? '服务在线' : '演示模式'}
               </span>
               <span className="hidden items-center gap-1.5 rounded-full border-1.5 border-ink/20 bg-cream px-2.5 py-1 text-[10.5px] text-ink/70 sm:flex">
-                owner <span className="h-3 w-px bg-ink/15" /> 魏云潇
+                owner <span className="h-3 w-px bg-ink/15" /> 晓叶
               </span>
               <span className="flex h-8 w-8 items-center justify-center rounded-full border-1.5 border-ink bg-lime text-[11px] font-semibold text-ink">魏</span>
             </div>
@@ -254,6 +270,7 @@ export default function AdminShell({
                 <NavList
                   active={section}
                   compact
+                  pending={pending}
                   onPick={(k) => {
                     onNavigate(k)
                     setDrawer(false)

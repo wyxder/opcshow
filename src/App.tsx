@@ -47,7 +47,7 @@ function AnimatedOutlet() {
               <Route path="work/resume" element={<Resume />} />
               <Route path="work/toolbox" element={<Toolbox />} />
               <Route path="work/files" element={<Files />} />
-              <Route path="life" element={<Navigate to="/life/love" replace />} />
+              <Route path="life" element={<Navigate to="/life/moments" replace />} />
               <Route path="life/love" element={<Love />} />
               <Route path="life/moments" element={<Moments />} />
               <Route path="life/travel" element={<Travel />} />

@@ -137,12 +137,12 @@ export const BRAND_TOKENS = {
 export type BrandKey = keyof typeof BRAND_TOKENS
 
 export const platforms: Platform[] = [
-  { id: 'xhs', name: '小红书', handle: '@云潇的实验室', followers: '2.3w', posts: 168, focus: 'AI 工具 / 教程图文', brand: 'xhs', color: BRAND_TOKENS.xhs, growth: '+38% / 90d', note: '主阵地，FDE 教程合集 89 篇', url: links.xhs },
+  { id: 'xhs', name: '小红书', handle: '@晓叶的实验室', followers: '2.3w', posts: 168, focus: 'AI 工具 / 教程图文', brand: 'xhs', color: BRAND_TOKENS.xhs, growth: '+38% / 90d', note: '主阵地，FDE 教程合集 89 篇', url: links.xhs },
   { id: 'bili', name: 'B 站', handle: '@wyx_ai', followers: '6,200', posts: 42, focus: '项目复盘 / 长视频', brand: 'bili', color: BRAND_TOKENS.bili, growth: '+21% / 90d', note: '《手搓 Agent 评测中台》播放 7.9w', url: links.bili },
-  { id: 'douyin', name: '抖音', handle: '@云潇AI', followers: '4,800', posts: 63, focus: '60s 工具测评', brand: 'douyin', color: BRAND_TOKENS.douyin, growth: '+46% / 90d', note: '最短的一条爆了 120w 曝光', url: links.douyin },
-  { id: 'wechat', name: '公众号', handle: '云潇的 AI 手记', followers: '3,100', posts: 37, focus: '深度长文', brand: 'wechat', color: BRAND_TOKENS.wechat, growth: '+12% / 90d', note: 'RAG 工程化系列收藏率最高', url: links.wechat },
+  { id: 'douyin', name: '抖音', handle: '@晓叶AI', followers: '4,800', posts: 63, focus: '60s 工具测评', brand: 'douyin', color: BRAND_TOKENS.douyin, growth: '+46% / 90d', note: '最短的一条爆了 120w 曝光', url: links.douyin },
+  { id: 'wechat', name: '公众号', handle: '晓叶的 AI 手记', followers: '3,100', posts: 37, focus: '深度长文', brand: 'wechat', color: BRAND_TOKENS.wechat, growth: '+12% / 90d', note: 'RAG 工程化系列收藏率最高', url: links.wechat },
   { id: 'github', name: 'GitHub', handle: '@wyx-code', followers: '980', posts: 26, focus: '开源项目 / Demo', brand: 'github', color: BRAND_TOKENS.github, growth: '+31% / 90d', note: '20+ 原创开源仓库', url: links.github },
-  { id: 'zhihu', name: '知乎', handle: '魏云潇', followers: '2,400', posts: 19, focus: '技术问答', brand: 'zhihu', color: BRAND_TOKENS.zhihu, growth: '+9% / 90d', note: '「Agent 评测怎么做」高赞回答', url: links.zhihu },
+  { id: 'zhihu', name: '知乎', handle: '晓叶', followers: '2,400', posts: 19, focus: '技术问答', brand: 'zhihu', color: BRAND_TOKENS.zhihu, growth: '+9% / 90d', note: '「Agent 评测怎么做」高赞回答', url: links.zhihu },
 ]
 
 /** 把 '2.3w' / '6,200' 这类写法算成数字，所有统计口径都走这一个函数。 */
@@ -203,7 +203,7 @@ export const danmakuSeeds = [
 ]
 
 export const aboutCards = [
-  { key: 'who', title: '我是谁', lines: ['魏云潇，24 岁，重庆万州人。', '陕西科技大学信息与通信工程（多模态 AI）研二在读。', '想找一份 AI 全栈 / 智能体开发的实习，做真正有人用的东西。'] },
+  { key: 'who', title: '我是谁', lines: ['晓叶，24 岁，重庆万州人。', '陕西科技大学信息与通信工程（多模态 AI）研二在读。', '想找一份 AI 全栈 / 智能体开发的实习，做真正有人用的东西。'] },
   { key: 'what', title: '我在做什么', lines: ['白天：Agent 评测、RAG、多智能体协作、AIGC 工作台。', '晚上：写教程、剪视频、维护 20+ 开源项目。', '最近在把 RSI 自进化做成可审批、可回滚的闭环。'] },
   { key: 'how', title: '我怎么工作', lines: ['先写验收标准，再写代码。', '能算出来的指标不交给模型判断。', '所有涉及钱和并发的逻辑，自己写一遍再让 AI 找漏洞。'] },
   { key: 'fun', title: '一点私货', lines: ['手冲只喝浅烘，咖啡因过敏但照喝。', '胶片相机是 Contax T2，拍了 40 多卷。', '最想去的城市是冰岛，因为那里没有光污染。'] },

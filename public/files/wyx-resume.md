@@ -1,4 +1,4 @@
-# 魏云潇 · WEI YUNXIAO
+# 晓叶 · WEI YUNXIAO
 
 > AI 全栈 / 智能体开发 · 研二在读 · 寻找实习
 > 手机 18323765634 ｜ 邮箱 wyxcode@qq.com ｜ 微信 wyx200265 ｜ 作品集 https://wyx.space

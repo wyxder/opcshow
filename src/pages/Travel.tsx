@@ -43,7 +43,7 @@ export default function Travel() {
   const active = trips.find((t) => t.id === activeId)!
 
   useSeo({
-    title: '旅拍相册 · 魏云潇',
+    title: '旅拍相册 · 晓叶',
     description: `地图上的 ${trips.length} 个点：比赛、出差、带她回家、一个人看海。`,
     path: '/life/travel',
   })

@@ -3,18 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>魏云潇 · WYX.SPACE</title>
+    <title>晓叶 · WYX.SPACE</title>
     <meta
       name="description"
-      content="魏云潇的个人动态主页 — AI 全栈 / 智能体开发。项目、学习笔记、生活碎片与成长时间轴。"
+      content="晓叶的个人动态主页 — AI 全栈 / 智能体开发。项目、学习笔记、生活碎片与成长时间轴。"
     />
     <meta name="theme-color" content="#F4F0E6" />
-    <meta name="author" content="魏云潇" />
+    <meta name="author" content="晓叶" />
 
     <!-- SEO / 分享卡片（fx.md S1–S3）：页面级 title/description/canonical 由 useSeo 覆盖 -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="WYX.SPACE" />
-    <meta property="og:title" content="魏云潇 · WYX.SPACE" />
+    <meta property="og:title" content="晓叶 · WYX.SPACE" />
     <meta
       property="og:description"
       content="把想法做成能上线的东西 — AI 全栈 / 智能体开发作品集"
@@ -24,7 +24,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="魏云潇 · WYX.SPACE" />
+    <meta name="twitter:title" content="晓叶 · WYX.SPACE" />
     <meta
       name="twitter:description"
       content="把想法做成能上线的东西 — AI 全栈 / 智能体开发作品集"
@@ -37,16 +37,31 @@
     <link
       rel="alternate"
       type="application/rss+xml"
-      title="魏云潇 · 文章订阅"
+      title="晓叶 · 文章订阅"
       href="/rss.xml"
     />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- F-12：首屏只阻塞 2 个字族（Bricolage + Noto Sans SC），display=optional 避免字体回退抖动；
+         装饰字族（Caveat / JetBrains Mono）异步加载，加载前回退到系统手写体/等宽体 -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+SC:wght@300;400;500;700;900&display=optional" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+SC:wght@300;400;500;700;900&display=optional"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      />
+    </noscript>
     <script>
       // 首屏防闪烁：在 CSS 与 React 之前就落好 data-theme。
       // 读取顺序与 src/theme/theme.ts 的 readStoredTheme() 保持一致：

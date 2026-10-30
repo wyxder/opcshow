@@ -1,6 +1,6 @@
 import { articleMeta } from '@/data/articles.index'
 import { projects } from '@/data/projects'
-import { growthTimeline } from '@/data/me'
+import { formatWan, growthTimeline, totalFollowers } from '@/data/me'
 import { resourceFiles } from '@/data/work'
 
 /* --------------------------------- traffic -------------------------------- */
@@ -154,13 +154,14 @@ export const hourly = [
 
 /* --------------------------------- content -------------------------------- */
 
-const statusPool = ['已发布', '已发布', '已发布', '草稿', '待审核'] as const
+/** 演示：状态按索引轮转生成，不代表真实发布状态（F-15）；真实模式读 /api/content/articles */
+const statusPoolDemo = ['已发布', '已发布', '已发布', '草稿', '待审核'] as const
 
 export const adminArticles = articleMeta.map((a, i) => ({
   id: a.id,
   title: a.title,
   category: a.category,
-  status: statusPool[i % statusPool.length],
+  status: statusPoolDemo[i % statusPoolDemo.length],
   views: a.views,
   comments: [12, 8, 5, 3, 21, 7][i % 6],
   date: a.date,
@@ -204,14 +205,14 @@ export const contentStats = [
 /* --------------------------------- resume --------------------------------- */
 
 export const resumeParse = {
-  file: '魏云潇-AI全栈开发-简历-v1.2.pdf',
+  file: '晓叶-AI全栈开发-简历-v1.2.pdf',
   size: '1.2 MB',
   pages: 2,
   updated: '2026-10-12 21:40',
   state: '已解析',
   progress: 100,
   extracted: [
-    { key: '基本信息', value: '魏云潇 · 24 岁 · 西安 · wyxcode@qq.com', confidence: 99 },
+    { key: '基本信息', value: '晓叶 · 24 岁 · 西安 · wyxcode@qq.com', confidence: 99 },
     { key: '求职意向', value: 'AI 全栈 / 智能体开发实习', confidence: 97 },
     { key: '教育经历', value: '陕西科技大学 · 信息与通信工程 · 硕士在读', confidence: 96 },
     { key: '技能标签', value: 'RAG、Multi-Agent、Harness、React、FastAPI', confidence: 94 },
@@ -227,14 +228,14 @@ export const resumeModules = [
   { id: 'projects', title: '项目经历', desc: '7 个项目与量化指标', enabled: true, count: 7, icon: 'layers' },
   { id: 'awards', title: '竞赛荣誉', desc: '16 项国赛 / 省赛获奖', enabled: true, count: 16, icon: 'trophy' },
   { id: 'research', title: '科研成果', desc: 'ICCV 在投与软著专利', enabled: true, count: 3, icon: 'flask' },
-  { id: 'media', title: '自媒体数据', desc: '全网 3.4w 粉丝与作品', enabled: false, count: 6, icon: 'megaphone' },
+  { id: 'media', title: '自媒体数据', desc: `全网 ${formatWan(totalFollowers)} 粉丝与作品（由 platforms 求和）`, enabled: false, count: 6, icon: 'megaphone' },
   { id: 'hobbies', title: '兴趣标签', desc: '生活化的补充信息', enabled: false, count: 6, icon: 'heart' },
 ]
 
 export const resumeVersions = [
-  { version: 'v1.2', date: '2026-10-12', author: '魏云潇', status: '当前版本', size: '1.2 MB', downloads: 386, note: '补充 Agent 评测中台与 RSI 闭环，调整项目排序' },
-  { version: 'v1.1', date: '2026-09-20', author: '魏云潇', status: '已归档', size: '1.1 MB', downloads: 214, note: '新增星火 OPC 国赛一等奖与字节 RAG 项目指标' },
-  { version: 'v1.0', date: '2026-08-02', author: '魏云潇', status: '已归档', size: '980 KB', downloads: 132, note: '首版对外投递版本，覆盖 6 个项目' },
+  { version: 'v1.2', date: '2026-10-12', author: '晓叶', status: '当前版本', size: '1.2 MB', downloads: 386, note: '补充 Agent 评测中台与 RSI 闭环，调整项目排序' },
+  { version: 'v1.1', date: '2026-09-20', author: '晓叶', status: '已归档', size: '1.1 MB', downloads: 214, note: '新增星火 OPC 国赛一等奖与字节 RAG 项目指标' },
+  { version: 'v1.0', date: '2026-08-02', author: '晓叶', status: '已归档', size: '980 KB', downloads: 132, note: '首版对外投递版本，覆盖 6 个项目' },
 ]
 
 /* ---------------------------------- files --------------------------------- */
@@ -258,7 +259,7 @@ export const uploadQueue = [
 ]
 
 export const shares = [
-  { id: 's1', file: '魏云潇-AI全栈开发-简历.pdf', token: 'wyx-r1x2', password: '无', expires: '永久', visits: 128, created: '2026-10-12' },
+  { id: 's1', file: '晓叶-AI全栈开发-简历.pdf', token: 'wyx-r1x2', password: '无', expires: '永久', visits: 128, created: '2026-10-12' },
   { id: 's2', file: 'RAG 工程化讲义（杭州 OPC）.pptx', token: 'rag-opc9', password: 'opc2026', expires: '2026-11-30', visits: 64, created: '2026-09-18' },
   { id: 's3', file: '电商客服评测集（脱敏 200 条）.xlsx', token: 'eval-x200', password: '无', expires: '2026-12-31', visits: 43, created: '2026-08-12' },
 ]
@@ -319,7 +320,7 @@ export const aiModels = [
 ]
 
 export const prompts = [
-  { id: 'p1', name: '站点 AI 助手 · 主提示词', scene: '全站对话', model: 'DeepSeek Chat', updated: '2 天前', enabled: true, tokens: 486, body: '你是魏云潇个人站点的 AI 助手。回答必须基于站内内容，不确定时直接说不知道，并引导用户去看对应文章或简历。' },
+  { id: 'p1', name: '站点 AI 助手 · 主提示词', scene: '全站对话', model: 'DeepSeek Chat', updated: '2 天前', enabled: true, tokens: 486, body: '你是晓叶个人站点的 AI 助手。回答必须基于站内内容，不确定时直接说不知道，并引导用户去看对应文章或简历。' },
   { id: 'p2', name: '简历摘要生成', scene: '简历解析', model: 'GPT-4o mini', updated: '5 天前', enabled: true, tokens: 312, body: '根据解析出的结构化简历生成 120 字以内的摘要，突出量化指标，不要编造任何经历。' },
   { id: 'p3', name: '动态文案润色', scene: '内容管理', model: 'DeepSeek Chat', updated: '1 周前', enabled: false, tokens: 208, body: '把一段口语化的近况改写成 80 字内的动态，保留第一人称，不要使用夸张的形容词。' },
   { id: 'p4', name: '留言审核分类', scene: '互动审核', model: 'DeepSeek Chat', updated: '2 周前', enabled: true, tokens: 164, body: '判断留言属于：咨询 / 合作 / 闲聊 / 垃圾信息。仅输出类别与置信度。' },
@@ -353,9 +354,9 @@ export const aiUsage = {
 // 主题预设已收敛到 src/theme/theme.ts + src/index.css 的令牌层，后台不再维护第二份色板。
 
 export const seoDefaults = {
-  title: 'WYX.SPACE · 魏云潇的个人站',
+  title: 'WYX.SPACE · 晓叶的个人站',
   description: 'AI 全栈 / 智能体开发。RAG、Agent 评测、AIGC 工作台，把想法做成能上线的东西。',
-  keywords: 'RAG, Agent, 评测, AI 全栈, 作品集, 魏云潇',
+  keywords: 'RAG, Agent, 评测, AI 全栈, 作品集, 晓叶',
   /** 站点级默认封面：由 scripts/gen-og.mjs 构建期生成（fx.md S1/S2）；
    * 每篇文章一张带排版的 OG 图属于 fx.md B8，需要服务端 satori + @resvg。 */
   ogImage: '/og-cover.png',

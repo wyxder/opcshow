@@ -100,6 +100,14 @@ for (const file of tsFiles) {
     dateIds++
   }
 }
+/* F-15：后台种子里的粉丝口径必须来自 figures / platforms 派生，不能手写 */
+const adminData = readFileSync(join(srcDir, 'admin', 'data.ts'), 'utf8')
+const hardcodedFollowers = adminData.match(/\d+(?:\.\d+)?w\s*(?:粉|粉丝)/g) ?? []
+for (const hit of hardcodedFollowers) fail(`src/admin/data.ts 手写粉丝口径「${hit}」，请改用 formatWan(totalFollowers)（F-15）`)
+const hardcodedBadge = readFileSync(join(srcDir, 'admin', 'AdminShell.tsx'), 'utf8').match(/badge\s*:\s*\d+/g) ?? []
+for (const hit of hardcodedBadge) fail(`src/admin/AdminShell.tsx 写死 badge（${hit}），应从 countPending/listPending 派生（F-15）`)
+if (!hardcodedFollowers.length && !hardcodedBadge.length) pass('后台数字为派生值，badge 不写死（F-15）')
+
 if (!deadLinks) pass('前台没有 href="#" 死链（F4）')
 if (!rawKeys) pass('localStorage key 全部收敛到 STORAGE_KEYS（R4）')
 if (!dateIds) pass('id 生成统一走 newId()（R6）')

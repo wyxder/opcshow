@@ -17,10 +17,13 @@ import { cn } from '@/lib/utils'
 
 export function useAdminToast() {
   const [msg, setMsg] = useState<string | null>(null)
+  const [isError, setIsError] = useState(false)
   const timer = useRef<number | null>(null)
 
-  const show = useCallback((m: string) => {
-    setMsg(m)
+  /** F-16：polite / 失败 assertive，重复消息不叠加 */
+  const show = useCallback((m: string, opts?: { error?: boolean }) => {
+    setIsError(opts?.error ?? /失败|错误|不能|超时|不可用|不允许/.test(m))
+    setMsg((prev) => (prev === m ? prev : m))
     if (timer.current) window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => setMsg(null), 2200)
   }, [])
@@ -32,6 +35,8 @@ export function useAdminToast() {
           initial={{ opacity: 0, y: 16, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 8 }}
+          role={isError ? 'alert' : 'status'}
+          aria-live={isError ? 'assertive' : 'polite'}
           className="fixed bottom-6 right-6 z-[95] flex items-center gap-2 rounded-full border-1.5 border-ink bg-ink px-4 py-2.5 text-[12px] font-medium text-paper shadow-hard"
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-lime text-ink">

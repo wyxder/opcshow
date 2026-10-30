@@ -10,7 +10,8 @@ import { serverConfig } from './config'
 import { articleMeta } from '@/data/articles.index'
 
 export type ChatRole = 'user' | 'assistant'
-export type AnswerSource = 'model' | 'preset'
+/** retrieval = 服务端没接模型、用站内检索摘录作答（不冒充模型） */
+export type AnswerSource = 'model' | 'retrieval' | 'preset'
 
 /** AI3：答案引用。RAG 接通后由服务端返回，前端渲染成可点锚点 */
 export type ChatReference = { docId: string; section: string; path: string; snippet?: string }
@@ -19,6 +20,8 @@ export type ChatRequest = {
   input: string
   /** AI4：当前阅读位置（Reader 传小节标题），进 system prompt */
   context?: string
+  /** 当前文章 id：服务端检索时给同一篇的块加权 */
+  contextId?: string
   history: { role: ChatRole; content: string }[]
 }
 
@@ -115,69 +118,116 @@ export const presetProvider: AiChatProvider = {
 /* ------------------------- 自建网关 provider（AI1） ------------------------ */
 
 /**
- * SSE 消费：服务端返回 `data: {"delta":"…"}\n\n`，逐 token 追加。
- * 需要服务端具备：模型密钥托管、按 IP/日额度限流（AI8）、注入隔离与输出过滤（AI9）。
+ * SSE 消费：服务端返回 `data: {"delta":"…"}` / `{"done":true,...}` / `{"error":...}`。
+ * A-02：首 token 8s 超时、断流重试 1 次、error 事件、AbortController 贯穿停止/关闭。
  */
+const FIRST_TOKEN_MS = 8000
+
 export const remoteProvider: AiChatProvider = {
   id: 'remote',
   label: '实时模型',
-  chat({ input, context, history }, { onDelta, onDone, onError }) {
+  chat({ input, context, contextId, history }, { onDelta, onDone, onError }) {
     const ac = new AbortController()
     let cancelled = false
-    ac.signal.addEventListener('abort', () => {
-      cancelled = true
-    })
+    let finished = false
+    let retried = false
+    let reported = false
+    let firstTokenTimer: number | undefined
+
+    const reportError = (err: unknown) => {
+      if (reported || finished || cancelled) return
+      reported = true
+      onError?.(err)
+    }
+
+    const clearFirstToken = () => {
+      if (firstTokenTimer) window.clearTimeout(firstTokenTimer)
+      firstTokenTimer = undefined
+    }
+
+    const attempt = async () => {
+      const res = await fetch(`${serverConfig.baseUrl}${serverConfig.aiChatPath}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        signal: ac.signal,
+        body: JSON.stringify({ message: input, context: context ?? null, articleId: contextId ?? null, history: history.slice(-8), stream: true }),
+      })
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+
+      firstTokenTimer = window.setTimeout(() => {
+        if (finished || cancelled) return
+        ac.abort()
+        reportError(new Error('首 token 超时'))
+      }, FIRST_TOKEN_MS)
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let text = ''
+      let references: ChatReference[] = []
+      let source: AnswerSource = 'model'
+      let degraded = false
+      let sawDone = false
+
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue
+          const payload = line.slice(5).trim()
+          if (!payload || payload === '[DONE]') continue
+          let obj: { delta?: string; done?: boolean; error?: string; source?: AnswerSource; references?: ChatReference[]; degraded?: boolean }
+          try {
+            obj = JSON.parse(payload)
+          } catch {
+            continue // 半包：等下一个 chunk
+          }
+          if (obj.error) throw new Error(obj.error)
+          if (obj.delta) {
+            clearFirstToken()
+            text += obj.delta
+            onDelta(text, { source: obj.source ?? 'model' })
+          }
+          if (obj.references?.length) references = obj.references
+          if (obj.source) source = obj.source
+          if (typeof obj.degraded === 'boolean') degraded = obj.degraded
+          if (obj.done) sawDone = true
+        }
+      }
+
+      clearFirstToken()
+      if (sawDone) return { source, references, degraded }
+      // 断流：没收到 done 事件。有内容就按断流重试一次，没内容直接报错
+      if (!text) throw new Error('连接中断，未收到内容')
+      if (!retried) {
+        retried = true
+        return attempt()
+      }
+      return { source, references, degraded }
+    }
 
     void (async () => {
       try {
-        const res = await fetch(`${serverConfig.baseUrl}${serverConfig.aiChatPath}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          signal: ac.signal,
-          body: JSON.stringify({
-            message: input,
-            context: context ?? null,
-            history: history.slice(-8),
-            stream: true,
-          }),
-        })
-        if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
-        const reader = res.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
-        let text = ''
-        let references: ChatReference[] = []
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? ''
-          for (const line of lines) {
-            if (!line.startsWith('data:')) continue
-            const payload = line.slice(5).trim()
-            if (!payload || payload === '[DONE]') continue
-            try {
-              const obj = JSON.parse(payload) as { delta?: string; references?: ChatReference[] }
-              if (obj.delta) {
-                text += obj.delta
-                onDelta(text, { source: 'model' })
-              }
-              if (obj.references) references = obj.references
-            } catch {
-              /* 半包：忽略这一行，等下一个 chunk */
-            }
-          }
-        }
-        onDone({ source: 'model', references, degraded: false })
-      } catch (err) {
+        const result = await attempt()
         if (cancelled) return
-        onError?.(err)
+        finished = true
+        onDone(result)
+      } catch (err) {
+        clearFirstToken()
+        if (cancelled || finished) return
+        reportError(err)
       }
     })()
 
-    return () => ac.abort()
+    return () => {
+      cancelled = true
+      clearFirstToken()
+      ac.abort()
+    }
   },
 }
 

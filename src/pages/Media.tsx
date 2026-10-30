@@ -16,7 +16,7 @@ export default function Media() {
   const max = Math.max(...platforms.map((p) => followersToNumber(p.followers)))
 
   useSeo({
-    title: '自媒体矩阵 · 魏云潇',
+    title: '自媒体矩阵 · 晓叶',
     description: `${platforms.length} 个平台、${formatWan(totalFollowers)} 粉丝的运营数据与内容系列。`,
     path: '/me/media',
   })

@@ -18,7 +18,7 @@ export default function Learn() {
   const [q, setQ] = useState('')
 
   useSeo({
-    title: '知识库 · 魏云潇',
+    title: '知识库 · 晓叶',
     description: `${articleMeta.length} 篇长文：RAG 工程化、Agent 评测、工程手记。`,
     path: '/learn',
   })

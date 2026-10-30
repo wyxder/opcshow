@@ -620,6 +620,16 @@
   .prose-read blockquote {
     @apply my-6 rounded-r-xl border-l-4 border-coral bg-cream py-3 pl-5 pr-4 text-[15px] italic text-ink/80;
   }
+
+  /* F-06 阅读字号三档：只改正文，不改标题层级 */
+  .reader-sm p,
+  .reader-sm li {
+    @apply text-[13.5px] leading-[1.85];
+  }
+  .reader-lg p,
+  .reader-lg li {
+    @apply text-[17px] leading-[2.05];
+  }
 }
 
 /* =============================================================================

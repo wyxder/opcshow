@@ -21,7 +21,7 @@ export default function Love() {
   const days = daysBetween(loveMeta.startDate)
 
   useSeo({
-    title: '恋爱记录 · 魏云潇',
+    title: '恋爱记录 · 晓叶',
     description: `${loveMeta.motto} ${loveRecords.length} 段记录，从图书馆四楼到异地 1,100 公里。`,
     path: '/life/love',
   })

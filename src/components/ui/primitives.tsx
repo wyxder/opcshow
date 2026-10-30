@@ -363,7 +363,7 @@ export function Plate({
 
 /* --------------------------------- Avatar --------------------------------- */
 export function Avatar({
-  name = '魏云潇',
+  name = '晓叶',
   size = 56,
   accent = 'rgb(var(--c-lime))',
   className,

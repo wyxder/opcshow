@@ -23,6 +23,8 @@ export type GuestMessage = {
   /** 数据来源：预置种子 / 本机 / 服务端，UI 要如实标注（fx.md 执行要求 2） */
   source: MessageSource
   status?: ModerationStatus
+  /** 服务端点赞数；预置与本机留言没有真实计数，UI 不展示假数字 */
+  likes?: number
 }
 
 export type NewMessage = { user: string; text: string; color: string }
@@ -94,30 +96,91 @@ export const localGuestbook: GuestbookRepository = {
 
 /* ------------------------------ 远端适配层（二期） --------------------------- */
 
+type ServerMessage = {
+  id: string
+  user: string
+  text: string
+  color: string
+  createdAt: string
+  likes?: number
+  status?: ModerationStatus
+  flagged?: boolean
+}
+
+const fmtTime = (iso?: string) => {
+  if (!iso) return '刚刚'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '曾经' : d.toLocaleDateString('zh-CN')
+}
+
+const toMessage = (m: ServerMessage): GuestMessage => ({
+  id: m.id,
+  user: m.user,
+  text: m.text,
+  color: m.color || 'lime',
+  time: fmtTime(m.createdAt),
+  source: 'remote',
+  status: m.status,
+  likes: m.likes ?? 0,
+})
+
 export const remoteGuestbook: GuestbookRepository = {
   origin: 'remote',
   async list() {
-    const data = await apiJson<{ items: GuestMessage[] }>(`${serverConfig.guestbookPath}?status=published`)
-    return data.items
+    const data = await apiJson<{ items: ServerMessage[] }>(`${serverConfig.guestbookPath}?status=published`)
+    return data.items.map(toMessage)
   },
   async create(input) {
     const clean = sanitizeMessage(input)
     checkAbuse(clean.text)
-    // 服务端返回待审状态：先只在自己屏幕上出现，审核通过后进公共墙（B4）
-    return apiJson<GuestMessage>(serverConfig.guestbookPath, { method: 'POST', body: JSON.stringify({ ...clean, status: 'pending' }) })
+    // 服务端返回待审状态：先只在自己屏幕上出现，审核通过后进公共墙（B-04）
+    const created = await apiJson<{ id: string; status: ModerationStatus; flagged: boolean }>(serverConfig.guestbookPath, {
+      method: 'POST',
+      body: JSON.stringify(clean),
+    })
+    return { ...clean, id: created.id, time: '刚刚', source: 'remote', status: created.status, likes: 0 }
   },
   async remove(id) {
     await apiJson(`${serverConfig.guestbookPath}/${id}`, { method: 'DELETE' })
   },
 }
 
-/** 审核队列（B4）：本地模式下把「我发的留言」当成待审项，后台 ModerationPage 就能看到真实数据 */
+/**
+ * 审核队列（B-04 / F-07）：
+ * · 服务端模式 → GET /api/guestbook?scope=admin（需登录），读真实 pending；
+ * · 本地模式 → 把「我发的留言」当成待审项，后台 ModerationPage 也能看到真实数据。
+ */
 export async function listPending(): Promise<GuestMessage[]> {
+  if (serverConfig.enabled) {
+    try {
+      const data = await apiJson<{ items: ServerMessage[] }>(`${serverConfig.guestbookPath}?scope=admin&status=all&limit=100`)
+      return data.items.filter((m) => m.status === 'pending').map(toMessage)
+    } catch {
+      return []
+    }
+  }
   const mine = readStored<GuestMessage[]>(STORAGE_KEYS.guestbook, [], isMsgArray)
   return mine.filter((m) => m.source === 'local')
 }
 
-export function approvePending(id: string) {
+/** 待审数量：后台 badge 用这个，不再写死 1 */
+export async function countPending(): Promise<number> {
+  if (serverConfig.enabled) {
+    try {
+      const data = await apiJson<{ count: number }>(`${serverConfig.guestbookPath}/pending/count`)
+      return data.count
+    } catch {
+      return 0
+    }
+  }
+  return (await listPending()).length
+}
+
+export async function approvePending(id: string) {
+  if (serverConfig.enabled) {
+    await apiJson(`${serverConfig.guestbookPath}/${id}/approve`, { method: 'POST' })
+    return
+  }
   const mine = readStored<GuestMessage[]>(STORAGE_KEYS.guestbook, [], isMsgArray)
   writeStored(
     STORAGE_KEYS.guestbook,
@@ -125,9 +188,34 @@ export function approvePending(id: string) {
   )
 }
 
-export function rejectPending(id: string) {
+export async function rejectPending(id: string) {
+  if (serverConfig.enabled) {
+    await apiJson(`${serverConfig.guestbookPath}/${id}/reject`, { method: 'POST' })
+    return
+  }
   const mine = readStored<GuestMessage[]>(STORAGE_KEYS.guestbook, [], isMsgArray)
   writeStored(STORAGE_KEYS.guestbook, mine.filter((m) => m.id !== id))
+}
+
+/** 点赞按 message id 落库（服务端按 ipHash 去重）；未接服务端返回 null，由页面回落本机 */
+export async function toggleLike(id: string): Promise<{ likes: number; liked: boolean } | null> {
+  if (!serverConfig.enabled) return null
+  try {
+    return await apiJson<{ likes: number; liked: boolean }>(`${serverConfig.guestbookPath}/${id}/like`, { method: 'POST' })
+  } catch {
+    return null
+  }
+}
+
+/** 举报：3 次后服务端自动打回 pending */
+export async function reportMessage(id: string): Promise<boolean> {
+  if (!serverConfig.enabled) return false
+  try {
+    await apiJson(`${serverConfig.guestbookPath}/${id}/report`, { method: 'POST' })
+    return true
+  } catch {
+    return false
+  }
 }
 
 /* --------------------------------- 对外门面 -------------------------------- */
