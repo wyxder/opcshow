@@ -5,10 +5,17 @@ import { Modal } from '@/components/ui/Modal'
 import { PageIntro, Sticker } from '@/components/ui/primitives'
 import { aboutCards, mediaStats } from '@/data/me'
 import { profile, skillGroups } from '@/data/site'
+import { useSeo } from '@/lib/seo'
 
 export default function About() {
   const [openKey, setOpenKey] = useState<string | null>(null)
   const active = aboutCards.find((c) => c.key === openKey)
+
+  useSeo({
+    title: '自我介绍 · 魏云潇',
+    description: '四张卡片认识我：我是谁、在做什么、怎么工作、一点私货。',
+    path: '/me',
+  })
 
   return (
     <div className="shell">

@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ChevronDown, Palette } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { applyTheme, SWATCH_TOKENS, type ThemeId } from '@/theme/theme'
+import { SWATCH_TOKENS, type ThemeId } from '@/theme/theme'
 import { useTheme } from '@/theme/ThemeProvider'
 
 /**
@@ -90,6 +90,7 @@ export function ThemeSwitcher({ align = 'right', className }: { align?: 'left' |
                     key={t.id}
                     role="option"
                     aria-selected={on}
+                    aria-label={`主题 ${t.no} ${t.name}${on ? '，当前已启用' : ''}`}
                     onClick={() => {
                       setTheme(t.id)
                       setOpen(false)
@@ -140,11 +141,10 @@ export function ThemePicker() {
             <button
               key={t.id}
               type="button"
-              onClick={() => {
-                setTheme(t.id)
-                applyTheme(t.id)
-              }}
+              onClick={() => setTheme(t.id)}
               aria-pressed={on}
+              /* fx.md A4：选中态不能只靠颜色+图标区分，给读屏器一句完整描述 */
+              aria-label={`主题 ${t.no} ${t.name}${on ? '，当前已启用' : ''}`}
               className={cn(
                 'rounded-xl border px-2.5 py-2 text-left transition-colors',
                 on ? 'border-lime bg-lime/15' : 'border-paper/20 active:bg-paper/10',

@@ -1,5 +1,5 @@
 import { Check, ExternalLink, Mail, MessageSquare, ShieldAlert, Trash2, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { danmakuQueue as danmakuSeed, friendRequests as friendSeed, guestbookQueue as guestSeed } from '@/admin/data'
 import { friends } from '@/data/me'
 import {
@@ -19,6 +19,8 @@ import {
   Textarea,
 } from '@/admin/ui'
 import { cn } from '@/lib/utils'
+import { approvePending, listPending, rejectPending, type GuestMessage } from '@/services/guestbook'
+import { serverConfig } from '@/services/config'
 
 type Tab = 'danmaku' | 'guestbook' | 'friends'
 
@@ -30,6 +32,16 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
   const [query, setQuery] = useState('')
   const [reply, setReply] = useState<(typeof guestSeed)[number] | null>(null)
   const [replyText, setReplyText] = useState('')
+  /** fx.md F5/B4 一期：本机真实留言（访客自填）进同一个审核队列 */
+  const [localQueue, setLocalQueue] = useState<GuestMessage[]>([])
+
+  useEffect(() => {
+    let alive = true
+    listPending().then((l) => alive && setLocalQueue(l))
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const pendingDanmaku = danmaku.filter((d) => d.status === '待审').length
   const pendingGuest = guest.filter((g) => g.status === '待审').length
@@ -151,6 +163,49 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
                 全部通过
               </AButton>
             </div>
+          </Panel>
+
+          <Panel
+            kicker="Real data"
+            title="本机真实留言"
+            desc={serverConfig.enabled ? '来自 /api/guestbook 的待审队列' : '来自这台浏览器写下的留言（localStorage），不是预置数据'}
+          >
+            {localQueue.length === 0 ? (
+              <EmptyState title="本机还没有留言" desc="去前台「留言弹幕墙」发一条，它会出现在这里" />
+            ) : (
+              <div className="space-y-2">
+                {localQueue.map((m) => (
+                  <div key={m.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-ink/15 px-3 py-2">
+                    <span className="text-[11.5px] font-medium">{m.user}</span>
+                    <span className="min-w-0 flex-1 truncate text-[11.5px] text-admin-ink/75">{m.text}</span>
+                    <Badge tone={m.status === 'published' ? 'teal' : 'amber'}>{m.status === 'published' ? '已通过' : '待审'}</Badge>
+                    <IconButton
+                      label="通过"
+                      onClick={() => {
+                        approvePending(m.id)
+                        setLocalQueue((l) => l.map((x) => (x.id === m.id ? { ...x, status: 'published' } : x)))
+                        show('已通过，前台弹幕墙会显示这条留言')
+                      }}
+                    >
+                      <Check size={11} />
+                    </IconButton>
+                    <IconButton
+                      label="删除"
+                      onClick={() => {
+                        rejectPending(m.id)
+                        setLocalQueue((l) => l.filter((x) => x.id !== m.id))
+                        show('已删除本机留言')
+                      }}
+                    >
+                      <Trash2 size={11} />
+                    </IconButton>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-3 font-mono text-[9px] text-admin-muted">
+              数据源：services/guestbook.ts · localGuestbook（预置种子弹幕不在此列）
+            </p>
           </Panel>
 
           <div className="space-y-3">

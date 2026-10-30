@@ -19,6 +19,21 @@ export default {
         sky: 'rgb(var(--c-sky) / <alpha-value>)',
         sand: 'rgb(var(--c-surface-2) / <alpha-value>)',
         rose: 'rgb(var(--c-rose) / <alpha-value>)',
+        // 语义状态色（fx.md T2）：新组件不再逐页挑 lime/coral/amber
+        success: 'rgb(var(--c-success) / <alpha-value>)',
+        warning: 'rgb(var(--c-warning) / <alpha-value>)',
+        danger: 'rgb(var(--c-danger) / <alpha-value>)',
+        info: 'rgb(var(--c-info) / <alpha-value>)',
+        'surface-hover': 'rgb(var(--c-surface-hover) / <alpha-value>)',
+        // 平台品牌色（fx.md D5）：固定值，不随主题变化
+        brand: {
+          xhs: 'rgb(var(--c-brand-xhs) / <alpha-value>)',
+          bili: 'rgb(var(--c-brand-bili) / <alpha-value>)',
+          douyin: 'rgb(var(--c-brand-douyin) / <alpha-value>)',
+          wechat: 'rgb(var(--c-brand-wechat) / <alpha-value>)',
+          github: 'rgb(var(--c-brand-github) / <alpha-value>)',
+          zhihu: 'rgb(var(--c-brand-zhihu) / <alpha-value>)',
+        },
         // admin console palette — 与前台共用同一套令牌
         admin: {
           bg: 'rgb(var(--c-bg) / <alpha-value>)',
@@ -37,6 +52,9 @@ export default {
           rose: 'rgb(var(--c-rose) / <alpha-value>)',
           danger: 'rgb(var(--c-danger) / <alpha-value>)',
           info: 'rgb(var(--c-info) / <alpha-value>)',
+          success: 'rgb(var(--c-success) / <alpha-value>)',
+          warning: 'rgb(var(--c-warning) / <alpha-value>)',
+          hover: 'rgb(var(--c-surface-hover) / <alpha-value>)',
         },
       },
       fontFamily: {

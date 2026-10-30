@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { PageIntro, Sticker } from '@/components/ui/primitives'
 import { growthTimeline } from '@/data/me'
 import { cn } from '@/lib/utils'
+import { useSeo } from '@/lib/seo'
 
 const tagColor: Record<string, string> = {
   学习: 'rgb(var(--c-sky))',
@@ -18,6 +19,12 @@ const tags = ['全部', '学习', '项目', '竞赛', '内容', '生活'] as con
 export default function Timeline() {
   const [tag, setTag] = useState<string>('全部')
   const list = tag === '全部' ? growthTimeline : growthTimeline.filter((t) => t.tag === tag)
+
+  useSeo({
+    title: '成长时间轴 · 魏云潇',
+    description: `2018 → 2026，${growthTimeline.length} 个节点：学习、项目、竞赛、内容与生活。`,
+    path: '/me/timeline',
+  })
 
   return (
     <div className="shell">

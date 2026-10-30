@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useFocusTrap, useScrollLock } from '@/lib/a11y'
 import { cn } from '@/lib/utils'
 
 type ModalProps = {
@@ -15,17 +16,18 @@ type ModalProps = {
 }
 
 export function Modal({ open, onClose, children, title, kicker, className, bare }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
-    }
+    return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
+
+  // fx.md A1：焦点陷阱 + 关闭后归还焦点；fx.md A2 配套的滚动锁
+  useFocusTrap(open, panelRef)
+  useScrollLock(open)
 
   return createPortal(
     <AnimatePresence>
@@ -39,11 +41,13 @@ export function Modal({ open, onClose, children, title, kicker, className, bare 
             onClick={onClose}
           />
           <motion.div
+            ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-label={title ?? '弹窗'}
+            tabIndex={-1}
             className={cn(
-              'relative z-10 max-h-[88vh] w-full overflow-y-auto rounded-[26px] border-1.5 border-ink bg-cream shadow-hard-lg no-scrollbar',
+              'relative z-10 max-h-[88vh] w-full overflow-y-auto rounded-[26px] border-1.5 border-ink bg-cream shadow-hard-lg outline-none no-scrollbar',
               className ?? 'max-w-2xl',
             )}
             initial={{ opacity: 0, y: 36, scale: 0.97, rotate: -0.6 }}

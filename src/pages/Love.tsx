@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { PageIntro, Reveal, Sticker } from '@/components/ui/primitives'
 import { loveMeta, loveRecords, loveStats } from '@/data/life'
 import { cn, daysBetween } from '@/lib/utils'
+import { useSeo } from '@/lib/seo'
 
 const iconMap = {
   heart: Heart,
@@ -18,6 +19,12 @@ const types = ['全部', '起点', '日常', '旅行', '惊喜', '成长'] as co
 export default function Love() {
   const [type, setType] = useState<string>('全部')
   const days = daysBetween(loveMeta.startDate)
+
+  useSeo({
+    title: '恋爱记录 · 魏云潇',
+    description: `${loveMeta.motto} ${loveRecords.length} 段记录，从图书馆四楼到异地 1,100 公里。`,
+    path: '/life/love',
+  })
 
   const list = useMemo(() => (type === '全部' ? loveRecords : loveRecords.filter((r) => r.type === type)), [type])
 

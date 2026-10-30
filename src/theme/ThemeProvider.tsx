@@ -1,19 +1,35 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { applyTheme, DEFAULT_THEME, isThemeId, readStoredTheme, THEME_STORAGE_KEY, THEMES, type ThemeId } from './theme'
+import {
+  DEFAULT_THEME,
+  applyTheme,
+  clearPersonalTheme,
+  hasPersonalTheme,
+  isThemeId,
+  persistTheme,
+  readStoredTheme,
+  THEME_STORAGE_KEY,
+  THEMES,
+  type ThemeId,
+} from './theme'
 
 type ThemeContextValue = {
   theme: ThemeId
   setTheme: (id: ThemeId) => void
   resetTheme: () => void
+  /** 访客是否显式选过主题（fx.md T5：本机覆盖 ≠ 站点缺省） */
+  isPersonalChoice: boolean
+  /** 清掉本机覆盖，回到「站点缺省 + 系统偏好」 */
+  followSiteDefault: () => void
   themes: typeof THEMES
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // 首屏值来自 localStorage：index.html 的内联脚本已经写好 data-theme，
+  // 首屏值来自 localStorage / 系统偏好：index.html 的内联脚本已经写好 data-theme，
   // 这里保持同一份来源，避免 hydrate 后颜色跳变。
   const [theme, setThemeState] = useState<ThemeId>(() => readStoredTheme())
+  const [isPersonalChoice, setIsPersonalChoice] = useState(() => hasPersonalTheme())
 
   useEffect(() => {
     applyTheme(theme)
@@ -21,27 +37,37 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setTheme = useCallback((id: ThemeId) => {
     if (!isThemeId(id)) return
+    // fx.md T3：只在切换这一瞬间挂过渡类，200ms 后摘掉，不污染 hover
+    const root = document.documentElement
+    root.classList.add('theme-transition')
+    window.setTimeout(() => root.classList.remove('theme-transition'), 260)
     setThemeState(id)
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, id)
-    } catch {
-      /* 存不下就算了，本次会话内仍然生效 */
-    }
+    setIsPersonalChoice(true)
+    persistTheme(id)
   }, [])
 
   const resetTheme = useCallback(() => setTheme(DEFAULT_THEME), [setTheme])
 
+  const followSiteDefault = useCallback(() => {
+    clearPersonalTheme()
+    setIsPersonalChoice(false)
+    setThemeState(readStoredTheme())
+  }, [])
+
   // 多标签页同步 + 系统级存储变更
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== THEME_STORAGE_KEY) return
-      setThemeState(isThemeId(e.newValue) ? e.newValue : DEFAULT_THEME)
+      if (e.key !== THEME_STORAGE_KEY && e.key !== null) return
+      setThemeState(isThemeId(e.newValue) ? e.newValue : readStoredTheme())
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
-  const value = useMemo(() => ({ theme, setTheme, resetTheme, themes: THEMES }), [theme, setTheme, resetTheme])
+  const value = useMemo(
+    () => ({ theme, setTheme, resetTheme, isPersonalChoice, followSiteDefault, themes: THEMES }),
+    [theme, setTheme, resetTheme, isPersonalChoice, followSiteDefault],
+  )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }

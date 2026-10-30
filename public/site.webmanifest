@@ -1,0 +1,26 @@
+{
+  "name": "魏云潇 · WYX.SPACE",
+  "short_name": "WYX.SPACE",
+  "description": "AI 全栈 / 智能体开发作品集 — 项目、学习笔记、生活碎片与成长时间轴。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F4F0E6",
+  "theme_color": "#F4F0E6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    { "name": "知识库", "url": "/learn" },
+    { "name": "简历", "url": "/work/resume" },
+    { "name": "资源中心", "url": "/work/files" },
+    { "name": "留言弹幕墙", "url": "/me/guestbook" }
+  ]
+}

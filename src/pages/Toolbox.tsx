@@ -5,13 +5,21 @@ import { PageIntro, Reveal, Sticker } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
 import { toolboxGroups } from '@/data/work'
 import { cn, useLocalStorage } from '@/lib/utils'
+import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
+import { useSeo } from '@/lib/seo'
 
 export default function Toolbox() {
   const [group, setGroup] = useState<string>('all')
   const [q, setQ] = useState('')
   const [onlyStar, setOnlyStar] = useState(false)
-  const [stars, setStars] = useLocalStorage<string[]>('wyx-toolbox-stars', ['p1', 'c1', 'd1'])
+  const [stars, setStars] = useLocalStorage<string[]>(STORAGE_KEYS.toolboxStars, ['p1', 'c1', 'd1'], isStringArray)
   const { show, node } = useToast()
+
+  useSeo({
+    title: '百宝箱 · 魏云潇',
+    description: '反复用到的 Prompt、代码片段、设计资产和输入源。',
+    path: '/work/toolbox',
+  })
 
   const all = toolboxGroups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.title, color: g.color })))
 
@@ -29,6 +37,17 @@ export default function Toolbox() {
     setStars((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
   }
 
+  /** 真复制到剪贴板；非安全上下文下退化为提示手动复制 */
+  const take = async (item: { title: string; desc: string }) => {
+    const text = `${item.title}\n${item.desc}`
+    try {
+      await navigator.clipboard.writeText(text)
+      show(`「${item.title}」已复制到剪贴板`)
+    } catch {
+      show(`浏览器不允许写入剪贴板，手动复制：${item.title}`)
+    }
+  }
+
   return (
     <div className="shell">
       <PageIntro
@@ -41,7 +60,7 @@ export default function Toolbox() {
           </>
         }
         desc="反复用到的 Prompt、代码片段、设计资产和输入源。都是我线上项目里活下来的东西，直接抄不丢人。"
-        note="点星星收藏，会存在你的浏览器里。"
+        note="点星星收藏会存在你的浏览器里；「取用」是真复制。"
         right={
           <div className="flex flex-wrap gap-2">
             <Sticker rotate={-5}>{all.length} 件藏品</Sticker>
@@ -132,7 +151,7 @@ export default function Toolbox() {
                 <div className="mt-3 flex items-center justify-between border-t border-dashed border-ink/12 pt-2.5">
                   <span className="font-mono text-[9px] text-ink/35">{item.stars} 人收藏 · {item.group}</span>
                   <button
-                    onClick={() => show(`「${item.title}」已复制到剪贴板（演示）`)}
+                    onClick={() => take(item)}
                     className="flex items-center gap-1 rounded-full border border-ink/20 px-2 py-1 text-[9.5px] transition hover:border-ink hover:bg-lime"
                   >
                     <Copy size={10} /> 取用

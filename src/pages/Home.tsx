@@ -27,11 +27,12 @@ import { Link } from 'react-router-dom'
 import { ProjectModal } from '@/components/ProjectModal'
 import { Modal } from '@/components/ui/Modal'
 import { CountUp, Marquee, Plate, Reveal, SectionHead, Sticker, Tilt } from '@/components/ui/primitives'
-import { articles } from '@/data/articles'
-import { awards, education, hobbies, profile, skillGroups, stats } from '@/data/site'
+import { articleMeta } from '@/data/articles.index'
+import { awards, education, figures, hobbies, profile, skillGroups, stats } from '@/data/site'
 import { projects, featuredProjects } from '@/data/projects'
 import type { Project } from '@/data/projects'
 import { cn } from '@/lib/utils'
+import { personJsonLd, useSeo } from '@/lib/seo'
 
 const colorMap: Record<string, string> = {
   lime: 'rgb(var(--c-lime))',
@@ -113,7 +114,7 @@ function Hero({ onOpenCard }: { onOpenCard: () => void }) {
               </div>
               <div className="hidden h-8 w-px bg-ink/15 sm:block" />
               <p className="max-w-md text-[13px] leading-relaxed text-ink-soft">
-                7 款 AI 付费产品、16 项竞赛、2.3w 粉的自媒体。喜欢把 Agent、RAG 和大模型能力，落成普通人真的会用的产品。
+                {figures.products} 款 AI 付费产品、{figures.awards} 项竞赛、{figures.mainPlatformFollowers} 粉的自媒体。喜欢把 Agent、RAG 和大模型能力，落成普通人真的会用的产品。
               </p>
             </div>
           </Reveal>
@@ -515,10 +516,10 @@ function Honors() {
         index="03"
         title="竞赛荣誉"
         en="AWARDS"
-        desc="2026 年跑了 7 场黑客松，6 次进决赛。奖项放在这里，作品在上面。"
+        desc={`2026 年跑了 ${figures.hackathonOnsite2026} 场黑客松，${figures.finals2026} 次进决赛。奖项放在这里，作品在上面。`}
         action={
           <button onClick={() => setOpen(true)} className="btn !py-2 !text-[12px]">
-            全部 16 项 <ArrowUpRight size={13} />
+            全部 {figures.awards} 项 <ArrowUpRight size={13} />
           </button>
         }
       />
@@ -558,7 +559,7 @@ function Honors() {
                 <br />
                 真实产品课。
               </p>
-              <p className="mt-3 text-[11px] leading-relaxed text-ink/60">7 场决赛、5 次上台路演、3 个评委追问：你的付费模型怎么走通？</p>
+              <p className="mt-3 text-[11px] leading-relaxed text-ink/60">{figures.finals2026} 场决赛、5 次上台路演、3 个评委追问：你的付费模型怎么走通？</p>
               <div className="absolute -bottom-3 -right-2 font-display text-[64px] font-extrabold text-ink/10">2026</div>
             </div>
             <div className="rounded-2xl border-1.5 border-ink bg-cream p-4">
@@ -678,7 +679,7 @@ function LifeTeaser() {
               </Link>
             </div>
             <div className="mt-3">
-              {articles.slice(0, 4).map((a, i) => (
+              {articleMeta.slice(0, 4).map((a, i) => (
                 <Link
                   key={a.id}
                   to={`/learn/${a.id}`}
@@ -757,6 +758,13 @@ function HomeCTA() {
 export default function Home() {
   const [activeProject, setActiveProject] = useState<Project | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
+
+  useSeo({
+    title: '魏云潇 · WYX.SPACE',
+    description: 'AI 全栈 / 智能体开发。把想法做成能上线的东西 —— 项目、学习笔记、生活碎片与成长时间轴。',
+    path: '/',
+    jsonLd: personJsonLd(),
+  })
 
   return (
     <div className="shell">

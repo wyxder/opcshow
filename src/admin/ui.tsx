@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { useFocusTrap, useScrollLock } from '@/lib/a11y'
 import { cn } from '@/lib/utils'
 
 /* ---------------------------------- toast --------------------------------- */
@@ -65,8 +66,9 @@ export function AButton({
     primary: 'bg-ink text-paper border-ink hover:-translate-y-0.5 hover:shadow-hard-sm',
     ghost: 'bg-cream text-ink border-ink hover:-translate-y-0.5 hover:shadow-hard-sm',
     dark: 'bg-lime text-ink border-ink hover:-translate-y-0.5 hover:shadow-hard-sm',
-    danger: 'bg-coral/15 text-admin-danger border-coral/70 hover:bg-coral/25',
-    soft: 'bg-paper text-ink border-transparent hover:border-ink/30 hover:bg-lime/25',
+    // fx.md T2：破坏性操作走语义状态令牌，不再混用 coral
+    danger: 'bg-danger/12 text-admin-danger border-danger/45 hover:bg-danger/20',
+    soft: 'bg-paper text-ink border-transparent hover:border-ink/30 hover:bg-surface-hover',
   }
   return (
     <button
@@ -160,13 +162,15 @@ export function Panel({
 
 type Tone = 'neutral' | 'red' | 'teal' | 'amber' | 'plum' | 'moss'
 
+/* fx.md T2：后台状态色一律走语义令牌（success / warning / danger / info），
+   新增主题只需要给这四个令牌取值，不用逐页试色。 */
 const tones: Record<Tone, string> = {
   neutral: 'bg-sand/70 text-ink/70',
-  red: 'bg-coral/15 text-admin-danger',
-  teal: 'bg-lime/50 text-admin-moss',
-  amber: 'bg-sand/80 text-admin-amber',
-  plum: 'bg-grape/10 text-admin-plum',
-  moss: 'bg-lime/30 text-admin-moss',
+  red: 'bg-danger/12 text-admin-danger',
+  teal: 'bg-success/15 text-admin-success',
+  amber: 'bg-warning/15 text-admin-warning',
+  plum: 'bg-info/12 text-admin-info',
+  moss: 'bg-success/12 text-admin-success',
 }
 
 export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
@@ -232,7 +236,7 @@ export function Tabs<T extends string>({
             'relative -mb-[1.5px] flex items-center gap-1.5 rounded-t-md border-b-3 px-0.5 pb-2 pt-1 text-[12.5px] transition',
             value === it.key
               ? 'border-coral font-semibold text-ink'
-              : 'border-transparent text-admin-muted hover:bg-lime/15 hover:text-ink',
+              : 'border-transparent text-admin-muted hover:bg-surface-hover hover:text-ink',
           )}
         >
           {it.label}
@@ -240,7 +244,7 @@ export function Tabs<T extends string>({
             <span
               className={cn(
                 'rounded-full px-1.5 py-px font-mono text-[9.5px]',
-                value === it.key ? 'bg-coral/15 text-admin-danger' : 'bg-sand/80 text-ink/75',
+                value === it.key ? 'bg-danger/12 text-admin-danger' : 'bg-sand/80 text-ink/75',
               )}
             >
               {it.count}
@@ -339,11 +343,22 @@ export function TrendChart({
   const x = (i: number) => pad.l + (i / Math.max(labels.length - 1, 1)) * innerW
   const y = (v: number) => pad.t + innerH - (v / max) * innerH
   const barW = Math.max(2, Math.min(6, innerW / labels.length / 3))
+  // fx.md A6：图表对读屏器给一句可读摘要（趋势 + 峰谷）
+  const summary = series
+    .map((s) => {
+      const max = Math.max(...s.values)
+      const min = Math.min(...s.values)
+      const atMax = s.values.indexOf(max)
+      const atMin = s.values.indexOf(min)
+      return `${s.name}：峰值 ${max}（${labels[atMax] ?? ''}），谷值 ${min}（${labels[atMin] ?? ''}）`
+    })
+    .join('；')
 
   return (
     <div ref={ref} className="relative w-full select-none" style={{ height }}>
       {width > 0 && (
-        <svg width={width} height={height} className="overflow-visible">
+        <svg width={width} height={height} className="overflow-visible" role="img" aria-label={summary}>
+          <title>{summary}</title>
           {[0, 1, 2, 3, 4].map((i) => {
             const gy = pad.t + (i / 4) * innerH
             return (
@@ -433,9 +448,14 @@ export function Donut({
   const r = (size - thickness) / 2
   const c = 2 * Math.PI * r
   let acc = 0
+  // fx.md A6：给每片弧一段可读文案
+  const ariaSummary = `占比分布，共 ${data.length} 项：${data
+    .map((d) => `${d.label} ${Math.round((d.value / total) * 100)}%`)
+    .join('、')}`
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
+      <svg width={size} height={size} className="-rotate-90" role="img" aria-label={ariaSummary}>
+        <title>{ariaSummary}</title>
         {data.map((d) => {
           const len = (d.value / total) * c
           const el = (
@@ -582,12 +602,18 @@ export function AdminModal({
   footer?: ReactNode
   width?: string
 }) {
+  const panelRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
+
+  // fx.md A1：后台弹层同样要焦点陷阱 + 关闭后归还焦点
+  useFocusTrap(open, panelRef)
+  useScrollLock(open)
 
   return createPortal(
     <AnimatePresence>
@@ -601,14 +627,16 @@ export function AdminModal({
             onClick={onClose}
           />
           <motion.div
+            ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-label={title}
+            tabIndex={-1}
             initial={{ opacity: 0, y: 18, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className={cn('relative z-10 w-full overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream shadow-hard-lg', width)}
+            className={cn('relative z-10 w-full overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream shadow-hard-lg outline-none', width)}
           >
             <div className="flex items-start justify-between gap-4 border-b border-ink/15 px-5 py-3.5">
               <div>

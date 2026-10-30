@@ -19,6 +19,7 @@ import { Pill } from '@/components/ui/primitives'
 import { articleById, articles, type Block } from '@/data/articles'
 import { profile } from '@/data/site'
 import { cn } from '@/lib/utils'
+import { articleJsonLd, useSeo } from '@/lib/seo'
 
 function CodeBlock({ block }: { block: Extract<Block, { t: 'code' }> }) {
   const [copied, setCopied] = useState(false)
@@ -115,6 +116,22 @@ export default function Reader() {
   const [tocOpen, setTocOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
+
+  // fx.md S3 / S4：文章页自己的一套 title/description + Article 结构化数据
+  useSeo({
+    title: article ? `${article.title} · 魏云潇` : '文章不存在 · 魏云潇',
+    description: article?.abstract,
+    ogType: article ? 'article' : 'website',
+    jsonLd: article
+      ? articleJsonLd({
+          id: article.id,
+          title: article.title,
+          abstract: article.abstract,
+          date: article.date,
+          sectionTitle: article.sections[0]?.title,
+        })
+      : undefined,
+  })
 
   const ids = useMemo(
     () => (article ? article.sections.flatMap((s) => [s.id, ...s.subs.map((x) => x.id)]) : []),

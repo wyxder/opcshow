@@ -167,6 +167,10 @@ export default function AdminShell({
 
   return (
     <div className="min-h-screen bg-paper text-ink">
+      {/* fx.md A2：后台同样给键盘用户一个直达主内容的入口 */}
+      <a href="#main" className="skip-link">
+        跳到主要内容
+      </a>
       {/* sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[228px] flex-col border-r-1.5 border-ink/15 bg-paper px-3 py-4 lg:flex">
         <Link to="/" className="flex items-center gap-2.5 px-1.5">
@@ -222,7 +226,7 @@ export default function AdminShell({
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1580px] px-4 py-5 sm:px-6 lg:px-8">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1580px] px-4 py-5 outline-none sm:px-6 lg:px-8">{children}</main>
       </div>
 
       {/* mobile drawer */}

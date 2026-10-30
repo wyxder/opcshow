@@ -1,0 +1,15 @@
+# robots.txt —— 构建期静态产物（fx.md S1）
+# 后台与本地交互页不参与索引
+User-agent: *
+Allow: /$
+Allow: /learn
+Allow: /learn/
+Allow: /work/
+Allow: /life/
+Allow: /me/
+Disallow: /admin
+Disallow: /read?
+Disallow: /*?assistant=
+
+# 真实服务端 sitemap（fx.md B8）接入后，把这行换成接口地址
+Sitemap: https://wyx.space/sitemap.xml

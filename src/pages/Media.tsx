@@ -1,18 +1,25 @@
-import { ArrowUpRight, BarChart3, BookOpen, Mail, PlayCircle, Sparkles, TrendingUp } from 'lucide-react'
+import { ArrowUpRight, BarChart3, BookOpen, ExternalLink, Mail, PlayCircle, Sparkles, TrendingUp } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { PageIntro, Reveal, Sticker } from '@/components/ui/primitives'
-import { mediaStats, platforms } from '@/data/me'
-import { profile } from '@/data/site'
+import { followersToNumber, formatWan, mediaStats, platforms, totalFollowers, totalPosts } from '@/data/me'
+import { figures, links, profile } from '@/data/site'
+import { useSeo } from '@/lib/seo'
 
 const series = [
-  { name: 'FDE 前沿教程', count: 89, note: '工具测评与工作流拆解，小红书收藏最多的一栏。', color: 'rgb(var(--c-lime))' },
+  { name: 'FDE 前沿教程', count: figures.fdeTutorials, note: '工具测评与工作流拆解，小红书收藏最多的一栏。', color: 'rgb(var(--c-lime))' },
   { name: '项目复盘', count: 42, note: '每个项目一篇长文，写决策不写成绩。', color: 'rgb(var(--c-sky))' },
   { name: 'Agent 评测笔记', count: 31, note: '指标、Judge、A/B 盲测，读者多为同行。', color: 'rgb(var(--c-rose))' },
   { name: '生活切片', count: 18, note: '骑行、咖啡、胶片，用来平衡算法的密度。', color: 'rgb(var(--c-surface-2))' },
 ]
 
 export default function Media() {
-  const max = Math.max(...platforms.map((p) => parseFloat(p.followers.replace(/[^\d.]/g, '')) * (p.followers.includes('w') ? 10000 : 1)))
+  const max = Math.max(...platforms.map((p) => followersToNumber(p.followers)))
+
+  useSeo({
+    title: '自媒体矩阵 · 魏云潇',
+    description: `${platforms.length} 个平台、${formatWan(totalFollowers)} 粉丝的运营数据与内容系列。`,
+    path: '/me/media',
+  })
 
   return (
     <div className="shell">
@@ -25,14 +32,14 @@ export default function Media() {
             <span className="marker">一个人运营</span>
           </>
         }
-        desc="从 2024 年底开始做 AI 内容，第一篇只有 200 播放。现在全网 3.4w 粉，89 篇 FDE 教程，累计浏览 15w+。"
+        desc={`从 2024 年底开始做 AI 内容，第一篇只有 200 播放。现在全网 ${formatWan(totalFollowers)} 粉，${figures.fdeTutorials} 篇 FDE 教程，累计浏览 ${figures.totalViews}。`}
         note="内容不是副业收入来源，是我保持输入的方式。"
         right={
           <div className="flex flex-wrap gap-2">
             <Sticker rotate={-4} color="rgb(var(--c-lime))">
-              全网 3.4w 粉
+              全网 {formatWan(totalFollowers)} 粉
             </Sticker>
-            <Sticker rotate={5}>355 条原创</Sticker>
+            <Sticker rotate={5}>{totalPosts} 条原创</Sticker>
           </div>
         }
       />
@@ -43,6 +50,7 @@ export default function Media() {
             <div className={i === 0 ? 'rounded-2xl border-1.5 border-ink bg-ink p-4 text-paper' : 'rounded-2xl border-1.5 border-ink bg-cream p-4'}>
               <p className={`font-display text-[26px] font-extrabold leading-none ${i === 0 ? 'text-lime' : ''}`}>{s.value}</p>
               <p className={`mt-1.5 font-mono text-[9px] tracking-widest ${i === 0 ? 'text-paper/40' : 'text-ink/40'}`}>{s.label}</p>
+              <p className={`mt-0.5 text-[9.5px] ${i === 0 ? 'text-paper/35' : 'text-ink/35'}`}>{s.note}</p>
             </div>
           </Reveal>
         ))}
@@ -53,11 +61,12 @@ export default function Media() {
           <div className="grid gap-3 sm:grid-cols-2">
             {platforms.map((p, i) => (
               <Reveal key={p.id} delay={i * 0.04}>
-                <a
-                  href="#"
+                {/* fx.md F4：有公开主页才是链接，没有就渲染成不可点的卡片，不留 href="#" */}
+                <div
                   className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard"
+                  {...(p.url ? {} : { role: 'group', 'aria-label': `${p.name} 站内展示` })}
                 >
-                  <span className="absolute inset-x-0 top-0 h-1.5" style={{ background: p.color }} />
+                  <span className="absolute inset-x-0 top-0 h-1.5" style={{ background: p.color }} aria-hidden />
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-[14px] font-extrabold">{p.name}</p>
@@ -72,14 +81,27 @@ export default function Media() {
                     <p className="pb-0.5 text-[10px] text-ink/40">粉丝 · {p.posts} 条内容</p>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink/8">
-                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, (parseFloat(p.followers.replace(/[^\d.]/g, '')) * (p.followers.includes('w') ? 10000 : 1) / max) * 100)}%`, background: p.color }} />
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, (followersToNumber(p.followers) / max) * 100)}%`, background: p.color }} />
                   </div>
                   <p className="mt-2.5 text-[10.5px] leading-relaxed text-ink/50">{p.note}</p>
                   <div className="mt-2 flex items-center justify-between border-t border-dashed border-ink/12 pt-2">
                     <span className="font-mono text-[9px] text-ink/35">{p.focus}</span>
-                    <ArrowUpRight size={12} className="text-ink/25 transition group-hover:text-ink" />
+                    {p.url ? (
+                      <a
+                        href={p.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 font-mono text-[9px] text-ink/45 transition hover:text-ink"
+                      >
+                        主页 <ExternalLink size={10} />
+                      </a>
+                    ) : (
+                      <span className="flex items-center gap-1 font-mono text-[9px] text-ink/30">
+                        站内展示 <ArrowUpRight size={10} className="opacity-40" />
+                      </span>
+                    )}
                   </div>
-                </a>
+                </div>
               </Reveal>
             ))}
           </div>

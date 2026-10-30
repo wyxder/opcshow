@@ -1,6 +1,6 @@
 import { motion, useInView } from 'framer-motion'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, usePrefersReducedMotion } from '@/lib/utils'
 
 /* ---------------------------------- Reveal --------------------------------- */
 export function Reveal({
@@ -57,7 +57,10 @@ export function Marquee({
   )
 
   return (
-    <div className={cn('group flex overflow-hidden', className)}>
+    <div
+      className={cn('group flex overflow-hidden', className)}
+      data-marquee
+    >
       <div
         className="flex min-w-max animate-marquee group-hover:[animation-play-state:paused]"
         style={{
@@ -111,10 +114,16 @@ export function Tilt({
 export function CountUp({ to, suffix = '', decimals = 0 }: { to: number; suffix?: string; decimals?: number }) {
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true, margin: '-30px' })
+  const reduced = usePrefersReducedMotion()
   const [n, setN] = useState(0)
 
   useEffect(() => {
     if (!inView) return
+    // fx.md A5 / P5 / R2：减少动画时直接落终值，不跑逐帧 setState
+    if (reduced) {
+      setN(to)
+      return
+    }
     let raf = 0
     const start = performance.now()
     const dur = 1300
@@ -126,7 +135,7 @@ export function CountUp({ to, suffix = '', decimals = 0 }: { to: number; suffix?
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [inView, to])
+  }, [inView, to, reduced])
 
   return (
     <span ref={ref} className="tabular-nums">

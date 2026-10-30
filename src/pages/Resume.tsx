@@ -1,12 +1,14 @@
-import { ArrowUpRight, Download, Mail, MapPin, Phone, Printer, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Download, FileText, Mail, MapPin, Phone, Printer, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { ProjectModal } from '@/components/ProjectModal'
 import { PageIntro, Sticker } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
-import { awards, education, profile, research, skillGroups, stats } from '@/data/site'
+import { awards, education, figures, profile, research, skillGroups, stats } from '@/data/site'
 import { projects, type Project } from '@/data/projects'
 import { resumeSnapshot } from '@/data/work'
 import { cn } from '@/lib/utils'
+import { useSeo } from '@/lib/seo'
+import { resumeAssets } from '@/services/files'
 
 const SectionTitle = ({ no, title, en }: { no: string; title: string; en: string }) => (
   <div className="mb-4 flex items-end gap-3 border-b-2 border-ink pb-2">
@@ -18,7 +20,13 @@ const SectionTitle = ({ no, title, en }: { no: string; title: string; en: string
 
 export default function Resume() {
   const [active, setActive] = useState<Project | null>(null)
-  const { show, node } = useToast()
+  const { node } = useToast()
+
+  useSeo({
+    title: '简历 · 魏云潇',
+    description: `${figures.products} 个项目、2 段实习、3 段科研、${figures.awards} 项竞赛。可打印成 A4，也可直接下载简历原件。`,
+    path: '/work/resume',
+  })
 
   return (
     <div className="shell">
@@ -31,20 +39,24 @@ export default function Resume() {
             <span className="marker">完整履历</span>
           </>
         }
-        desc="7 个项目、2 段实习、3 段科研、16 项竞赛。如果想看更细的决策过程，每个项目都能点开。"
-        note="支持直接打印成 A4，或者发邮件要 PDF 版。"
+        desc={`${figures.products} 个项目、2 段实习、3 段科研、${figures.awards} 项竞赛。如果想看更细的决策过程，每个项目都能点开。`}
+        note="支持直接打印成 A4，也可以下载简历原件。"
         right={
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <Sticker rotate={4} color="rgb(var(--c-lime))">
               随时到岗 · 6 个月起
             </Sticker>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button onClick={() => window.print()} className="btn-ink !py-2 !text-[12px]">
                 <Printer size={13} /> 打印 / PDF
               </button>
-              <button onClick={() => show('简历 PDF 已加入下载队列（演示）')} className="btn !py-2 !text-[12px]">
-                <Download size={13} /> 下载
-              </button>
+              {/* fx.md F6：真附件下载。服务端 PDF 渲染（B8）接入后 resumeAssets.pdf 会自动变成可用链接 */}
+              <a href={resumeAssets.print.href} download className="btn !py-2 !text-[12px]" title="单文件 HTML，打开后即可另存为 PDF">
+                <FileText size={13} /> 下载打印版
+              </a>
+              <a href={resumeAssets.docx.href} download={resumeAssets.docx.name} className="btn !py-2 !text-[12px]">
+                <Download size={13} /> 简历原件
+              </a>
             </div>
           </div>
         }

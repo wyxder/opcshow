@@ -1,4 +1,4 @@
-import { articles } from '@/data/articles'
+import { articleMeta } from '@/data/articles.index'
 import { projects } from '@/data/projects'
 import { growthTimeline } from '@/data/me'
 import { resourceFiles } from '@/data/work'
@@ -77,7 +77,7 @@ export const sourceShare = [
   { label: '其他', value: 8, color: 'rgb(var(--c-rose))' },
 ]
 
-export const topArticles = articles
+export const topArticles = articleMeta
   .slice()
   .sort((a, b) => b.views - a.views)
   .slice(0, 4)
@@ -156,7 +156,7 @@ export const hourly = [
 
 const statusPool = ['已发布', '已发布', '已发布', '草稿', '待审核'] as const
 
-export const adminArticles = articles.map((a, i) => ({
+export const adminArticles = articleMeta.map((a, i) => ({
   id: a.id,
   title: a.title,
   category: a.category,
@@ -356,9 +356,12 @@ export const seoDefaults = {
   title: 'WYX.SPACE · 魏云潇的个人站',
   description: 'AI 全栈 / 智能体开发。RAG、Agent 评测、AIGC 工作台，把想法做成能上线的东西。',
   keywords: 'RAG, Agent, 评测, AI 全栈, 作品集, 魏云潇',
+  /** 站点级默认封面：由 scripts/gen-og.mjs 构建期生成（fx.md S1/S2）；
+   * 每篇文章一张带排版的 OG 图属于 fx.md B8，需要服务端 satori + @resvg。 */
   ogImage: '/og-cover.png',
   canonical: 'https://wyx.space',
   robots: 'index, follow',
+  /** sitemap / rss 由 scripts/gen-seo.mjs 构建期生成（fx.md S1/S5）；服务端生成后把开关指向 /api/seo/* */
   sitemap: true,
   structuredData: true,
   analytics: true,

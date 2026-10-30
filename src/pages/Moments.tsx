@@ -1,27 +1,47 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Camera, Heart, ImagePlus, MapPin, MessageCircle, Send, Share2, Sparkles } from 'lucide-react'
+import { Camera, Heart, ImagePlus, Link2, MapPin, MessageCircle, Send, Share2, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { PageIntro } from '@/components/ui/primitives'
+import { SmartImage } from '@/components/SmartImage'
 import { useToast } from '@/components/ui/Toast'
 import { moments as seedMoments, type Moment } from '@/data/life'
-import { cn, readableInk, useLocalStorage } from '@/lib/utils'
+import { lookupMedia } from '@/data/media'
+import { cn, newId, readableInk, useLocalStorage } from '@/lib/utils'
+import { STORAGE_KEYS, arrayOf, isRecordOf, isStringArray } from '@/lib/storage'
+import { useSeo } from '@/lib/seo'
+import { serverConfig } from '@/services/config'
+
+const isMomentArray = arrayOf<Moment>((m) => typeof m.id === 'string' && typeof m.text === 'string')
+const isCommentRecord = isRecordOf<string[]>((v) => isStringArray(v))
 
 export default function Moments() {
-  const [extra, setExtra] = useLocalStorage<Moment[]>('wyx-moments-extra', [])
-  const [liked, setLiked] = useLocalStorage<string[]>('wyx-moments-liked', [])
-  const [comments, setComments] = useLocalStorage<Record<string, { user: string; text: string }[]>>('wyx-moments-comments', {})
+  const [extra, setExtra] = useLocalStorage<Moment[]>(STORAGE_KEYS.momentsExtra, [], isMomentArray)
+  const [liked, setLiked] = useLocalStorage<string[]>(STORAGE_KEYS.momentsLiked, [], isStringArray)
+  const [comments, setComments] = useLocalStorage<Record<string, { user: string; text: string }[]>>(
+    STORAGE_KEYS.momentsComments,
+    {},
+    isCommentRecord as never,
+  )
   const [draft, setDraft] = useState('')
   const [commentDraft, setCommentDraft] = useState<Record<string, string>>({})
   const [openComment, setOpenComment] = useState<string | null>(null)
   const { show, node } = useToast()
 
+  useSeo({
+    title: '朋友圈 · 魏云潇',
+    description: '项目的坑、比赛的现场、路上的风景，还有那些不适合放进简历的废话。',
+    path: '/life/moments',
+  })
+
   const feed = [...extra, ...seedMoments]
   const hotTags = ['深夜 coding', '黑客松', 'debug 日常', '骑行', '开源', '分享']
+  /** 站内登记的真实图片数量（F1：图片没上传前一律走图形兜底） */
+  const withPhoto = feed.filter((m) => m.media.some((x) => lookupMedia(x.label))).length
 
   const post = () => {
     if (!draft.trim()) return
     const m: Moment = {
-      id: `local-${Date.now()}`,
+      id: newId('local'),
       time: '刚刚',
       text: draft.trim(),
       place: '西安',
@@ -33,7 +53,18 @@ export default function Moments() {
     }
     setExtra((l) => [m, ...l])
     setDraft('')
-    show('已经发到朋友圈了（只存在你的浏览器里）')
+    show(serverConfig.enabled ? '已提交，等待审核后公开' : '已经发到朋友圈了（只存在你的浏览器里）')
+  }
+
+  const share = async () => {
+    const url = location.href
+    try {
+      await navigator.clipboard.writeText(url)
+      show('链接已复制到剪贴板')
+    } catch {
+      // 非安全上下文 / 权限被拒：选中文本栏而不是报错
+      show(`复制这个地址：${url}`)
+    }
   }
 
   const addComment = (id: string) => {
@@ -55,10 +86,11 @@ export default function Moments() {
           </>
         }
         desc="朋友圈同步：项目的坑、比赛的现场、路上的风景，还有那些不适合放进简历的废话。"
-        note="新发的动态只存在本地，刷新还在，换浏览器就没了。"
+        note={serverConfig.enabled ? '新动态会提交到服务端并进审核队列。' : '新发的动态只存在本地，刷新还在，换浏览器就没了。'}
         right={
           <div className="flex items-center gap-2 font-mono text-[9px] text-ink/40">
-            <span className="h-1.5 w-1.5 animate-blink rounded-full bg-coral" /> LIVE · {feed.length} 条
+            <span className="h-1.5 w-1.5 animate-blink rounded-full bg-coral" />
+            {serverConfig.enabled ? 'LIVE' : '本机'} · {feed.length} 条 · {withPhoto} 条有真实配图
           </div>
         }
       />
@@ -85,7 +117,7 @@ export default function Moments() {
                     <button className="rounded-lg p-1.5 hover:bg-paper hover:text-ink" aria-label="拍照">
                       <Camera size={14} />
                     </button>
-                    <span className="ml-1 font-mono text-[9px]">支持换行 · 不支持 @</span>
+                    <span className="ml-1 font-mono text-[9px]">支持换行 · 配图需先上传到资源位（F1）</span>
                   </div>
                   <button onClick={post} disabled={!draft.trim()} className="btn-ink !py-1.5 !text-[11.5px] disabled:opacity-30">
                     <Send size={12} /> 发表
@@ -137,21 +169,33 @@ export default function Moments() {
 
                     {m.media.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {m.media.map((md, k) => (
-                          <div
-                            key={k}
-                            className="relative flex h-[124px] w-[168px] items-end overflow-hidden rounded-xl border border-ink/15"
-                            style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${m.accent} 33%, transparent), rgb(var(--c-surface)) 70%)` }}
-                          >
-                            <div className="absolute inset-0 halftone opacity-30" />
-                            <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border border-ink/20 bg-cream/80">
-                              {md.kind === 'photo' ? <Camera size={11} /> : <Sparkles size={11} />}
-                            </div>
-                            <span className="relative m-2 rounded border border-ink/15 bg-cream/90 px-1.5 py-0.5 font-mono text-[9.5px] text-ink/55">
-                              {md.label}
-                            </span>
-                          </div>
-                        ))}
+                        {m.media.map((md, k) => {
+                          const asset = lookupMedia(md.label)
+                          return (
+                            <SmartImage
+                              key={k}
+                              asset={asset}
+                              className="h-[124px] w-[168px] rounded-xl border border-ink/15"
+                              fallback={
+                                <div
+                                  className="relative flex h-[124px] w-[168px] items-end overflow-hidden rounded-xl border border-ink/15"
+                                  style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${m.accent} 33%, transparent), rgb(var(--c-surface)) 70%)` }}
+                                >
+                                  <div className="absolute inset-0 halftone opacity-30" />
+                                  <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border border-ink/20 bg-cream/80">
+                                    {md.kind === 'photo' ? <Camera size={11} /> : <Sparkles size={11} />}
+                                  </div>
+                                  <span className="relative m-2 rounded border border-ink/15 bg-cream/90 px-1.5 py-0.5 font-mono text-[9.5px] text-ink/55">
+                                    {md.label}
+                                  </span>
+                                  {md.kind === 'photo' && (
+                                    <span className="absolute left-2 top-2 rounded bg-ink/70 px-1.5 py-0.5 font-mono text-[8.5px] text-paper/80">配图待传</span>
+                                  )}
+                                </div>
+                              }
+                            />
+                          )
+                        })}
                       </div>
                     )}
 
@@ -168,7 +212,7 @@ export default function Moments() {
                       >
                         <MessageCircle size={13} /> {allComments.length || '评论'}
                       </button>
-                      <button onClick={() => show('链接已复制（演示）')} className="ml-auto text-ink/30 transition hover:text-ink" aria-label="分享">
+                      <button onClick={share} className="ml-auto text-ink/30 transition hover:text-ink" aria-label="复制本页链接">
                         <Share2 size={13} />
                       </button>
                     </div>

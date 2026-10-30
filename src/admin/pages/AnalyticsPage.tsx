@@ -1,5 +1,5 @@
 import { ArrowUpRight, Download, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   aiSessions,
   deviceShare,
@@ -14,6 +14,7 @@ import {
   AButton,
   Badge,
   Donut,
+  EmptyState,
   Legend,
   Meter,
   MiniBars,
@@ -23,6 +24,7 @@ import {
   TableHead,
   TrendChart,
 } from '@/admin/ui'
+import { clearLocalSamples, getSummary, type AnalyticsSummary } from '@/services/analytics'
 
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0)
 
@@ -31,6 +33,16 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
   const data = traffic[win]
   const pv = sum(data.pv)
   const uv = sum(data.uv)
+  /** fx.md B7：未接服务端时的真实可用数据 —— 本机无 Cookie 浏览样本 */
+  const [local, setLocal] = useState<AnalyticsSummary | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    getSummary().then((s) => alive && setLocal(s))
+    return () => {
+      alive = false
+    }
+  }, [])
 
   return (
     <div className="space-y-4">
@@ -40,6 +52,7 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
         desc="埋点明细 + 日聚合。PV/UV 为去重后的会话口径，AI 会话按消息轮次计数。"
         right={
           <>
+            <Badge tone="amber">看板数字为预置样本</Badge>
             <Segmented
               value={win}
               onChange={setWin}
@@ -57,6 +70,47 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
           </>
         }
       />
+
+      <Panel
+        kicker="Real data"
+        title="本机浏览样本"
+        desc={local?.note}
+        right={
+          <div className="flex items-center gap-2">
+            <Badge tone={local?.source === 'server' ? 'teal' : 'neutral'}>{local?.source === 'server' ? '服务端埋点' : '本机统计'}</Badge>
+            <AButton size="sm" onClick={() => { clearLocalSamples(); getSummary().then(setLocal); show('已清空本机样本') }}>
+              清空样本
+            </AButton>
+          </div>
+        }
+      >
+        {!local || local.pv === 0 ? (
+          <EmptyState title="本机还没有浏览样本" desc="在前台多翻几页，这里就会出现真实记录" />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
+            <div>
+              <p className="text-[9.5px] text-admin-muted">PV / UV（本机）</p>
+              <p className="mt-1 font-display text-[24px] font-extrabold leading-none">
+                {local.pv}
+                <span className="ml-1 text-[12px] font-medium text-admin-muted">/ {local.uv}</span>
+              </p>
+              {local.since && <p className="mt-1 font-mono text-[9px] text-admin-muted">自 {local.since}</p>}
+            </div>
+            <div className="space-y-1.5">
+              {local.topPages.map((p) => (
+                <div key={p.path} className="flex items-center gap-2 text-[11px]">
+                  <span className="w-40 shrink-0 truncate font-mono text-[10px] text-admin-muted">{p.path}</span>
+                  <Meter value={(p.views / local.pv) * 100} className="flex-1" />
+                  <span className="w-8 shrink-0 text-right font-mono text-[10px]">{p.views}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <p className="mt-3 font-mono text-[9px] text-admin-muted">
+          接入点：POST {'{VITE_API_BASE}'}/api/track → 聚合后替掉本页的预置样本（services/analytics.ts）
+        </p>
+      </Panel>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[

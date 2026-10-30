@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AIAssistant } from '@/components/AIAssistant'
 import { Plate, Reveal, Sticker } from '@/components/ui/primitives'
-import { articles, articleCategories } from '@/data/articles'
+import { articleCategories, articleMeta } from '@/data/articles.index'
 import { cn } from '@/lib/utils'
+import { useSeo } from '@/lib/seo'
 
 const learningPath = [
   { step: '01', title: '先把 RAG 打通', desc: '切片、召回、溯源，做出第一个不胡说八道的问答。', color: 'rgb(var(--c-lime))' },
@@ -18,21 +19,27 @@ export default function Learn() {
   const [cat, setCat] = useState('all')
   const [q, setQ] = useState('')
 
+  useSeo({
+    title: '知识库 · 魏云潇',
+    description: `${articleMeta.length} 篇长文：RAG 工程化、Agent 评测、工程手记。`,
+    path: '/learn',
+  })
+
   useEffect(() => {
     if (params.get('assistant') === '1') window.dispatchEvent(new CustomEvent('open-assistant'))
   }, [params])
 
   const list = useMemo(() => {
     const key = q.trim().toLowerCase()
-    return articles.filter((a) => {
+    return articleMeta.filter((a) => {
       const catOk = cat === 'all' || a.category === cat || a.tags.includes(cat)
       const qOk = !key || (a.title + a.abstract + a.tags.join('')).toLowerCase().includes(key)
       return catOk && qOk
     })
   }, [cat, q])
 
-  const totalRead = articles.reduce((s, a) => s + a.readMin, 0)
-  const totalViews = articles.reduce((s, a) => s + a.views, 0)
+  const totalRead = articleMeta.reduce((s, a) => s + a.readMin, 0)
+  const totalViews = articleMeta.reduce((s, a) => s + a.views, 0)
 
   return (
     <div className="shell">
@@ -58,7 +65,7 @@ export default function Learn() {
           </div>
           <div className="grid grid-cols-3 gap-2 self-end lg:self-center">
             {[
-              { label: '文章', value: articles.length, unit: '篇' },
+              { label: '文章', value: articleMeta.length, unit: '篇' },
               { label: '总阅读', value: `${(totalViews / 1000).toFixed(1)}k`, unit: '' },
               { label: '读完需', value: totalRead, unit: 'min' },
             ].map((s) => (
@@ -88,7 +95,7 @@ export default function Learn() {
             >
               {c.label}
               <span className={cn('ml-1.5 font-mono text-[9px]', cat === c.key ? 'text-lime' : 'text-ink/35')}>
-                {c.key === 'all' ? articles.length : articles.filter((a) => a.category === c.key || a.tags.includes(c.key)).length}
+                {c.key === 'all' ? articleMeta.length : articleMeta.filter((a) => a.category === c.key || a.tags.includes(c.key)).length}
               </span>
             </button>
           ))}
@@ -215,7 +222,7 @@ export default function Learn() {
           <div className="rounded-2xl border-1.5 border-ink bg-cream p-5">
             <p className="font-mono text-[9px] tracking-[0.2em] text-ink/35">TAGS</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {Array.from(new Set(articles.flatMap((a) => a.tags))).map((t) => (
+              {Array.from(new Set(articleMeta.flatMap((a) => a.tags))).map((t) => (
                 <button
                   key={t}
                   onClick={() => {

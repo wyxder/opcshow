@@ -2,8 +2,15 @@ import { ArrowUpRight, HeartHandshake, Link2, Mail, Sparkles } from 'lucide-reac
 import { PageIntro, Sticker } from '@/components/ui/primitives'
 import { friends } from '@/data/me'
 import { profile } from '@/data/site'
+import { useSeo } from '@/lib/seo'
 
 export default function Friends() {
+  useSeo({
+    title: '友链 · 魏云潇',
+    description: '一起打过比赛的、一起改过稿的、在我卡住时给我答案的人。',
+    path: '/me/friends',
+  })
+
   return (
     <div className="shell">
       <PageIntro
@@ -30,12 +37,16 @@ export default function Friends() {
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {friends.map((f) => (
-          <a
-            key={f.id}
-            href={f.url}
-            className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard"
-          >
+        {friends.map((f) => {
+          const Tag = f.url ? 'a' : 'div'
+          return (
+            <Tag
+              key={f.id}
+              {...(f.url
+                ? { href: f.url, target: '_blank', rel: 'noopener noreferrer' }
+                : { 'aria-label': `${f.name}（链接暂未公开）` })}
+              className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard"
+            >
             <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full border-1.5 border-ink/10" style={{ background: `color-mix(in srgb, ${f.color} 44%, transparent)` }} />
             <div className="relative flex items-start gap-3">
               <div
@@ -53,11 +64,12 @@ export default function Friends() {
               <ArrowUpRight size={14} className="shrink-0 text-ink/25 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ink" />
             </div>
             <p className="relative mt-3 flex-1 text-[11.5px] leading-relaxed text-ink/55">{f.desc}</p>
-            <p className="relative mt-3 flex items-center gap-1 border-t border-dashed border-ink/12 pt-2 font-mono text-[9px] text-ink/35">
-              <Link2 size={9} /> {f.url === '#' ? '链接暂未公开' : f.url}
-            </p>
-          </a>
-        ))}
+              <p className="relative mt-3 flex items-center gap-1 border-t border-dashed border-ink/12 pt-2 font-mono text-[9px] text-ink/35">
+                <Link2 size={9} /> {f.url ?? '链接暂未公开'}
+              </p>
+            </Tag>
+          )
+        })}
       </div>
 
       <div className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_1fr]">

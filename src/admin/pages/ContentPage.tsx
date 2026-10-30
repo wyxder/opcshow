@@ -18,7 +18,7 @@ import {
   Tabs,
   Textarea,
 } from '@/admin/ui'
-import { cn } from '@/lib/utils'
+import { cn, newId } from '@/lib/utils'
 
 type Tab = 'articles' | 'projects' | 'moments'
 type ArticleRow = (typeof adminArticles)[number]
@@ -75,7 +75,7 @@ export default function ContentPage({
     } else {
       setArticles((l) => [
         {
-          id: `new-${Date.now()}`,
+          id: newId('new'),
           title: draft.title,
           category: draft.category,
           status: draft.status as ArticleRow['status'],
@@ -95,7 +95,7 @@ export default function ContentPage({
     if (!postText.trim()) return show('先说点什么吧')
     setPosts((l) => [
       {
-        id: `post-${Date.now()}`,
+        id: newId('post'),
         date: '2026-10-30',
         text: postText.trim(),
         tag: '生活',

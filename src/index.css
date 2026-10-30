@@ -43,6 +43,10 @@
     --c-moss: 79 98 34;
     --c-danger: 178 58 20;
     --c-info: 44 70 214;
+    /* 语义状态令牌（fx.md T2）：文字级取值，保证在 --c-surface 上可读 */
+    --c-success: 56 84 26;
+    --c-warning: 140 90 12;
+    --c-surface-hover: 240 233 214;
 
     /* 形态 */
     --r-xl: 26px;
@@ -108,6 +112,9 @@
     --c-moss: 43 120 74;
     --c-danger: 199 60 32;
     --c-info: 31 107 255;
+    --c-success: 27 96 57;
+    --c-warning: 154 92 10;
+    --c-surface-hover: 236 242 247;
 
     --r-xl: 10px;
     --r-lg: 8px;
@@ -168,6 +175,9 @@
     --c-moss: 20 20 20;
     --c-danger: 228 0 43;
     --c-info: 13 13 13;
+    --c-success: 20 20 20;
+    --c-warning: 74 74 72;
+    --c-surface-hover: 240 240 236;
 
     --r-xl: 0px;
     --r-lg: 0px;
@@ -227,6 +237,10 @@
     --c-moss: 107 255 122;
     --c-danger: 255 122 107;
     --c-info: 79 163 255;
+    /* 深色底：状态令牌取亮调，保证在 --c-bg 上可读 */
+    --c-success: 107 255 122;
+    --c-warning: 255 209 102;
+    --c-surface-hover: 17 33 27;
 
     --r-xl: 3px;
     --r-lg: 2px;
@@ -286,6 +300,9 @@
     --c-moss: 43 150 110;
     --c-danger: 219 62 90;
     --c-info: 76 155 240;
+    --c-success: 22 110 82;
+    --c-warning: 140 92 14;
+    --c-surface-hover: 255 240 236;
 
     --r-xl: 30px;
     --r-lg: 26px;
@@ -319,6 +336,21 @@
 
     --hl: rgb(var(--c-coral) / 0.6);
     --squiggle: rgb(var(--c-lime));
+  }
+
+  /* ---------------------------------------------------------------------------
+     平台品牌色（fx.md D5）—— 故意放在主题块之外，不参与换肤。
+     之前抖音用 --c-ink 作品牌色，在 03 瑞士 / 05 终端下会和其他色趋同；
+     品牌识别本身也不该跟随站点主题变化，所以这里固定取值。
+     深色主题下这些色只做小面积标记（色条 / 描边），不承载正文。
+     ------------------------------------------------------------------------- */
+  :root {
+    --c-brand-xhs: 255 45 85;
+    --c-brand-bili: 0 161 255;
+    --c-brand-douyin: 42 42 46;
+    --c-brand-wechat: 9 187 77;
+    --c-brand-github: 28 27 30;
+    --c-brand-zhihu: 13 91 236;
   }
 
   /* ------------------------------- 基础元素 -------------------------------- */
@@ -527,6 +559,29 @@
     outline-offset: 2px;
   }
 
+  /* 跳转到主内容（fx.md A2）：平时藏起来，键盘 Tab 到第一个可聚焦元素时出现 */
+  .skip-link {
+    position: fixed;
+    left: 12px;
+    top: -100px;
+    z-index: 100;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.9rem;
+    border: var(--bw) solid rgb(var(--c-line));
+    border-radius: var(--r-pill);
+    background: rgb(var(--c-lime));
+    color: rgb(var(--c-on-accent));
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: var(--sh-hard-sm);
+    transition: top 0.18s ease;
+  }
+  .skip-link:focus {
+    top: 12px;
+  }
+
   .link-underline {
     position: relative;
   }
@@ -690,6 +745,9 @@
     --c-ink-mute: 110 110 105;
     --c-line: 20 20 15;
     --c-on-accent: 20 20 15;
+    --c-success: 40 40 35;
+    --c-warning: 90 90 86;
+    --c-surface-hover: 244 244 242;
     --sh-hard: none;
     --sh-hard-sm: none;
     --sh-hard-lg: none;
@@ -749,4 +807,25 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  /* fx.md A5：全局只是把动画压到 0.01ms，跑马灯 / 弹幕墙会变成高频闪烁，
+     所以这里显式暂停（Marquee 与弹幕行都走 .animate-marquee）。 */
+  .animate-marquee,
+  [data-marquee] .animate-marquee {
+    animation: none !important;
+  }
+}
+
+/* =============================================================================
+   主题切换过渡（fx.md T3）
+   只在切换的那 ~240ms 挂上 .theme-transition（由 ThemeProvider 控制），
+   避免给 hover / 位移动画注入全局 transition。
+   ========================================================================== */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition-property: background-color, border-color, color, fill, stroke, outline-color !important;
+  transition-duration: 200ms !important;
+  transition-timing-function: ease !important;
 }

@@ -2,8 +2,11 @@ import { CalendarDays, Compass, Images, MapPin, Plane, Route, Users } from 'luci
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageIntro, Plate, Reveal, Sticker } from '@/components/ui/primitives'
+import { SmartImage } from '@/components/SmartImage'
 import { trips, type Trip } from '@/data/life'
+import { lookupMedia } from '@/data/media'
 import { cn, projectLonLat } from '@/lib/utils'
+import { useSeo } from '@/lib/seo'
 
 const box = { lon: [73, 135] as [number, number], lat: [16, 54] as [number, number] }
 
@@ -38,6 +41,14 @@ const ordered = [...trips].sort((a, b) => a.date.localeCompare(b.date))
 export default function Travel() {
   const [activeId, setActiveId] = useState(trips[0].id)
   const active = trips.find((t) => t.id === activeId)!
+
+  useSeo({
+    title: '旅拍相册 · 魏云潇',
+    description: `地图上的 ${trips.length} 个点：比赛、出差、带她回家、一个人看海。`,
+    path: '/life/travel',
+  })
+
+  const photoCount = trips.filter((t) => lookupMedia(`trip:${t.id}`)).length
   const routePoints = useMemo(
     () =>
       ordered
@@ -61,7 +72,7 @@ export default function Travel() {
           </>
         }
         desc="比赛、出差、带她回家、一个人看海。每个点都对应一段真实的行程，点一下地图上的图钉看故事。"
-        note="地图是手绘抽象的，不是导航，别拿它找路。"
+        note={`真实照片已上传 ${photoCount} / ${trips.length} 张，其余先用图形占位（F1）。`}
         right={
           <div className="flex flex-wrap gap-2">
             <Sticker rotate={-4}>11 座城市</Sticker>
@@ -226,13 +237,23 @@ export default function Travel() {
               )}
               style={{ transform: `rotate(${(t.lon % 5) - 2.5}deg)` }}
             >
-              <div className="relative aspect-[4/3] overflow-hidden rounded-sm border border-ink/10" style={{ background: `linear-gradient(150deg, ${t.color}, rgb(var(--c-surface)) 85%)` }}>
-                <div className="absolute inset-0 halftone opacity-25" />
-                <svg viewBox="0 0 120 90" className="absolute inset-0 h-full w-full" aria-hidden>
-                  <circle cx="60" cy="42" r="26" fill="none" stroke="rgb(var(--c-ink))" strokeOpacity="0.15" />
-                  <circle cx="60" cy="42" r="14" fill="rgb(var(--c-ink))" fillOpacity="0.06" />
-                  <path d="M0 68 Q 30 52 60 66 T 120 58 L120 90 L0 90Z" fill="rgb(var(--c-ink))" fillOpacity="0.07" />
-                </svg>
+              <div className="relative aspect-[4/3] overflow-hidden rounded-sm border border-ink/10">
+                <SmartImage
+                  asset={lookupMedia(`trip:${t.id}`)}
+                  className="absolute inset-0"
+                  eager={t.id === activeId}
+                  fallback={
+                    <>
+                      <div className="absolute inset-0" style={{ background: `linear-gradient(150deg, ${t.color}, rgb(var(--c-surface)) 85%)` }} />
+                      <div className="absolute inset-0 halftone opacity-25" />
+                      <svg viewBox="0 0 120 90" className="absolute inset-0 h-full w-full" aria-hidden>
+                        <circle cx="60" cy="42" r="26" fill="none" stroke="rgb(var(--c-ink))" strokeOpacity="0.15" />
+                        <circle cx="60" cy="42" r="14" fill="rgb(var(--c-ink))" fillOpacity="0.06" />
+                        <path d="M0 68 Q 30 52 60 66 T 120 58 L120 90 L0 90Z" fill="rgb(var(--c-ink))" fillOpacity="0.07" />
+                      </svg>
+                    </>
+                  }
+                />
                 <span className="absolute bottom-1.5 left-2 font-display text-[15px] font-extrabold text-ink/70">{t.city}</span>
                 <span className="absolute right-1.5 top-1.5 font-mono text-[9px] text-ink/40">{t.date.slice(0, 7)}</span>
               </div>

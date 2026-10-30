@@ -18,15 +18,17 @@ import {
   Textarea,
   Toggle,
 } from '@/admin/ui'
-import { cn } from '@/lib/utils'
+import { cn, newId } from '@/lib/utils'
 import { useTheme } from '@/theme/ThemeProvider'
 import { SWATCH_TOKENS } from '@/theme/theme'
+import { siteMeta } from '@/data/site'
 
 type Tab = 'theme' | 'seo' | 'backup'
 
 export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: (t: Tab) => void; show: (m: string) => void }) {
   // 主题只有一套数据源：直接读写 ThemeProvider，不再维护后台自己的预设表
-  const { theme, setTheme, resetTheme, themes } = useTheme()
+  // fx.md T5：这里改的是「本机覆盖」，站点缺省主题需要服务端下发才能真正影响所有访客
+  const { theme, setTheme, resetTheme, isPersonalChoice, followSiteDefault, themes } = useTheme()
   const current = themes.find((t) => t.id === theme) ?? themes[0]
 
   const [tokenValues, setTokenValues] = useState<Record<string, string>>({})
@@ -68,7 +70,7 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
     setBackingUp(true)
     window.setTimeout(() => {
       setBackups((l) => [
-        { id: `b${Date.now()}`, name: `manual-2026-10-30`, size: '129 MB', type: '手动', status: '成功', time: '刚刚', items: '内容 + 文件 + 配置' },
+        { id: newId('b'), name: `manual-${new Date().toISOString().slice(0, 10)}`, size: '129 MB', type: '手动', status: '成功', time: '刚刚', items: '内容 + 文件 + 配置' },
         ...l,
       ])
       setBackingUp(false)
@@ -98,7 +100,12 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
       {tab === 'theme' && (
         <div className="grid gap-3 xl:grid-cols-[1.5fr_1fr]">
           <div className="space-y-3">
-            <Panel kicker="Theme" title="主题预设" desc="与前台共用同一套令牌，点选即全站生效并写入 localStorage">
+            <Panel kicker="Theme" title="主题预设" desc="与前台共用同一套令牌：点选即全站生效，但只写入这台浏览器的 localStorage">
+              <p className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-ink/15 bg-paper px-3 py-2 font-mono text-[9.5px] text-admin-muted">
+                <span>站点缺省：{siteMeta.defaultTheme}</span>
+                <span className="h-0.5 w-0.5 rounded-full bg-ink/30" />
+                <span>{isPersonalChoice ? '本机已覆盖（访客选择优先）' : '本机未选择，跟随缺省/系统偏好'}</span>
+              </p>
               <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="站点主题">
                 {themes.map((t) => {
                   const on = t.id === theme
@@ -142,10 +149,11 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <AButton variant="primary" icon={<Check size={12} />} onClick={() => show(`「${current.name}」已保存，前台同步生效`)}>
+                <AButton variant="primary" icon={<Check size={12} />} onClick={() => show(`「${current.name}」已保存到本机，前台同步生效（站点缺省主题需服务端下发）`)}>
                   保存当前主题
                 </AButton>
                 <AButton onClick={() => { resetTheme(); show('已恢复默认主题 · 01 纸感极简') }}>恢复默认</AButton>
+                <AButton variant="soft" onClick={() => { followSiteDefault(); show('已取消本机覆盖，回到站点缺省 + 系统偏好') }}>跟随站点默认</AButton>
                 <span className="ml-auto font-mono text-[9px] tracking-[0.16em] text-admin-muted">ACTIVE · {current.en}</span>
               </div>
             </Panel>

@@ -1,9 +1,12 @@
 import { motion } from 'framer-motion'
 import { ArrowRight, Heart, ListMusic, Music2, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PageIntro, Plate, Sticker } from '@/components/ui/primitives'
 import { playlist } from '@/data/life'
-import { cn, fmtDuration, useLocalStorage } from '@/lib/utils'
+import { cn, fmtDuration, useLocalStorage, usePrefersReducedMotion } from '@/lib/utils'
+import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
+import { useSeo } from '@/lib/seo'
+import { audioEnabled, loadAudioManifest, resolveAudio } from '@/services/audio'
 
 export default function MusicBox() {
   const [index, setIndex] = useState(0)
@@ -12,13 +15,40 @@ export default function MusicBox() {
   const [volume, setVolume] = useState(72)
   const [shuffle, setShuffle] = useState(false)
   const [repeat, setRepeat] = useState(true)
-  const [favorites, setFavorites] = useLocalStorage<string[]>('wyx-music-fav', ['p1', 'p4'])
+  const [favorites, setFavorites] = useLocalStorage<string[]>(STORAGE_KEYS.musicFav, ['p1', 'p4'], isStringArray)
+  const audioRef = useRef<HTMLAudioElement>(null)
+  // fx.md R2：把原本没人用的 useMediaQuery 真正用在频谱动画上
+  const reduced = usePrefersReducedMotion()
 
   const track = playlist[index]
   const lyricLine = Math.min(track.lyric.length - 1, Math.floor((progress / track.duration) * track.lyric.length))
+  /** F3：有真实音频就走 play/pause/seek，没有就继续用模拟时钟并标注「试听暂缺」 */
+  const src = resolveAudio(track.id)?.url ?? null
+
+  useSeo({
+    title: '音乐盒 · 魏云潇',
+    description: '六首歌，对应六种状态：写需求、跑评测、改 bug、想她、想家、夜骑。',
+    path: '/life/music',
+  })
 
   useEffect(() => {
-    if (!playing) return
+    // manifest 只在配了音频前缀时才去拉，避免 404 日志
+    void loadAudioManifest()
+  }, [])
+
+  useEffect(() => {
+    const el = audioRef.current
+    if (!el) return
+    if (playing && src) {
+      el.volume = volume / 100
+      void el.play().catch(() => setPlaying(false))
+    } else if (!playing) {
+      el.pause()
+    }
+  }, [playing, src, volume])
+
+  useEffect(() => {
+    if (!playing || src) return
     const t = window.setInterval(() => {
       setProgress((p) => {
         if (p + 1 >= track.duration) {
@@ -30,10 +60,11 @@ export default function MusicBox() {
       })
     }, 1000)
     return () => window.clearInterval(t)
-  }, [playing, track.duration, repeat, shuffle])
+  }, [playing, src, track.duration, repeat, shuffle])
 
   useEffect(() => {
     setProgress(0)
+    audioRef.current?.pause()
   }, [index])
 
   const jump = (dir: number) => {
@@ -54,8 +85,8 @@ export default function MusicBox() {
             我在<span className="marker">听什么</span>
           </>
         }
-        desc="六首歌，对应六种状态：写需求、跑评测、改 bug、想她、想家、夜骑。没有真实音频，但播放器是真的在走。"
-        note="演示播放器：进度会走，声音不会响。"
+        desc="六首歌，对应六种状态：写需求、跑评测、改 bug、想她、想家、夜骑。播放器是真的在走；音频资源未接入时进度用模拟时钟。"
+        note={src ? '试听片段来自本地静态资源。' : audioEnabled() ? '试听暂缺：manifest 里没有这条曲目的片段。' : '试听暂缺：未配置音频资源（F3），进度为模拟。'}
         right={
           <div className="flex flex-wrap gap-2">
             <Sticker rotate={-4}>{playlist.length} 首</Sticker>
@@ -77,9 +108,28 @@ export default function MusicBox() {
             </div>
             <span className="flex items-center gap-1.5 rounded-full border border-paper/20 px-2 py-0.5 font-mono text-[9.5px] text-paper/50">
               <span className={cn('h-1.5 w-1.5 rounded-full', playing ? 'animate-blink bg-lime' : 'bg-paper/30')} />
-              {playing ? 'PLAYING' : 'PAUSED'}
+              {src ? (playing ? 'PLAYING' : 'PAUSED') : playing ? 'SIMULATED' : 'PAUSED'}
             </span>
           </div>
+
+          {src ? (
+            <audio
+              ref={audioRef}
+              src={src}
+              preload="none"
+              onTimeUpdate={(e) => setProgress(Math.floor(e.currentTarget.currentTime))}
+              onEnded={() => {
+                const el = audioRef.current
+                if (repeat && el) {
+                  el.currentTime = 0
+                  void el.play().catch(() => setPlaying(false))
+                  setProgress(0)
+                } else {
+                  jump(1)
+                }
+              }}
+            />
+          ) : null}
 
           <div className="relative mt-5 flex items-center gap-4">
             <div className="relative h-[112px] w-[112px] shrink-0 sm:h-[132px] sm:w-[132px]">
@@ -101,14 +151,14 @@ export default function MusicBox() {
                 {track.artist} · {track.album}
               </p>
 
-              <div className="mt-3 flex h-8 items-end gap-[3px]">
+              <div className="mt-3 flex h-8 items-end gap-[3px]" aria-hidden>
                 {track.bars.map((h, i) => (
                   <motion.span
                     key={i}
                     className="w-full flex-1 rounded-sm"
                     style={{ background: i % 3 === 0 ? 'rgb(var(--c-lime))' : 'rgb(var(--c-surface) / 0.35)' }}
-                    animate={playing ? { height: [`${h * 0.35}%`, `${h}%`, `${h * 0.55}%`] } : { height: `${h * 0.35}%` }}
-                    transition={playing ? { duration: 0.8 + (i % 5) * 0.14, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
+                    animate={playing && !reduced ? { height: [`${h * 0.35}%`, `${h}%`, `${h * 0.55}%`] } : { height: `${h * 0.35}%` }}
+                    transition={playing && !reduced ? { duration: 0.8 + (i % 5) * 0.14, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
                   />
                 ))}
               </div>
@@ -121,7 +171,12 @@ export default function MusicBox() {
               className="group block w-full"
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect()
-                setProgress(Math.round(((e.clientX - rect.left) / rect.width) * track.duration))
+                const next = Math.round(((e.clientX - rect.left) / rect.width) * track.duration)
+                setProgress(next)
+                // F3：有真实音频时 seek 直接落到 audio 元素上
+                if (audioRef.current && Number.isFinite(audioRef.current.duration)) {
+                  audioRef.current.currentTime = Math.min(next, audioRef.current.duration - 0.1)
+                }
               }}
               aria-label="跳转进度"
             >
@@ -191,7 +246,11 @@ export default function MusicBox() {
                 min={0}
                 max={100}
                 value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  setVolume(v)
+                  if (audioRef.current) audioRef.current.volume = v / 100
+                }}
                 className="h-1 w-16 cursor-pointer appearance-none rounded-full bg-paper/20 accent-lime"
                 aria-label="音量"
               />

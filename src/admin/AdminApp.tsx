@@ -1,7 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AdminShell, { getSection, sections, type SectionKey } from '@/admin/AdminShell'
 import { useAdminToast } from '@/admin/ui'
+import { useSeo } from '@/lib/seo'
+import { getSession, type AdminSession } from '@/services/auth'
+import { serverConfig } from '@/services/config'
 import AiConfigPage from '@/admin/pages/AiConfigPage'
 import AnalyticsPage from '@/admin/pages/AnalyticsPage'
 import ContentPage from '@/admin/pages/ContentPage'
@@ -16,6 +19,19 @@ export default function AdminApp() {
   const location = useLocation()
   const navigate = useNavigate()
   const { show, node } = useAdminToast()
+  const [session, setSession] = useState<AdminSession | null>(null)
+
+  // fx.md S3：后台不参与索引
+  useSeo({ title: '后台管理 · WYX.SPACE', description: '站点后台（演示）。', path: '/admin', robots: 'noindex, nofollow' })
+
+  // fx.md B2：会话适配层。未配服务端 = 演示会话（不拦人，但界面必须说清楚）
+  useEffect(() => {
+    let alive = true
+    getSession().then((s) => alive && setSession(s))
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const parts = location.pathname.replace(/^\/admin\/?/, '').split('/').filter(Boolean)
   const known = sections.some((s) => s.key === parts[0])
@@ -58,6 +74,17 @@ export default function AdminApp() {
 
   return (
     <AdminShell section={key} onNavigate={(k) => go(k)}>
+      {session?.mode === 'demo' && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border-1.5 border-dashed border-warning/60 bg-warning/10 px-3 py-2 text-[11.5px] text-ink">
+          <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-admin-warning">DEMO · 未鉴权</span>
+          <span>
+            当前没有服务端，任何访客都能打开这个后台；所有写操作只改内存，刷新就没了。
+          </span>
+          <span className="font-mono text-[9.5px] text-ink/45">
+            接入点：VITE_API_BASE + services/auth.ts（{serverConfig.authLoginPath}）
+          </span>
+        </div>
+      )}
       {page}
       {node}
     </AdminShell>

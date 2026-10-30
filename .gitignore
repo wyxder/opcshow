@@ -7,3 +7,18 @@ dist-ssr
 !.vscode/extensions.json
 .idea
 npm-debug.log*
+
+# 构建产物与增量编译缓存（fx.md R7）
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# 根目录设计截图 / 一次性验证脚本产物（fx.md R7）
+shot-*.png
+screenshot-*.png
+src/admin/.write-test
+src/admin/write-test.txt
+write-test.txt
+
+# 构建期生成，不入库（npm run gen:seo）
+public/sitemap.xml
+public/rss.xml

@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>魏云潇 · AI 全栈 / 智能体开发 · 简历打印版</title>
+    <meta
+      name="description"
+      content="可直接打印或另存为 PDF 的单文件简历。离线可用，无外部依赖。"
+    />
+    <style>
+      /* 单文件、零外链：断网也能打开并打印成 PDF */
+      @page {
+        size: A4;
+        margin: 12mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 210mm;
+        padding: 24px 20px 40px;
+        color: #16150f;
+        background: #fff;
+        font:
+          12px/1.65 "Noto Sans SC",
+          "PingFang SC",
+          "Microsoft YaHei",
+          system-ui,
+          sans-serif;
+      }
+      h1 {
+        font-size: 26px;
+        margin: 0;
+        letter-spacing: -0.02em;
+      }
+      .sub {
+        color: #4b4a41;
+        margin-top: 4px;
+      }
+      .contact {
+        margin-top: 8px;
+        color: #35342c;
+        font-size: 11.5px;
+      }
+      .band {
+        margin: 14px -20px 0;
+        padding: 10px 20px;
+        background: #f3f0e6;
+        border-left: 4px solid #16150f;
+        font-weight: 600;
+      }
+      h2 {
+        font-size: 13px;
+        margin: 20px 0 6px;
+        padding-bottom: 4px;
+        border-bottom: 2px solid #16150f;
+        letter-spacing: 0.01em;
+      }
+      ul {
+        margin: 6px 0 0;
+        padding-left: 18px;
+      }
+      li {
+        margin-bottom: 3px;
+      }
+      .item {
+        break-inside: avoid;
+        margin-bottom: 10px;
+      }
+      .item-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: baseline;
+      }
+      .item-head b {
+        font-size: 12.5px;
+      }
+      .meta {
+        color: #6b624f;
+        font-size: 11px;
+        margin-left: auto;
+      }
+      .stack {
+        color: #4b4a41;
+        font-size: 10.5px;
+        margin-top: 2px;
+      }
+      .metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        margin-top: 3px;
+        font-size: 10.5px;
+      }
+      .metrics span {
+        border: 1px solid #d8d2c2;
+        border-radius: 3px;
+        padding: 1px 5px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 2px 16px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 3px 6px;
+        border-bottom: 1px dotted #ccc6b6;
+      }
+      th {
+        background: #f7f4ec;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+        border-bottom: 1px solid #d8d2c2;
+      }
+      .hint {
+        margin-top: 22px;
+        font-size: 10.5px;
+        color: #6b624f;
+        border-top: 1px dashed #ccc6b6;
+        padding-top: 8px;
+      }
+      @media print {
+        .hint {
+          display: none;
+        }
+        body {
+          padding: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>
+      魏云潇 <span style="font-weight: 400; font-size: 14px">WEI YUNXIAO</span>
+    </h1>
+    <p class="sub">
+      AI 全栈 / 智能体开发 · 陕西科技大学 信息与通信工程（多模态 AI）硕士在读 ·
+      2028 届
+    </p>
+    <p class="contact">
+      电话 18323765634 · 邮箱
+      <a href="mailto:wyxcode@qq.com">wyxcode@qq.com</a> · 微信 wyx200265 ·
+      作品集 <a href="https://wyx.space">wyx.space</a> · GitHub
+      <a href="https://github.com/wyx-code">wyx-code</a>
+    </p>
+
+    <div class="band">
+      能把 Agent 从 Demo 做到付费上线，并且用评测证明它变好了。
+    </div>
+
+    <h2>核心指标</h2>
+    <div class="grid">
+      <div>已上线 AI 付费产品：<b>7 款</b>（全部跑通付费闭环）</div>
+      <div>竞赛获奖：<b>16 项</b>（国赛 6 项）</div>
+      <div>2026 黑客松现场 / 进决赛：<b>7 场 / 6 场</b></div>
+      <div>主阵地粉丝（小红书）：<b>2.3w</b></div>
+      <div>开源项目：<b>20+</b> · 原创教程累计浏览 15w+</div>
+      <div>累计变现：<b>1.2w</b></div>
+    </div>
+
+    <h2>教育经历</h2>
+    <div class="item">
+      <div class="item-head">
+        <b>陕西科技大学</b> · 信息与通信工程 · 硕士（多模态 AI 方向）
+        <span class="meta">2025.09 — 2028.07 在读</span>
+      </div>
+      <ul>
+        <li>
+          主修
+          Python、机器学习、深度学习、计算机视觉、自然语言处理、智能语音处理、大数据分析与挖掘、软件体系结构
+        </li>
+        <li>
+          线下黑客松 10+ 次；WAIC 世界人工智能大会企业路演、NVIDIA
+          中国开发者黑客松决赛、Eazo 全球社区大使
+        </li>
+      </ul>
+    </div>
+    <div class="item">
+      <div class="item-head">
+        <b>西安科技大学</b> · 通信工程 · 本科（国家特色专业）
+        <span class="meta">2021.09 — 2025.07 · 综测 1/193</span>
+      </div>
+      <ul>
+        <li>
+          国奖 9 项、省奖 15 项、校奖 27 项，软著及发明专利 2 项；连续 4
+          次国家励志奖学金、校级一等奖学金、年度科技创新奖
+        </li>
+        <li>
+          字节跳动工程训练营、腾讯未来产品及 AI
+          全栈训练营优秀学员；华为开发者高级认证、工信部计算机视觉架构中级认证
+        </li>
+      </ul>
+    </div>
+
+    <h2>项目与实习</h2>
+    <div class="item">
+      <div class="item-head">
+        <b>01 跨境电商 AIGC 带货视频创作平台</b> · AI 全栈开发
+        <span class="meta">2026.05 — 至今</span>
+      </div>
+      <p class="stack">
+        React / FastAPI / LangGraph / Java / Spring Boot / Redis / PostgreSQL /
+        Supabase / RAG / Skills
+      </p>
+      <ul>
+        <li>
+          上海星火 OPC 决赛第一名 · 最佳商业价值奖；会员订阅 + 积分加油包 +
+          邀请裂变三级模式，完成支付宝 AI 付接入
+        </li>
+        <li>
+          带货 AI 主播：NLP
+          情感时间轴标注关联语调参数与数字人表情姿态，拟真度提升 40%
+        </li>
+        <li>
+          数据运营后台：Workflow 日志详情与退款控制器，对接 Attempt
+          捕获逻辑，支持算力积分冲正退回
+        </li>
+      </ul>
+      <p class="metrics">
+        <span>制作周期 2 天 → 3 分钟</span><span>单条成本 ≈ 2 元</span
+        ><span>上线收益 1.2w</span><span>决赛第一名</span>
+      </p>
+    </div>
+    <div class="item">
+      <div class="item-head">
+        <b>02 抖音电商 RAG 企业客服与智慧运营系统</b> · AI 应用开发（字节跳动）
+        <span class="meta">2025.06 — 2025.09</span>
+      </div>
+      <p class="stack">Python / CrewAI / RAG / Embedding / RRF / SSE / RAGAS</p>
+      <ul>
+        <li>
+          切片粒度、元数据、双路召回 + RRF
+          融合、重排、溯源、回归评测七个工程决策全部落地
+        </li>
+        <li>
+          来源追溯与引用约束 Prompt，杜绝无源回答；上线后接入 RAGAS 四维回归
+        </li>
+      </ul>
+      <p class="metrics">
+        <span>Recall@5 0.72 → 0.93</span><span>人工接待量 -45%</span>
+      </p>
+    </div>
+    <div class="item">
+      <div class="item-head">
+        <b>03 Agent 与 RSI 自进化评测中台</b> · Agent 开发
+        <span class="meta">2026.08 — 至今</span>
+      </div>
+      <p class="stack">
+        FastAPI / Native Agent / LLM-as-a-Judge / React / TypeScript / SQLite /
+        Pydantic / Asyncio / PyMuPDF
+      </p>
+      <ul>
+        <li>
+          长沙 CSDN Agent 创新大赛决赛第二名；指标分检索层 / 生成层 /
+          行为层三层采集
+        </li>
+        <li>
+          RSI 闭环：badcase → 改动建议 → 人工审批 → 回归门禁放行，每一步可回滚
+        </li>
+      </ul>
+      <p class="metrics">
+        <span>22 指标</span><span>16 接口</span><span>42 用例</span
+        ><span>pass_rate 0.71 → 0.93</span>
+      </p>
+    </div>
+    <div class="item">
+      <div class="item-head">
+        <b>04 Harness 驱动的多智能体科研 AI 工作台</b> · AI 全栈开发
+        <span class="meta">2026.06 — 至今</span>
+      </div>
+      <p class="stack">
+        React / TypeScript / Node.js / Express / FastAPI / DeepSeek /
+        Multi-Agent / RAG / MCP Server
+      </p>
+      <ul>
+        <li>南京阿里中心 AI 黑客松决赛入围 · 西安黑客松 AI 软件赛道第二名</li>
+        <li>
+          工具越权返回 404、上下文窗口管理、多智能体合议 +
+          主席汇总输出可问责结论
+        </li>
+      </ul>
+    </div>
+    <div class="item">
+      <div class="item-head">
+        <b>05 Coder 企业零代码 AI 应用生成平台</b> · AI 后端开发
+        <span class="meta">2024.05 — 2024.08</span>
+      </div>
+      <p class="stack">
+        Java / Spring Cloud Alibaba / Dubbo3 / LangGraph4j / Redis / Caffeine /
+        Vue
+      </p>
+      <ul>
+        <li>
+          西安粤嵌信息科技，独立部署上线；第一次把 AI 能力做成别人能直接用的产品
+        </li>
+      </ul>
+    </div>
+    <div class="item">
+      <div class="item-head">
+        <b>06 基于五模态的无限画布 AIGC 导演台</b> · AI 前端开发
+        <span class="meta">2026.03 — 2026.05</span>
+      </div>
+      <p class="stack">
+        React 19 / Next.js 16 / TypeScript / Three.js / Zustand / Go / MySQL /
+        MCP Server
+      </p>
+      <ul>
+        <li>
+          腾讯 PCG 校园 AI 产品创意大赛优秀作品；坐标变换 + 虚拟化，200
+          节点不掉帧
+        </li>
+      </ul>
+    </div>
+    <div class="item">
+      <div class="item-head">
+        <b>07 多模态 AI 数字人导游与智慧运营 Agent</b> · Agent 开发
+        <span class="meta">2026.05 — 2026.07</span>
+      </div>
+      <p class="stack">
+        React / Next.js / Node.js / PostgreSQL / ASR·TTS / Live2D / DeepSeek /
+        RAG
+      </p>
+      <ul>
+        <li>
+          字节 TRAE AI 创造力大赛 Top300 入围（1.3%）；异步任务统一模型 +
+          指数退避轮询
+        </li>
+      </ul>
+    </div>
+
+    <h2>科研与内容</h2>
+    <ul>
+      <li>
+        <b>基于光流特征与多智能体知识增强的微表情识别方法研究</b> · CCF-A · ICCV
+        2027 在投 · 学生一作 —— KAMER 方案，UF1 = 90.25%、ACC = 89.45%
+      </li>
+      <li>
+        <b>基于多模态 AI 的数字医生心理健康检测与疗愈软硬件平台</b> · 计算机专利
+        + 软著 2 项
+      </li>
+      <li>
+        <b>面向科研场景的 AI 大模型与智能体原理与实践指南</b> · 原创 AI 开源教程
+        · 7.9w 播放
+      </li>
+    </ul>
+
+    <h2>竞赛荣誉（节选）</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>年份</th>
+          <th>赛事</th>
+          <th>名次</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>2026</td>
+          <td>上海星火计划 OPC 超级个体</td>
+          <td>国赛一等奖</td>
+        </tr>
+        <tr>
+          <td>2026</td>
+          <td>高校 AI 黑客松 · 西安交通大学站</td>
+          <td>第一名</td>
+        </tr>
+        <tr>
+          <td>2026</td>
+          <td>长沙 CSDN Agent 创新大赛</td>
+          <td>决赛第二名</td>
+        </tr>
+        <tr>
+          <td>2026</td>
+          <td>第十届高校计算机大赛 AIGC 创新</td>
+          <td>国赛二等奖</td>
+        </tr>
+        <tr>
+          <td>2026</td>
+          <td>第十五届蓝桥杯 人工智能设计+</td>
+          <td>国赛二等奖</td>
+        </tr>
+        <tr>
+          <td>2025</td>
+          <td>第十二届数字媒体科技创意竞赛</td>
+          <td>省赛一等奖</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>技能</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>方向</th>
+          <th>掌握内容</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>RAG</td>
+          <td>
+            切片/分块策略、双路召回 + RRF 融合、来源追溯与引用、RAGAS 四维评测
+          </td>
+        </tr>
+        <tr>
+          <td>Agent</td>
+          <td>
+            ReAct / Tool Calling、多智能体合议、Skills
+            模块化沉淀、自进化回归闭环
+          </td>
+        </tr>
+        <tr>
+          <td>全栈</td>
+          <td>
+            React / Vue 双栈、Spring Cloud + Dubbo3、FastAPI /
+            LangGraph、多端适配
+          </td>
+        </tr>
+        <tr>
+          <td>评测</td>
+          <td>指标体系设计、LLM-as-a-Judge、人工校准集、A/B 盲测</td>
+        </tr>
+        <tr>
+          <td>大模型</td>
+          <td>Transformer / MoE、LoRA 微调、VLM 多模态、上下文窗口管理</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="hint">
+      这一页是纯前端单文件简历：浏览器打开后按 Ctrl/Cmd + P，选择「另存为
+      PDF」即可得到 PDF 版。服务端 PDF 渲染（fx.md B8）接入后，这里会直接给出
+      PDF 下载。
+    </p>
+  </body>
+</html>

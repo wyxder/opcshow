@@ -1,30 +1,39 @@
 import { useEffect, useState } from 'react'
+import { readStored, writeStored, type StorageKey, type Validator } from '@/lib/storage'
 
 export function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ')
 }
 
-export function useLocalStorage<T>(key: string, initial: T) {
-  const [value, setValue] = useState<T>(() => {
-    try {
-      const raw = localStorage.getItem(key)
-      return raw ? (JSON.parse(raw) as T) : initial
-    } catch {
-      return initial
-    }
-  })
+/**
+ * 本地持久化 state。key 必须来自 STORAGE_KEYS（带版本、集中管理），
+ * validate 用来挡住旧版本 / 被改坏的脏数据，失败直接回落 initial。
+ */
+export function useLocalStorage<T>(key: StorageKey, initial: T, validate?: Validator<T>) {
+  const [value, setValue] = useState<T>(() => readStored(key, initial, validate))
 
   useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(value))
-    } catch {
-      /* storage full or blocked */
-    }
+    writeStored(key, value)
   }, [key, value])
 
   return [value, setValue] as const
 }
 
+/**
+ * 全站唯一 id 生成器（fx.md R6）。
+ * 之前 10+ 处用 `Date.now()`，连点 / 同一帧内会撞 key。
+ * crypto.randomUUID 在非安全上下文可能不可用，退化成时间 + 随机。
+ */
+export function newId(prefix?: string) {
+  const c = typeof crypto !== 'undefined' ? crypto : undefined
+  const raw =
+    c && typeof c.randomUUID === 'function'
+      ? c.randomUUID()
+      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
+  return prefix ? `${prefix}-${raw}` : raw
+}
+
+/**  prefers-reduced-motion 的实时读取（fx.md R2：把死代码真正用起来）  */
 export function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(() => (typeof window !== 'undefined' ? window.matchMedia(query).matches : false))
   useEffect(() => {
@@ -36,6 +45,8 @@ export function useMediaQuery(query: string) {
   }, [query])
   return matches
 }
+
+export const usePrefersReducedMotion = () => useMediaQuery('(prefers-reduced-motion: reduce)')
 
 export function fmtDuration(sec: number) {
   const m = Math.floor(sec / 60)

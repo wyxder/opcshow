@@ -9,15 +9,38 @@
       content="魏云潇的个人动态主页 — AI 全栈 / 智能体开发。项目、学习笔记、生活碎片与成长时间轴。"
     />
     <meta name="theme-color" content="#F4F0E6" />
+    <meta name="author" content="魏云潇" />
+
+    <!-- SEO / 分享卡片（fx.md S1–S3）：页面级 title/description/canonical 由 useSeo 覆盖 -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="WYX.SPACE" />
     <meta property="og:title" content="魏云潇 · WYX.SPACE" />
     <meta
       property="og:description"
       content="把想法做成能上线的东西 — AI 全栈 / 智能体开发作品集"
     />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23C9F158' stroke='%2314140F' stroke-width='4'/%3E%3Ctext x='32' y='45' font-size='36' font-family='Arial Black, Arial, sans-serif' font-weight='900' text-anchor='middle' fill='%2314140F'%3EW%3C/text%3E%3C/svg%3E"
+    <meta property="og:url" content="https://wyx.space/" />
+    <meta property="og:image" content="https://wyx.space/og-cover.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="魏云潇 · WYX.SPACE" />
+    <meta
+      name="twitter:description"
+      content="把想法做成能上线的东西 — AI 全栈 / 智能体开发作品集"
     />
+    <meta name="twitter:image" content="https://wyx.space/og-cover.png" />
+
+    <!-- 静态资源落到 public/，不再用内联 data URI（fx.md S1） -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="魏云潇 · 文章订阅"
+      href="/rss.xml"
+    />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -26,12 +49,34 @@
     />
     <script>
       // 首屏防闪烁：在 CSS 与 React 之前就落好 data-theme。
-      // 只读取 id，默认值由 CSS 的 :root（= paper）兜底，避免主题清单出现第二份来源。
+      // 读取顺序与 src/theme/theme.ts 的 readStoredTheme() 保持一致：
+      //   带版本的 key（wyx:theme@v1）→ 旧 key（wyx:theme，顺手迁移）→ 系统深色偏好 → paper。
+      // 这里必须内联（不能 import 模块），所以常量与 src/theme/theme.ts 的
+      // INLINE_BOOT_THEME / INLINE_STORAGE_KEY 成对维护。
       (function () {
+        var IDS = ["paper", "lab", "swiss", "terminal", "pop"];
         var t = "paper";
+        var dark = false;
         try {
-          t = localStorage.getItem("wyx:theme") || "paper";
-        } catch (e) {}
+          dark = !!(
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches
+          );
+          var v =
+            localStorage.getItem("wyx:theme@v1") ||
+            localStorage.getItem("wyx:theme");
+          if (v && IDS.indexOf(v) >= 0) {
+            localStorage.setItem("wyx:theme@v1", v);
+            try {
+              localStorage.removeItem("wyx:theme");
+            } catch (e) {}
+            t = v;
+          } else if (dark) {
+            t = "terminal";
+          }
+        } catch (e) {
+          t = dark ? "terminal" : "paper";
+        }
         document.documentElement.setAttribute("data-theme", t);
       })();
     </script>

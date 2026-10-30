@@ -1,14 +1,19 @@
-import { CloudUpload, Download, FileArchive, FileCode2, FileSpreadsheet, FileText, FolderOpen, LayoutGrid, List, Search, Star } from 'lucide-react'
+import { CloudUpload, Download, FileArchive, FileCode2, FileSpreadsheet, FileText, FolderOpen, LayoutGrid, List, Lock, Search, Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageIntro, Sticker } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
 import { resourceFiles, type ResourceFile } from '@/data/work'
 import { cn, useLocalStorage } from '@/lib/utils'
+import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
+import { useSeo } from '@/lib/seo'
+import { resolveDownload } from '@/services/files'
 
 const extMeta: Record<ResourceFile['ext'], { color: string; icon: typeof FileText; label: string }> = {
   pdf: { color: 'rgb(var(--c-coral))', icon: FileText, label: 'PDF' },
   md: { color: 'rgb(var(--c-blue))', icon: FileText, label: 'MD' },
+  docx: { color: 'rgb(var(--c-blue))', icon: FileText, label: 'DOCX' },
+  csv: { color: 'rgb(var(--c-teal))', icon: FileSpreadsheet, label: 'CSV' },
   zip: { color: 'rgb(var(--c-grape))', icon: FileArchive, label: 'ZIP' },
   fig: { color: 'rgb(var(--c-rose))', icon: LayoutGrid, label: 'FIG' },
   py: { color: 'rgb(var(--c-lime))', icon: FileCode2, label: 'PY' },
@@ -18,14 +23,63 @@ const extMeta: Record<ResourceFile['ext'], { color: string; icon: typeof FileTex
 
 const categories = ['全部', '简历与作品集', '课程与讲义', '数据集', '模板', '源码'] as const
 
+/** 下载入口：有真实文件给 <a download>，没有就诚实标「待上传」而不是演一个进度 */
+function DownloadLink({ f, row }: { f: ResourceFile; row?: boolean }) {
+  const state = resolveDownload(f)
+  if (state.ok) {
+    return (
+      <a
+        href={state.href}
+        download={f.name}
+        className={cn(
+          'flex items-center gap-1 rounded-full border border-ink/20 bg-paper transition hover:border-ink hover:bg-lime',
+          row ? 'px-2 py-0.5 text-[9px]' : 'px-2 py-1 text-[9.5px]',
+        )}
+        title={`下载 ${f.name}（${f.size}）`}
+      >
+        <Download size={10} /> 下载
+      </a>
+    )
+  }
+  return (
+    <span
+      className={cn(
+        'flex cursor-not-allowed items-center gap-1 rounded-full border border-dashed border-ink/25 px-2 py-1 text-[9.5px] text-ink/35',
+        row && 'px-2 py-0.5 text-[9px]',
+      )}
+      title={f.pending ?? '文件待上传'}
+    >
+      <Lock size={10} /> 待上传
+    </span>
+  )
+}
+
 export default function Files() {
   const [cat, setCat] = useState<string>('全部')
   const [q, setQ] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [sort, setSort] = useState<'new' | 'hot' | 'name'>('new')
   const [drag, setDrag] = useState(false)
-  const [stars, setStars] = useLocalStorage<string[]>('wyx-file-stars', ['f1', 'f4'])
+  const [stars, setStars] = useLocalStorage<string[]>(STORAGE_KEYS.fileStars, ['f1', 'f4'], isStringArray)
   const { show, node } = useToast()
+
+  const downloadable = resourceFiles.filter((f) => f.url).length
+  const online = downloadable
+  const pending = resourceFiles.length - online
+  /** 体积汇总：把 '1.2 MB' / '48 KB' 这类写法算成 MB，避免手写一个假数字 */
+  const totalSizeMb =
+    resourceFiles
+      .filter((f) => f.url)
+      .reduce((sum, f) => {
+        const num = parseFloat(f.size.replace(/[^\d.]/g, '')) || 0
+        return sum + (f.size.toUpperCase().includes('KB') ? num / 1024 : f.size.toUpperCase().includes('GB') ? num * 1024 : num)
+      }, 0)
+
+  useSeo({
+    title: '资源中心 · 魏云潇',
+    description: `简历、课件、数据集、模板和源码。${downloadable} 个文件可直接下载，其余标注待上传原因。`,
+    path: '/work/files',
+  })
 
   const list = useMemo(() => {
     const key = q.trim().toLowerCase()
@@ -55,7 +109,7 @@ export default function Files() {
           </>
         }
         desc="简历、课件、数据集、模板和源码，能下载的都放在这里。公开的都可以直接用，注明来源即可。"
-        note="演示站点：下载按钮不会真的给你一个文件。"
+        note={`${downloadable} / ${resourceFiles.length} 个文件已经可以真实下载，剩下的标了原因。`}
         right={
           <div className="flex flex-wrap gap-2">
             <Sticker rotate={-4}>{resourceFiles.length} 个文件</Sticker>
@@ -76,7 +130,7 @@ export default function Files() {
           onDrop={(e) => {
             e.preventDefault()
             setDrag(false)
-            show('拖进来了！不过演示站点不会真的上传 :)')
+            show('未配置服务端，文件不会真的上传')
           }}
           className={cn(
             'flex flex-col items-center justify-center rounded-2xl border-1.5 border-dashed px-5 py-6 text-center transition-colors',
@@ -84,10 +138,13 @@ export default function Files() {
           )}
         >
           <CloudUpload size={22} className="text-ink/35" />
-          <p className="mt-2 text-[12.5px] font-medium">把文件拖到这里，或者点我上传</p>
-          <p className="mt-1 font-mono text-[9.5px] tracking-wide text-ink/35">单文件 ≤ 20MB · 演示站点不会真的上传</p>
-          <button onClick={() => show('选择文件窗口（演示）')} className="btn mt-3 !px-3.5 !py-1.5 !text-[11px]">
-            选择文件
+          <p className="mt-2 text-[12.5px] font-medium">访客端不开放上传</p>
+          <p className="mt-1 font-mono text-[9.5px] tracking-wide text-ink/35">上传需要服务端直传签名（fx.md B6）</p>
+          <button
+            onClick={() => show('未配置服务端：上传能力已预留接口（services/files.ts requestUploadTicket）')}
+            className="btn mt-3 !px-3.5 !py-1.5 !text-[11px]"
+          >
+            查看接入说明
           </button>
           <div className="mt-3 flex flex-wrap justify-center gap-1">
             {['PDF', 'MD', 'ZIP', 'PY', 'CSV'].map((ext) => (
@@ -100,16 +157,16 @@ export default function Files() {
         <div className="rounded-2xl border-1.5 border-ink bg-ink p-4 text-paper">
           <div className="flex items-center justify-between">
             <p className="font-mono text-[9px] tracking-[0.18em] text-lime">STORAGE</p>
-            <span className="font-mono text-[9px] text-paper/40">63.4 / 128 MB</span>
+            <span className="font-mono text-[9px] text-paper/40">{totalSizeMb.toFixed(1)} MB 已公开</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-paper/15">
-            <div className="h-full w-1/2 rounded-full bg-lime" />
+            <div className="h-full rounded-full bg-lime" style={{ width: `${(online / resourceFiles.length) * 100}%` }} />
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             {[
-              ['公开', 8],
-              ['私密', 1],
-              ['归档', 0],
+              ['可下载', online],
+              ['待上传', pending],
+              ['合计', resourceFiles.length],
             ].map(([k, v]) => (
               <div key={k as string}>
                 <p className="font-display text-[15px] font-extrabold">{v}</p>
@@ -207,14 +264,14 @@ export default function Files() {
                   </div>
                 </div>
                 <p className="px-4 text-[11px] leading-relaxed text-ink/50">{f.desc}</p>
+                {f.pending && (
+                  <p className="mx-4 mt-2 flex items-start gap-1.5 rounded-lg bg-paper px-2 py-1.5 text-[10px] leading-relaxed text-ink/45">
+                    <Lock size={10} className="mt-[2px] shrink-0" /> {f.pending}
+                  </p>
+                )}
                 <div className="mt-3 flex items-center justify-between border-t border-ink/10 px-4 py-2.5">
                   <span className="font-mono text-[9px] text-ink/35">{f.downloads} 次下载 · {f.category}</span>
-                  <button
-                    onClick={() => show(`「${f.name}」开始下载（演示）`)}
-                    className="flex items-center gap-1 rounded-full border border-ink/20 bg-paper px-2 py-1 text-[9.5px] transition hover:border-ink hover:bg-lime"
-                  >
-                    <Download size={10} /> 下载
-                  </button>
+                  <DownloadLink f={f} />
                 </div>
               </div>
             )
@@ -248,12 +305,7 @@ export default function Files() {
                   <button onClick={() => toggleStar(f.id)} aria-label="收藏" className="p-0.5">
                     <Star size={12} className={cn(stars.includes(f.id) ? 'fill-ink text-ink' : 'text-ink/20')} />
                   </button>
-                  <button
-                    onClick={() => show(`「${f.name}」开始下载（演示）`)}
-                    className="rounded-full border border-ink/20 px-2 py-0.5 text-[9px] hover:bg-lime"
-                  >
-                    下载
-                  </button>
+                  <DownloadLink f={f} row />
                 </span>
               </div>
             )

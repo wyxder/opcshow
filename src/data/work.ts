@@ -68,25 +68,32 @@ export const toolboxGroups: ToolboxGroup[] = [
 export type ResourceFile = {
   id: string
   name: string
-  ext: 'pdf' | 'md' | 'zip' | 'fig' | 'py' | 'pptx' | 'xlsx'
+  ext: 'pdf' | 'md' | 'zip' | 'fig' | 'py' | 'pptx' | 'xlsx' | 'docx' | 'csv'
   size: string
   date: string
   category: '简历与作品集' | '课程与讲义' | '数据集' | '模板' | '源码'
   desc: string
   downloads: number
   starred?: boolean
+  /**
+   * 真实可下载地址（fx.md F2）。文件放在 public/files/ 下，配合 download 属性直接用。
+   * 没填 url = 还没上传到对象存储，UI 如实标注「待上传」而不是假装有文件。
+   */
+  url?: string
+  /** 未上线时的诚实原因，UI 直接展示 */
+  pending?: string
 }
 
 export const resourceFiles: ResourceFile[] = [
-  { id: 'f1', name: '魏云潇-AI全栈开发-简历', ext: 'pdf', size: '1.2 MB', date: '2026.10.12', category: '简历与作品集', desc: '最新版简历，含 7 个项目与技术栈索引。', downloads: 386, starred: true },
-  { id: 'f2', name: '作品集 2026 · 项目长图', ext: 'pdf', size: '8.4 MB', date: '2026.10.08', category: '简历与作品集', desc: '7 个项目的设计稿与指标截图汇编。', downloads: 214, starred: true },
-  { id: 'f3', name: 'Agent 评测中台 · 架构图', ext: 'fig', size: '24 MB', date: '2026.09.21', category: '模板', desc: '评测流水线与 RSI 四张数据表的完整 ER 图。', downloads: 132 },
-  { id: 'f4', name: 'RAG 工程化讲义（杭州 OPC）', ext: 'pptx', size: '18 MB', date: '2026.09.18', category: '课程与讲义', desc: '线下 80 人分享的原始课件，含评测集样例。', downloads: 468, starred: true },
-  { id: 'f5', name: 'FDE 教程合集（89 篇）', ext: 'md', size: '3.6 MB', date: '2026.09.05', category: '课程与讲义', desc: '两年 AI 工具教程的 Markdown 全量归档。', downloads: 921 },
-  { id: 'f6', name: '微表情数据集清洗脚本', ext: 'py', size: '48 KB', date: '2026.08.30', category: '源码', desc: '光流特征提取 + 标注校验，支持批量重采样。', downloads: 176 },
-  { id: 'f7', name: '电商客服评测集（脱敏 200 条）', ext: 'xlsx', size: '640 KB', date: '2026.08.12', category: '数据集', desc: '8 类场景、含 reference_context_ids，可直接跑 RAGAS。', downloads: 305, starred: true },
-  { id: 'f8', name: 'Harness 回归用例模板', ext: 'zip', size: '2.1 MB', date: '2026.07.28', category: '模板', desc: '12 条 CI 回归用例与 mock 工具服务。', downloads: 198 },
-  { id: 'f9', name: '无限画布最小实现', ext: 'zip', size: '5.7 MB', date: '2026.06.02', category: '源码', desc: 'React + Zustand 的视口/框选/小地图 demo。', downloads: 264 },
+  { id: 'f1', name: '魏云潇-AI全栈开发-简历', ext: 'docx', size: '199 KB', date: '2026.10.12', category: '简历与作品集', desc: '最新版简历原件（含 7 个项目与技术栈索引）。', downloads: 386, starred: true, url: '/files/wyx-resume-2026.docx' },
+  { id: 'f2', name: '作品集 2026 · 项目长图', ext: 'pdf', size: '8.4 MB', date: '2026.10.08', category: '简历与作品集', desc: '7 个项目的设计稿与指标图汇编。', downloads: 214, starred: true, pending: '需要真实设计导出件 + 对象存储（B6），先留位' },
+  { id: 'f3', name: 'Agent 评测中台 · 架构图', ext: 'fig', size: '24 MB', date: '2026.09.21', category: '模板', desc: '评测流水线与 RSI 四张数据表的完整 ER 图。', downloads: 132, pending: 'Figma 源文件无法静态托管，需 B6 签名下载' },
+  { id: 'f4', name: 'RAG 工程化讲义（杭州 OPC）', ext: 'pptx', size: '18 MB', date: '2026.09.18', category: '课程与讲义', desc: '线下 80 人分享的原始课件。', downloads: 468, starred: true, pending: '课件原件待上传；文字版可先看资源中心的教程合集' },
+  { id: 'f5', name: 'FDE 教程合集 · 结构与写作规范', ext: 'md', size: '2.9 KB', date: '2026.09.05', category: '课程与讲义', desc: '89 篇教程的分类体系与单篇写作模板（可直接拿去套）。', downloads: 921, url: '/files/fde-tutorials-structure.md' },
+  { id: 'f6', name: '微表情数据清洗脚本模板', ext: 'py', size: '7.1 KB', date: '2026.08.30', category: '源码', desc: '光流特征提取 + 标注校验 + 批量重采样的可跑骨架。', downloads: 176, url: '/files/micro-expression-clean.py' },
+  { id: 'f7', name: '电商客服评测集（脱敏样例 24 条）', ext: 'csv', size: '4.5 KB', date: '2026.08.12', category: '数据集', desc: '含 reference_context_ids，可直接跑 RAGAS。', downloads: 305, starred: true, url: '/files/ecommerce-eval-sample.csv' },
+  { id: 'f8', name: 'Harness 回归用例模板', ext: 'zip', size: '12.2 KB', date: '2026.07.28', category: '模板', desc: '12 条 CI 回归用例与 mock 工具服务。', downloads: 198, url: '/files/harness-regression-template.zip' },
+  { id: 'f9', name: '无限画布最小实现', ext: 'zip', size: '5.7 MB', date: '2026.06.02', category: '源码', desc: 'React + Zustand 的视口/框选/小地图 demo。', downloads: 264, pending: '完整仓库未发布，先看 GitHub 上的开源仓库' },
 ]
 
 export const resumeSnapshot = {

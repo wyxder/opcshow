@@ -21,7 +21,7 @@ import {
   Textarea,
   Toggle,
 } from '@/admin/ui'
-import { cn } from '@/lib/utils'
+import { cn, newId } from '@/lib/utils'
 
 type Tab = 'models' | 'prompts' | 'usage'
 
@@ -402,7 +402,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                 setModels((l) => [
                   ...l,
                   {
-                    id: `m${Date.now()}`,
+                    id: newId('m'),
                     name: draft.name,
                     provider: draft.provider,
                     model: draft.model,
@@ -472,7 +472,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                   }
                   return [
                     {
-                      id: `p${Date.now()}`,
+                      id: newId('p'),
                       name,
                       scene: promptDraft.scene || '全站对话',
                       model: promptDraft.model || 'DeepSeek Chat',

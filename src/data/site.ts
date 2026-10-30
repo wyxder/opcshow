@@ -1,3 +1,57 @@
+import type { ThemeId } from '@/theme/theme'
+
+/* ---------------------------------------------------------------------------
+ * 站点级常量（fx.md D1–D4 / F4 / T5 / S3）
+ * ------------------------------------------------------------------------- */
+
+/** 域名、默认主题与 SEO 缺省文案。useSeo 与后台 SettingsPage 都读这里。 */
+export const siteMeta = {
+  name: 'WYX.SPACE',
+  author: '魏云潇',
+  url: 'https://wyx.space',
+  title: '魏云潇 · WYX.SPACE',
+  description: '魏云潇的个人动态主页 — AI 全栈 / 智能体开发。项目、学习笔记、生活碎片与成长时间轴。',
+  /** 站点缺省主题：没有本地选择的访客用这个（T5：与 wyx:theme 个人覆盖分层） */
+  defaultTheme: 'paper' as ThemeId,
+  build: '2026.10.29',
+}
+
+/**
+ * 站内所有外链的唯一来源（fx.md F4：消掉 href="#" 死链）。
+ * 没有公开主页地址的平台一律留 null，页面渲染成「不可点的标识」而不是死链；
+ * 以后补真实地址只改这里。
+ */
+export const links = {
+  github: 'https://github.com/wyx-code',
+  email: 'mailto:wyxcode@qq.com',
+  rss: '/rss.xml',
+  sitemap: '/sitemap.xml',
+  xhs: null as string | null,
+  bili: null as string | null,
+  douyin: null as string | null,
+  wechat: null as string | null,
+  zhihu: null as string | null,
+}
+
+/**
+ * 全站数字口径（fx.md D1–D4）。页面文案一律从这里拼，避免同一件事出现两种说法：
+ *   · 决赛场次：统一「2026 年 7 场黑客松现场 · 6 场进决赛」
+ *   · 粉丝口径：分两层 —— 主阵地 2.3w / 全网合计由 platforms 求和自动得出
+ *   · 变现金额：统一 1.2w
+ */
+export const figures = {
+  products: 7,
+  awards: 16,
+  hackathonOnsite2026: 7,
+  finals2026: 6,
+  openSourceRepos: 20,
+  fdeTutorials: 89,
+  originalContents: 355,
+  totalViews: '15w+',
+  monetization: '1.2w',
+  mainPlatformFollowers: '2.3w',
+} as const
+
 export const profile = {
   name: '魏云潇',
   latin: 'WEI YUNXIAO',
@@ -14,22 +68,23 @@ export const profile = {
   phone: '18323765634',
   bio: [
     '信息与通信工程硕士在读，多模态 AI 方向。写代码之前先想清楚「谁会用、用完得到什么」，所以我的项目大多从一句真实需求开始，最后落到一个能付费、能被评测的线上产品。',
-    '上过 7 款 AI 付费产品，打过 10+ 场线下黑客松，也是一个 2.3w 粉的 AI 内容创作者。白天写 Agent，晚上剪视频，剩下的时间在西安的巷子里找面吃。',
+    `上过 ${figures.products} 款 AI 付费产品，打过 ${figures.hackathonOnsite2026} 场线下黑客松，也是一个 ${figures.mainPlatformFollowers} 粉的 AI 内容创作者。白天写 Agent，晚上剪视频，剩下的时间在西安的巷子里找面吃。`,
   ],
   keywords: ['RAG', 'Multi-Agent', 'Harness', '全栈', '多模态', '评测驱动'],
   socials: [
-    { label: 'Email', value: 'wyxcode@qq.com', href: 'mailto:wyxcode@qq.com', icon: 'mail' },
-    { label: 'GitHub', value: '@wyx', href: '#', icon: 'github' },
-    { label: '小红书', value: '2.3w 粉', href: '#', icon: 'book' },
-    { label: '微信', value: 'wyx200265', href: '#', icon: 'chat' },
+    { label: 'Email', value: 'wyxcode@qq.com', href: links.email, icon: 'mail' },
+    // href 为 null 时组件渲染成 <span>，不再出现 href="#" 死链（F4）
+    { label: 'GitHub', value: '@wyx-code', href: links.github, icon: 'github' },
+    { label: '小红书', value: `${figures.mainPlatformFollowers} 粉`, href: links.xhs, icon: 'book' },
+    { label: '微信', value: 'wyx200265', href: links.wechat, icon: 'chat' },
   ],
 }
 
 export const stats = [
-  { value: 7, suffix: '款', label: '已上线 AI 产品', note: '全部为付费闭环' },
-  { value: 16, suffix: '项', label: '竞赛获奖', note: '国赛 6 项' },
-  { value: 23, suffix: 'k', label: '自媒体粉丝', note: 'AI 教程 / 开源' },
-  { value: 12, suffix: '场', label: '黑客松现场', note: '2026 年 6 场决赛' },
+  { value: figures.products, suffix: '款', label: '已上线 AI 产品', note: '全部为付费闭环' },
+  { value: figures.awards, suffix: '项', label: '竞赛获奖', note: '国赛 6 项' },
+  { value: 23, suffix: 'k', label: '主阵地粉丝', note: 'AI 教程 / 开源' },
+  { value: figures.hackathonOnsite2026, suffix: '场', label: '2026 黑客松现场', note: `${figures.finals2026} 场进决赛` },
 ]
 
 export const skillGroups = [

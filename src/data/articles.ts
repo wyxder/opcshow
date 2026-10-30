@@ -23,12 +23,9 @@ export type Article = {
   sections: Section[]
 }
 
-export const articleCategories = [
-  { key: 'all', label: '全部', count: 6 },
-  { key: 'RAG 工程化', label: 'RAG 工程化', count: 2 },
-  { key: 'Agent 评测', label: 'Agent 评测', count: 2 },
-  { key: '工程手记', label: '工程手记', count: 2 },
-]
+/* 分类计数不再手写（fx.md R3）：articleCategories 改为从 articles 派生，
+ * 见文件末尾。标题级索引（不含正文）在 src/data/articles.index.ts，
+ * ⌘K 只引入那一份，正文跟着 /learn 懒加载（fx.md P2）。 */
 
 export const articles: Article[] = [
   {
@@ -465,3 +462,14 @@ const right = flip ? row.a : row.b` },
 ]
 
 export const articleById = (id?: string) => articles.find((a) => a.id === id)
+
+/** 从数据派生的分类计数（fx.md R3）：新增/删除文章时这里会自动跟上 */
+export const articleCategories = [
+  { key: 'all', label: '全部', count: articles.length },
+  ...Array.from(new Set(articles.map((a) => a.category))).map((key) => ({
+    key,
+    label: key,
+    count: articles.filter((a) => a.category === key).length,
+  })),
+]
+

@@ -21,6 +21,7 @@ import {
   Menu,
   MessageCircle,
   Music,
+  Rss,
   Search,
   Send,
   Settings,
@@ -35,8 +36,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { navItems } from '@/data/nav'
 import { projects } from '@/data/projects'
-import { articles } from '@/data/articles'
-import { profile } from '@/data/site'
+import { articleSearchIndex } from '@/data/articles.index'
+import { links, profile, siteMeta } from '@/data/site'
 import { cn } from '@/lib/utils'
 import { Marquee } from '@/components/ui/primitives'
 import { Modal } from '@/components/ui/Modal'
@@ -156,11 +157,12 @@ function Header() {
             </Link>
 
             {/* desktop nav */}
-            <nav className="hidden items-center gap-1 lg:flex" onMouseLeave={() => setOpenKey(null)}>
+            <nav className="hidden items-center gap-1 lg:flex" onMouseLeave={() => setOpenKey(null)} aria-label="主导航">
               {navItems.map((item) => (
                 <div key={item.key} className="relative" onMouseEnter={() => setOpenKey(item.key)}>
                   <Link
                     to={item.to}
+                    aria-current={isActive(item) ? 'page' : undefined}
                     className={cn(
                       'relative flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-medium transition-colors',
                       isActive(item) ? 'text-ink' : 'text-ink/60 hover:text-ink',
@@ -347,7 +349,8 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
       ...n.children.map((c) => ({ id: n.key + c.to, label: c.label, hint: c.desc, to: c.to, group: n.label, icon: icons[c.icon ?? 'sparkles'] ?? Sparkles })),
     ])
     const projectCmds = projects.map((p) => ({ id: p.id, label: p.title, hint: p.category, to: '/#projects', group: '项目', icon: Sparkles }))
-    const articleCmds = articles.map((a) => ({ id: a.id, label: a.title, hint: a.category, to: `/learn/${a.id}`, group: '文章', icon: BookOpen }))
+    // ⌘K 只用标题级索引（fx.md P2）：不把文章正文拉进入口包
+    const articleCmds = articleSearchIndex.map((a) => ({ ...a, icon: BookOpen }))
     return [...navCmds, ...articleCmds, ...projectCmds]
   }, [])
 
@@ -469,8 +472,12 @@ function Footer() {
               <span className="tag">
                 <MessageCircle size={12} /> {profile.wechat}
               </span>
-              <a href="#" className="tag hover:bg-lime">
+              {/* fx.md F4：真实外链 + rel="noopener noreferrer"，不再留 href="#" */}
+              <a href={links.github} target="_blank" rel="noopener noreferrer" className="tag hover:bg-lime">
                 <Github size={12} /> GitHub
+              </a>
+              <a href={links.rss} className="tag hover:bg-lime">
+                <Rss size={12} /> 订阅 RSS
               </a>
             </div>
           </div>
@@ -497,7 +504,9 @@ function Footer() {
         <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-ink/12 pt-5 font-mono text-[10px] text-ink/40 sm:flex-row sm:items-center">
           <span>© 2026 魏云潇 · 用 React 手搓，AI 只负责打下手</span>
           <div className="flex items-center gap-4">
-            <span>BUILD 2026.10.29</span>
+            <span>BUILD {siteMeta.build}</span>
+            <a href={links.sitemap} className="hover:text-ink">sitemap</a>
+            <a href={links.rss} className="hover:text-ink">RSS</a>
             <NavLink to="/admin" className="hover:text-ink">
               后台
             </NavLink>
@@ -512,10 +521,14 @@ function Footer() {
 export default function Layout() {
   return (
     <div className="relative min-h-screen">
+      {/* fx.md A2：键盘用户第一个可聚焦元素就是「跳到主内容」 */}
+      <a href="#main" className="skip-link">
+        跳到主内容
+      </a>
       <ScrollProgress />
       <Header />
       <ScrollToTop />
-      <main className="relative z-10 pt-[88px]">
+      <main id="main" tabIndex={-1} className="relative z-10 pt-[88px] outline-none">
         <Outlet />
       </main>
       <Footer />

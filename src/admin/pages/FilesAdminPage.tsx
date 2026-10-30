@@ -19,7 +19,7 @@ import {
   Tabs,
   Toggle,
 } from '@/admin/ui'
-import { cn } from '@/lib/utils'
+import { cn, newId } from '@/lib/utils'
 
 type Tab = 'upload' | 'share' | 'clean'
 type FileRow = (typeof adminFiles)[number]
@@ -50,7 +50,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
   const onPick = (list: FileList | null) => {
     if (!list?.length) return
     const added = Array.from(list).map((f, i) => ({
-      id: `up-${Date.now()}-${i}`,
+      id: newId('up'),
       name: f.name,
       size: `${(f.size / 1024 / 1024).toFixed(1)} MB`,
       progress: 100,
@@ -61,9 +61,9 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
   }
 
   const createShare = () => {
-    const token = `wyx-${Math.random().toString(36).slice(2, 6)}`
+    const token = newId('wyx').slice(0, 12)
     setShares((l) => [
-      { id: `s${Date.now()}`, file: shareDraft.file, token, password: shareDraft.password || '无', expires: shareDraft.expires, visits: 0, created: '2026-10-30' },
+      { id: newId('s'), file: shareDraft.file, token, password: shareDraft.password || '无', expires: shareDraft.expires, visits: 0, created: '2026-10-30' },
       ...l,
     ])
     setCreating(false)

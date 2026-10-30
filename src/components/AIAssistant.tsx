@@ -1,51 +1,36 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUp, Bot, Loader2, Minus, Sparkles, X } from 'lucide-react'
+import { ArrowUp, Bot, ExternalLink, Loader2, Minus, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { cn } from '@/lib/utils'
+import { Link } from 'react-router-dom'
+import { cn, newId } from '@/lib/utils'
+import { askSite, quickPrompts, type AnswerSource, type ChatReference } from '@/services/ai'
+import { serverConfig } from '@/services/config'
 
-type Msg = { id: number; role: 'user' | 'bot'; text: string }
+type Msg = {
+  id: string
+  role: 'user' | 'bot'
+  text: string
+  source?: AnswerSource
+  references?: ChatReference[]
+}
 
-const quickPrompts = ['推荐我先读哪篇？', 'RAG 切片怎么定？', '22 个指标怎么选？', '帮我看下简历亮点']
-
-const answers: { keys: string[]; text: string }[] = [
-  {
-    keys: ['推荐', '先读', '哪篇'],
-    text: '如果是第一次来，建议按这个顺序：\n\n1. 《RAG 工程化：从切片到溯源》—— 你会看到我怎么做工程判断，而不是堆名词。\n2. 《Agent 评测别玄学》—— 解释我怎么把「感觉变好」变成可验收的指标。\n3. 《Vibe Coding 的正确姿势》—— 最轻松的一篇，讲我和模型协作的边界。\n\n每篇都有三级目录，右侧可以随时问我某一节。',
-  },
-  {
-    keys: ['切片', '分块', 'chunk', 'RAG'],
-    text: '我的默认答案：先按文档结构切，再考虑长度。\n\n· 优先级：标题层级 > 条款/列表 > 句子边界 > 字符数\n· 电商客服类 300–450 token 效果最好，法律条款可以更短\n· 每个 chunk 必须带 doc_id / page / path / effective_at 四类元数据\n· 切完立刻跑一次 Recall@5，不要等接上模型再调\n\n一句话：分块是业务语义题，不是长度数学题。',
-  },
-  {
-    keys: ['指标', '评测', 'judge', '22'],
-    text: '22 个指标不用都上。我通常先分三层：\n\n· 检索层：HitRate@K / MRR —— 有没有找对材料\n· 生成层：Faithfulness / 术语一致性 —— 有没有用对材料\n· 行为层：Task Completion / Tool Correctness —— 任务有没有完成\n\n原则是「能算出来的不交给模型判断」。确定性指标零成本、不漂移，是回归测试的地基。',
-  },
-  {
-    keys: ['简历', '亮点', '实习', '招聘'],
-    text: '如果用一句话概括我的简历：\n\n「能把 Agent 从 Demo 做到付费上线，并且用评测证明它变好了。」\n\n证据有三条：字节电商 RAG 客服 Recall@5 0.72→0.93；评测中台 22 指标 + 42 用例；带货视频平台上线收益 1.2w。\n\n需要完整版可以看「工作 → 简历」，或者直接邮件 wyxcode@qq.com。',
-  },
-  {
-    keys: ['项目', '作品', '经历'],
-    text: '7 个项目里，我最想聊这三个：\n\n1. 跨境电商 AIGC 带货视频平台 —— 唯一跑通付费闭环的，收益 1.2w，星火 OPC 国赛一等奖。\n2. 抖音电商 RAG 客服 —— 第一次把检索命中率做到 92%，并且真的降低了 45% 人工接待。\n3. Agent 与 RSI 评测中台 —— 最「反直觉」的一个，让评测反向修改系统。\n\n首页的轮播卡片可以点开看每个项目的细节。',
-  },
-]
-
-const fallback =
-  '这个问题有点具体，我可能得看着代码回答。\n\n你可以试试问我：RAG 切片、评测指标、项目细节，或者简历亮点。也可以直接发邮件给 wyxcode@qq.com，我通常 12 小时内回。'
+const greeting = (live: boolean): Msg => ({
+  id: newId('greet'),
+  role: 'bot',
+  source: live ? 'model' : 'preset',
+  text: live
+    ? '你好，我是这个站的 AI 助手，回答来自服务端代理的模型（密钥不在浏览器里）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇。'
+    : '你好，我是这个站的 AI 助手。当前没有接入模型服务，回答来自作者手写的预置问答（离线可用）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇。',
+})
 
 export function AIAssistant({ defaultOpen = false, context }: { defaultOpen?: boolean; context?: string }) {
   const [open, setOpen] = useState(defaultOpen)
-  const [msgs, setMsgs] = useState<Msg[]>([
-    {
-      id: 1,
-      role: 'bot',
-      text: '你好，我是这个站的 AI 助手（当然是假的，回答都是手写的）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇。',
-    },
-  ])
+  const [msgs, setMsgs] = useState<Msg[]>([greeting(serverConfig.enabled)])
   const [draft, setDraft] = useState('')
   const [typing, setTyping] = useState(false)
+  const [lastSource, setLastSource] = useState<AnswerSource>(serverConfig.enabled ? 'model' : 'preset')
   const scrollRef = useRef<HTMLDivElement>(null)
-  const timers = useRef<number[]>([])
+  const cancelRef = useRef<null | (() => void)>(null)
 
   useEffect(() => {
     if (defaultOpen) setOpen(true)
@@ -61,32 +46,34 @@ export function AIAssistant({ defaultOpen = false, context }: { defaultOpen?: bo
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [msgs, typing, open])
 
-  useEffect(() => () => timers.current.forEach((t) => window.clearInterval(t)), [])
+  // 卸载 / 关闭时取消进行中的回答，避免定时器与流残留
+  useEffect(() => () => cancelRef.current?.(), [])
 
   const reply = (input: string) => {
-    const found = answers.find((a) => a.keys.some((k) => input.toLowerCase().includes(k.toLowerCase())))
-    const text = found?.text ?? fallback
+    const id = newId('bot')
     setTyping(true)
-    const delay = window.setTimeout(() => {
-      setTyping(false)
-      const id = Date.now()
-      setMsgs((m) => [...m, { id, role: 'bot', text: '' }])
-      let i = 0
-      const step = Math.max(1, Math.round(text.length / 90))
-      const timer = window.setInterval(() => {
-        i += step
-        setMsgs((m) => m.map((msg) => (msg.id === id ? { ...msg, text: text.slice(0, i) } : msg)))
-        if (i >= text.length) window.clearInterval(timer)
-      }, 18)
-      timers.current.push(timer)
-    }, 700)
-    timers.current.push(delay)
+    setMsgs((m) => [...m, { id, role: 'bot', text: '' }])
+
+    cancelRef.current = askSite(
+      { input, context, history: msgs.map((m) => ({ role: m.role === 'bot' ? ('assistant' as const) : ('user' as const), content: m.text })) },
+      {
+        onDelta: (text) => {
+          setTyping(false)
+          setMsgs((m) => m.map((msg) => (msg.id === id ? { ...msg, text } : msg)))
+        },
+        onDone: ({ source, references }) => {
+          setTyping(false)
+          setLastSource(source)
+          setMsgs((m) => m.map((msg) => (msg.id === id ? { ...msg, text: msg.text, source, references } : msg)))
+        },
+      },
+    )
   }
 
   const send = (value?: string) => {
     const text = (value ?? draft).trim()
     if (!text || typing) return
-    setMsgs((m) => [...m, { id: Date.now(), role: 'user', text }])
+    setMsgs((m) => [...m, { id: newId('user'), role: 'user', text }])
     setDraft('')
     reply(text)
   }
@@ -119,6 +106,8 @@ export function AIAssistant({ defaultOpen = false, context }: { defaultOpen?: bo
             exit={{ opacity: 0, y: 20, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 320, damping: 30 }}
             className="fixed bottom-4 right-4 z-[65] flex h-[min(560px,78vh)] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream shadow-hard-lg"
+            role="dialog"
+            aria-label="AI 学习助手"
           >
             <div className="flex items-center justify-between gap-2 border-b-1.5 border-ink bg-ink px-3.5 py-2.5 text-paper">
               <div className="flex items-center gap-2">
@@ -127,7 +116,9 @@ export function AIAssistant({ defaultOpen = false, context }: { defaultOpen?: bo
                 </span>
                 <div className="leading-tight">
                   <p className="text-[12px] font-semibold">云潇的 AI 助手</p>
-                  <p className="font-mono text-[9.5px] tracking-[0.14em] text-paper/40">FAKE BUT HELPFUL</p>
+                  <p className="font-mono text-[9.5px] tracking-[0.14em] text-paper/40">
+                    {serverConfig.enabled ? 'LIVE MODEL' : 'PRESET ANSWERS'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -159,6 +150,26 @@ export function AIAssistant({ defaultOpen = false, context }: { defaultOpen?: bo
                   >
                     {m.text}
                     {m.role === 'bot' && m.text === '' && <span className="animate-blink">▍</span>}
+                    {m.role === 'bot' && m.text !== '' && m.source && (
+                      <span className="mt-1.5 flex items-center gap-1 border-t border-dashed border-ink/10 pt-1 font-mono text-[9px] text-ink/35">
+                        {m.source === 'model' ? '模型生成，可能不准确' : '预置问答 · 作者手写'}
+                      </span>
+                    )}
+                    {/* AI3：引用锚点。RAG 接通后服务端返回 references，这里直接渲染 */}
+                    {!!m.references?.length && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {m.references.map((r) => (
+                          <Link
+                            key={`${r.docId}-${r.section}`}
+                            to={r.path}
+                            className="flex items-center gap-1 rounded border border-ink/15 bg-cream px-1.5 py-0.5 font-mono text-[9px] text-ink/55 transition hover:border-ink hover:text-ink"
+                            title={r.snippet ?? r.section}
+                          >
+                            <ExternalLink size={8} /> {r.section}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -194,6 +205,7 @@ export function AIAssistant({ defaultOpen = false, context }: { defaultOpen?: bo
                   }}
                   placeholder="问点什么…（Enter 发送）"
                   className="max-h-24 flex-1 resize-none bg-transparent px-1.5 py-1 text-[12px] outline-none placeholder:text-ink/35"
+                  aria-label="给 AI 助手的问题"
                 />
                 <button
                   onClick={() => send()}
@@ -204,7 +216,9 @@ export function AIAssistant({ defaultOpen = false, context }: { defaultOpen?: bo
                   <ArrowUp size={14} />
                 </button>
               </div>
-              <p className="mt-1.5 text-center font-mono text-[9.5px] tracking-wide text-ink/30">本地模拟 · 无真实模型调用</p>
+              <p className="mt-1.5 text-center font-mono text-[9.5px] tracking-wide text-ink/30">
+                {serverConfig.enabled ? `${lastSource === 'model' ? '实时模型' : '模型不可用，已落回预置问答'}` : '本地预置问答 · 无真实模型调用'}
+              </p>
             </div>
           </motion.div>
         )}

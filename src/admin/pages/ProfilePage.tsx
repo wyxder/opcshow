@@ -1,6 +1,7 @@
 import { Check, Copy, KeyRound, Laptop, Lock, LogIn, Plus, ShieldCheck, Smartphone, Trash2, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { profile } from '@/data/site'
+import { newId } from '@/lib/utils'
 import {
   AButton,
   AdminModal,
@@ -62,9 +63,9 @@ export default function ProfilePage({
 
   const issue = () => {
     if (!tokenName.trim()) return
-    const value = `wyx_live_${Math.random().toString(36).slice(2, 10)}`
+    const value = `wyx_live_${newId().slice(0, 12)}`
     setIssued(value)
-    setTokenList((l) => [{ id: `k${Date.now()}`, name: tokenName.trim(), prefix: value.slice(0, 14), created: '2026-10-30', last: '从未使用' }, ...l])
+    setTokenList((l) => [{ id: newId('k'), name: tokenName.trim(), prefix: value.slice(0, 14), created: new Date().toISOString().slice(0, 10), last: '从未使用' }, ...l])
     setTokenName('')
   }
 

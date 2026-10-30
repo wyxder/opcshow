@@ -1,3 +1,5 @@
+import { figures, links } from '@/data/site'
+
 export type TimelineNode = {
   id: string
   date: string
@@ -113,44 +115,78 @@ export type Platform = {
   followers: string
   posts: number
   focus: string
+  /** 品牌色令牌名（fx.md D5）—— 固定色，不随主题变化 */
+  brand: BrandKey
   color: string
   growth: string
   note: string
+  /** 公开主页地址（fx.md F4）。null = 站内展示，不渲染成链接，避免死链 */
+  url: string | null
 }
 
+/** 平台品牌色：来自 index.css 的 --c-brand-*（不参与换肤） */
+export const BRAND_TOKENS = {
+  xhs: 'rgb(var(--c-brand-xhs))',
+  bili: 'rgb(var(--c-brand-bili))',
+  douyin: 'rgb(var(--c-brand-douyin))',
+  wechat: 'rgb(var(--c-brand-wechat))',
+  github: 'rgb(var(--c-brand-github))',
+  zhihu: 'rgb(var(--c-brand-zhihu))',
+} as const
+
+export type BrandKey = keyof typeof BRAND_TOKENS
+
 export const platforms: Platform[] = [
-  { id: 'xhs', name: '小红书', handle: '@云潇的实验室', followers: '2.3w', posts: 168, focus: 'AI 工具 / 教程图文', color: 'rgb(var(--c-coral))', growth: '+38% / 90d', note: '主阵地，FDE 教程合集 89 篇' },
-  { id: 'bili', name: 'B 站', handle: '@wyx_ai', followers: '6,200', posts: 42, focus: '项目复盘 / 长视频', color: 'rgb(var(--c-blue))', growth: '+21% / 90d', note: '《手搓 Agent 评测中台》播放 7.9w' },
-  { id: 'douyin', name: '抖音', handle: '@云潇AI', followers: '4,800', posts: 63, focus: '60s 工具测评', color: 'rgb(var(--c-ink))', growth: '+46% / 90d', note: '最短的一条爆了 120w 曝光' },
-  { id: 'wechat', name: '公众号', handle: '云潇的 AI 手记', followers: '3,100', posts: 37, focus: '深度长文', color: 'rgb(var(--c-lime))', growth: '+12% / 90d', note: 'RAG 工程化系列收藏率最高' },
-  { id: 'github', name: 'GitHub', handle: '@wyx-code', followers: '980', posts: 26, focus: '开源项目 / Demo', color: 'rgb(var(--c-grape))', growth: '+31% / 90d', note: '20+ 原创开源仓库' },
-  { id: 'zhihu', name: '知乎', handle: '魏云潇', followers: '2,400', posts: 19, focus: '技术问答', color: 'rgb(var(--c-sky))', growth: '+9% / 90d', note: '「Agent 评测怎么做」高赞回答' },
+  { id: 'xhs', name: '小红书', handle: '@云潇的实验室', followers: '2.3w', posts: 168, focus: 'AI 工具 / 教程图文', brand: 'xhs', color: BRAND_TOKENS.xhs, growth: '+38% / 90d', note: '主阵地，FDE 教程合集 89 篇', url: links.xhs },
+  { id: 'bili', name: 'B 站', handle: '@wyx_ai', followers: '6,200', posts: 42, focus: '项目复盘 / 长视频', brand: 'bili', color: BRAND_TOKENS.bili, growth: '+21% / 90d', note: '《手搓 Agent 评测中台》播放 7.9w', url: links.bili },
+  { id: 'douyin', name: '抖音', handle: '@云潇AI', followers: '4,800', posts: 63, focus: '60s 工具测评', brand: 'douyin', color: BRAND_TOKENS.douyin, growth: '+46% / 90d', note: '最短的一条爆了 120w 曝光', url: links.douyin },
+  { id: 'wechat', name: '公众号', handle: '云潇的 AI 手记', followers: '3,100', posts: 37, focus: '深度长文', brand: 'wechat', color: BRAND_TOKENS.wechat, growth: '+12% / 90d', note: 'RAG 工程化系列收藏率最高', url: links.wechat },
+  { id: 'github', name: 'GitHub', handle: '@wyx-code', followers: '980', posts: 26, focus: '开源项目 / Demo', brand: 'github', color: BRAND_TOKENS.github, growth: '+31% / 90d', note: '20+ 原创开源仓库', url: links.github },
+  { id: 'zhihu', name: '知乎', handle: '魏云潇', followers: '2,400', posts: 19, focus: '技术问答', brand: 'zhihu', color: BRAND_TOKENS.zhihu, growth: '+9% / 90d', note: '「Agent 评测怎么做」高赞回答', url: links.zhihu },
 ]
 
+/** 把 '2.3w' / '6,200' 这类写法算成数字，所有统计口径都走这一个函数。 */
+export function followersToNumber(value: string) {
+  const num = parseFloat(value.replace(/[^\d.]/g, '')) || 0
+  return Math.round(value.includes('w') || value.includes('W') ? num * 10000 : num)
+}
+
+/** 全网合计：由 platforms 求和自动得出，不再手写（fx.md D3） */
+export const totalFollowers = platforms.reduce((sum, p) => sum + followersToNumber(p.followers), 0)
+
+export const totalPosts = platforms.reduce((sum, p) => sum + p.posts, 0)
+
+/** '3.75w' 这样的中文读数，用在「全网粉丝」卡片上 */
+export function formatWan(n: number) {
+  return n >= 10000 ? `${(n / 10000).toFixed(n % 10000 === 0 ? 0 : 1)}w` : n.toLocaleString('zh-CN')
+}
+
+/** 两层口径：主阵地 = 小红书，全网 = platforms 求和（fx.md D3）；变现金额走 figures（D4） */
 export const mediaStats = [
-  { label: '全网粉丝', value: '3.4w+' },
-  { label: '原创内容', value: '355' },
-  { label: '累计浏览', value: '15w+' },
-  { label: '累计变现', value: '1w+' },
+  { label: '全网粉丝', value: `${formatWan(totalFollowers)}+`, note: '六个平台求和' },
+  { label: '主阵地', value: `${figures.mainPlatformFollowers} 粉`, note: '小红书' },
+  { label: '累计变现', value: figures.monetization, note: '付费闭环上线收益' },
+  { label: '累计浏览', value: figures.totalViews, note: '图文 + 视频' },
 ]
 
 export type FriendLink = {
   id: string
   name: string
   desc: string
-  url: string
+  /** 站点地址（fx.md F4）：null = 对方没有公开站，渲染成不可点卡片 */
+  url: string | null
   tag: string
   color: string
   avatar: string
 }
 
 export const friends: FriendLink[] = [
-  { id: 'f1', name: '初芯 OPC', desc: '杭州的 AI 创业者社区，我在那里讲过 Harness。', url: '#', tag: '社区', color: 'rgb(var(--c-lime))', avatar: '初' },
-  { id: 'f2', name: '老陈的炼丹炉', desc: '做多模态的师兄，微表情数据集的另一位贡献者。', url: '#', tag: '同门', color: 'rgb(var(--c-sky))', avatar: '陈' },
-  { id: 'f3', name: '阿哲', desc: '黑客松固定队友，前端手速比我快一倍。', url: '#', tag: '队友', color: 'rgb(var(--c-rose))', avatar: '哲' },
-  { id: 'f4', name: 'DeepEval 中文社区', desc: '评测工具的中文文档与案例，我的评测启蒙。', url: '#', tag: '开源', color: 'rgb(var(--c-grape))', avatar: 'DE' },
-  { id: 'f5', name: '西交 AI 俱乐部', desc: '高校 AI 黑客松的组织方，认识了很多同频的人。', url: '#', tag: '社团', color: 'rgb(var(--c-coral))', avatar: 'XJ' },
-  { id: 'f6', name: '小羊的相机', desc: '她的胶片日记，我的站内照片一半来自这里。', url: '#', tag: '生活', color: 'rgb(var(--c-surface-2))', avatar: '羊' },
+  { id: 'f1', name: '初芯 OPC', desc: '杭州的 AI 创业者社区，我在那里讲过 Harness。', url: null, tag: '社区', color: 'rgb(var(--c-lime))', avatar: '初' },
+  { id: 'f2', name: '老陈的炼丹炉', desc: '做多模态的师兄，微表情数据集的另一位贡献者。', url: null, tag: '同门', color: 'rgb(var(--c-sky))', avatar: '陈' },
+  { id: 'f3', name: '阿哲', desc: '黑客松固定队友，前端手速比我快一倍。', url: null, tag: '队友', color: 'rgb(var(--c-rose))', avatar: '哲' },
+  { id: 'f4', name: 'DeepEval 中文社区', desc: '评测工具的中文文档与案例，我的评测启蒙。', url: 'https://deepeval.com', tag: '开源', color: 'rgb(var(--c-grape))', avatar: 'DE' },
+  { id: 'f5', name: '西交 AI 俱乐部', desc: '高校 AI 黑客松的组织方，认识了很多同频的人。', url: null, tag: '社团', color: 'rgb(var(--c-coral))', avatar: 'XJ' },
+  { id: 'f6', name: '小羊的相机', desc: '她的胶片日记，我的站内照片一半来自这里。', url: null, tag: '生活', color: 'rgb(var(--c-surface-2))', avatar: '羊' },
 ]
 
 export const danmakuSeeds = [
