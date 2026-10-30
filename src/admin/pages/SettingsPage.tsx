@@ -1,0 +1,498 @@
+import { Check, CloudDownload, DatabaseBackup, Download, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { backups as backupSeed, seoDefaults, systemInfo, themePresets } from '@/admin/data'
+import {
+  AButton,
+  AdminModal,
+  Badge,
+  Field,
+  IconButton,
+  Input,
+  PageTitle,
+  Panel,
+  Select,
+  Segmented,
+  Status,
+  TableHead,
+  Tabs,
+  Textarea,
+  Toggle,
+} from '@/admin/ui'
+import { cn } from '@/lib/utils'
+
+type Tab = 'theme' | 'seo' | 'backup'
+
+export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: (t: Tab) => void; show: (m: string) => void }) {
+  const [theme, setTheme] = useState('paper')
+  const [radius, setRadius] = useState<'sm' | 'md' | 'lg'>('md')
+  const [dark, setDark] = useState(false)
+  const [texture, setTexture] = useState(true)
+  const [seo, setSeo] = useState(seoDefaults)
+  const [autoBackup, setAutoBackup] = useState(true)
+  const [backups, setBackups] = useState(backupSeed)
+  const [restoring, setRestoring] = useState<string | null>(null)
+  const [backingUp, setBackingUp] = useState(false)
+
+  const preset = themePresets.find((t) => t.id === theme) ?? themePresets[1]
+  const [bg, ink, accent, accent2] = preset.colors
+
+  const checks = useMemo(
+    () => [
+      { label: '标题长度 30–60 字符', ok: seo.title.length >= 12 && seo.title.length <= 60 },
+      { label: '描述长度 80–160 字符', ok: seo.description.length >= 20 && seo.description.length <= 160 },
+      { label: '关键词 3–8 个', ok: seo.keywords.split(/[,，]/).filter(Boolean).length >= 3 },
+      { label: '已配置 OG 图', ok: Boolean(seo.ogImage) },
+      { label: '已生成 sitemap', ok: seo.sitemap },
+      { label: '开启结构化数据', ok: seo.structuredData },
+    ],
+    [seo],
+  )
+
+  const startBackup = () => {
+    setBackingUp(true)
+    window.setTimeout(() => {
+      setBackups((l) => [
+        { id: `b${Date.now()}`, name: `manual-2026-10-30`, size: '129 MB', type: '手动', status: '成功', time: '刚刚', items: '内容 + 文件 + 配置' },
+        ...l,
+      ])
+      setBackingUp(false)
+      show('备份完成 · 129 MB')
+    }, 1100)
+  }
+
+  return (
+    <div className="space-y-4">
+      <PageTitle
+        kicker="Settings"
+        title="系统设置"
+        desc="主题决定前台观感，SEO 影响搜索结果，备份是最后的保险。"
+        right={<Badge tone="neutral">{systemInfo.version} · {systemInfo.stack}</Badge>}
+      />
+
+      <Tabs
+        value={tab}
+        onChange={(v) => setTab(v as Tab)}
+        items={[
+          { key: 'theme', label: '主题' },
+          { key: 'seo', label: 'SEO' },
+          { key: 'backup', label: '备份' },
+        ]}
+      />
+
+      {tab === 'theme' && (
+        <div className="grid gap-3 xl:grid-cols-[1.5fr_1fr]">
+          <div className="space-y-3">
+            <Panel kicker="Presets" title="主题预设" desc="切换后前台会读取新的色板与字体">
+              <div className="grid gap-2.5 sm:grid-cols-3">
+                {themePresets.map((t) => {
+                  const on = t.id === theme
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setTheme(t.id)
+                        show(`已切换到「${t.name}」`)
+                      }}
+                      className={cn(
+                        'relative rounded-xl border p-3 text-left transition',
+                        on ? 'border-ink bg-lime/20 shadow-hard-sm' : 'border-ink/15 hover:border-ink/40',
+                      )}
+                    >
+                      <div className="flex gap-1">
+                        {t.colors.map((c) => (
+                          <span key={c} className="h-6 flex-1 rounded" style={{ background: c }} />
+                        ))}
+                      </div>
+                      <p className="mt-2.5 text-[11.5px] font-semibold">{t.name}</p>
+                      <p className="mt-0.5 text-[9.5px] text-admin-muted">{t.note}</p>
+                      {on && (
+                        <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-lime">
+                          <Check size={10} />
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="mb-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-admin-muted">圆角</p>
+                  <Segmented
+                    value={radius}
+                    onChange={setRadius}
+                    options={[
+                      { key: 'sm', label: '小' },
+                      { key: 'md', label: '中' },
+                      { key: 'lg', label: '大' },
+                    ]}
+                  />
+                </div>
+                <Field label="正文字体">
+                  <Select defaultValue="Noto Sans SC">
+                    {['Noto Sans SC', 'PingFang SC', 'Inter', '系统默认'].map((f) => (
+                      <option key={f}>{f}</option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {[
+                  ['深色模式', dark, setDark, '夜间访客会自动切换'],
+                  ['纸张纹理背景', texture, setTexture, '轻微噪点，降低纯色疲劳'],
+                ].map(([label, on, set, note]) => (
+                  <div key={label as string} className="flex items-center justify-between gap-3 rounded-lg border border-ink/15 px-3 py-2.5">
+                    <div>
+                      <p className="text-[11.5px] font-medium">{label as string}</p>
+                      <p className="mt-0.5 text-[9.5px] text-admin-muted">{note as string}</p>
+                    </div>
+                    <Toggle on={on as boolean} label={label as string} onChange={(v) => (set as (v: boolean) => void)(v)} />
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <AButton variant="primary" icon={<Check size={12} />} onClick={() => show('主题设置已保存，前台已生效')}>
+                  保存主题
+                </AButton>
+                <AButton onClick={() => { setTheme('paper'); setRadius('md'); show('已恢复默认主题') }}>恢复默认</AButton>
+              </div>
+            </Panel>
+
+            <Panel kicker="Tokens" title="设计变量" desc="以下变量会注入到前台 CSS 变量">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  ['--bg', bg],
+                  ['--ink', ink],
+                  ['--accent', accent],
+                  ['--accent-2', accent2],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-2 rounded-lg border border-ink/15 px-2.5 py-2">
+                    <span className="h-5 w-5 rounded border border-ink/15" style={{ background: v }} />
+                    <span className="flex-1 font-mono text-[9.5px] text-admin-muted">{k}</span>
+                    <span className="font-mono text-[10px]">{v}</span>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </div>
+
+          <div className="space-y-3">
+            <Panel kicker="Preview" title="前台预览">
+              <div className="overflow-hidden rounded-xl border border-ink/15" style={{ background: bg }}>
+                <div className="flex items-center justify-between px-3 py-2" style={{ color: ink }}>
+                  <span className="text-[10px] font-bold">WYX.SPACE</span>
+                  <div className="flex gap-2 text-[8px] opacity-80">
+                    <span>学习</span>
+                    <span>作品</span>
+                    <span>生活</span>
+                  </div>
+                </div>
+                <div className="px-3 pb-3 pt-2" style={{ color: ink }}>
+                  <p className="font-mono text-[8px] opacity-80">AI FULL-STACK</p>
+                  <p className="mt-1 text-[15px] font-extrabold leading-tight">
+                    把想法做成
+                    <br />
+                    能上线的东西。
+                  </p>
+                  <div className="mt-2 flex gap-1.5">
+                    <span className="rounded-full px-2 py-1 text-[7px]" style={{ background: accent, color: '#14140F' }}>
+                      看作品
+                    </span>
+                    <span className="rounded-full border px-2 py-1 text-[7px]" style={{ borderColor: `${ink}33` }}>
+                      简历
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-1.5">
+                    {[0, 1].map((i) => (
+                      <div key={i} className="rounded-lg p-2" style={{ background: i === 0 ? `${accent2}22` : `${ink}0d` }}>
+                        <p className="text-[6.5px] font-semibold" style={{ color: ink }}>
+                          {i === 0 ? 'RAG 客服系统' : 'Agent 评测中台'}
+                        </p>
+                        <p className="mt-1 text-[7px] opacity-80" style={{ color: ink }}>
+                          Recall@5 0.93
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <p className="mt-2 text-center font-mono text-[9px] text-admin-muted">示例内容仅供配色预览</p>
+            </Panel>
+
+            <Panel kicker="Cache" title="静态资源">
+              <div className="space-y-2 text-[10.5px]">
+                {[
+                  ['构建版本', '2026.10.29-a3f1'],
+                  ['上次部署', '12 分钟前'],
+                  ['CDN 命中率', '96.4%'],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between border-b border-ink/10 pb-1.5 last:border-0">
+                    <span className="text-admin-muted">{k}</span>
+                    <span className="font-mono">{v}</span>
+                  </div>
+                ))}
+              </div>
+              <AButton className="mt-3 w-full" icon={<RefreshCw size={12} />} onClick={() => show('缓存刷新任务已提交')}>
+                刷新 CDN 缓存
+              </AButton>
+            </Panel>
+          </div>
+        </div>
+      )}
+
+      {tab === 'seo' && (
+        <div className="grid gap-3 xl:grid-cols-[1.45fr_1fr]">
+          <div className="space-y-3">
+            <Panel kicker="Meta" title="基础 SEO" desc="修改后需要重新构建站点才会写入静态 HTML">
+              <div className="space-y-3">
+                <Field label="站点标题">
+                  <Input value={seo.title} onChange={(e) => setSeo({ ...seo, title: e.target.value })} />
+                </Field>
+                <Field label="站点描述">
+                  <Textarea value={seo.description} onChange={(e) => setSeo({ ...seo, description: e.target.value })} rows={3} />
+                </Field>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="关键词" hint="用英文逗号分隔">
+                    <Input value={seo.keywords} onChange={(e) => setSeo({ ...seo, keywords: e.target.value })} />
+                  </Field>
+                  <Field label="Canonical 域名">
+                    <Input value={seo.canonical} onChange={(e) => setSeo({ ...seo, canonical: e.target.value })} />
+                  </Field>
+                  <Field label="OG 分享图">
+                    <Input value={seo.ogImage} onChange={(e) => setSeo({ ...seo, ogImage: e.target.value })} />
+                  </Field>
+                  <Field label="Robots">
+                    <Select value={seo.robots} onChange={(e) => setSeo({ ...seo, robots: e.target.value })}>
+                      {['index, follow', 'noindex, follow', 'index, nofollow', 'noindex, nofollow'].map((r) => (
+                        <option key={r}>{r}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {[
+                  ['生成 sitemap.xml', 'sitemap'],
+                  ['输出结构化数据 (JSON-LD)', 'structuredData'],
+                  ['匿名访问统计', 'analytics'],
+                ].map(([label, key]) => {
+                  const on = seo[key as 'sitemap' | 'structuredData' | 'analytics']
+                  return (
+                    <div key={key} className="flex items-center justify-between rounded-lg border border-ink/15 px-3 py-2.5">
+                      <span className="text-[11.5px]">{label}</span>
+                      <Toggle on={on} label={label} onChange={(v) => setSeo({ ...seo, [key]: v })} />
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <AButton variant="primary" icon={<Check size={12} />} onClick={() => show('SEO 设置已保存')}>
+                  保存
+                </AButton>
+                <AButton icon={<Search size={12} />} onClick={() => show('已提交到 Search Console（演示）')}>
+                  提交收录
+                </AButton>
+              </div>
+            </Panel>
+
+            <Panel kicker="Sitemap" title="已收录页面">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  ['页面总数', '23'],
+                  ['已提交', '23'],
+                  ['已收录', '18'],
+                  ['最近抓取', '2 小时前'],
+                ].map(([l, v]) => (
+                  <div key={l} className="rounded-lg bg-paper px-3 py-2">
+                    <p className="text-[9.5px] text-admin-muted">{l}</p>
+                    <p className="mt-0.5 font-mono text-[12px]">{v}</p>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </div>
+
+          <div className="space-y-3">
+            <Panel kicker="SERP" title="搜索结果预览">
+              <div className="rounded-xl border border-ink/15 p-3">
+                <p className="flex items-center gap-1.5 text-[10px] text-admin-muted">
+                  <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-ink bg-ink text-[7px] font-bold text-lime">W</span>
+                  {seo.canonical.replace('https://', '')}
+                </p>
+                <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-blue underline decoration-1 underline-offset-2">{seo.title || '（未填写标题）'}</p>
+                <p className="mt-1 line-clamp-3 text-[10.5px] leading-relaxed text-admin-muted">{seo.description}</p>
+              </div>
+              <p className="mt-2 text-center font-mono text-[9px] text-admin-muted">Google 桌面端预览</p>
+            </Panel>
+
+            <Panel kicker="Checklist" title="优化检查" desc={`${checks.filter((c) => c.ok).length} / ${checks.length} 项通过`}>
+              <ul className="space-y-2">
+                {checks.map((c) => (
+                  <li key={c.label} className="flex items-center gap-2 text-[10.5px]">
+                    <span className={cn('flex h-4 w-4 items-center justify-center rounded-full', c.ok ? 'bg-admin-teal/12 text-admin-teal' : 'bg-admin-amber/15 text-admin-amber')}>
+                      {c.ok ? <Check size={9} /> : <span className="h-1 w-1 rounded-full bg-current" />}
+                    </span>
+                    <span className={c.ok ? 'text-admin-ink/75' : 'text-admin-muted'}>{c.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+
+            <Panel kicker="Robots" title="robots.txt">
+              <pre className="overflow-x-auto rounded-lg bg-paper p-2.5 font-mono text-[9.5px] leading-relaxed text-admin-ink/75 no-scrollbar">
+{`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /s/
+
+Sitemap: ${seo.canonical}/sitemap.xml`}
+              </pre>
+            </Panel>
+          </div>
+        </div>
+      )}
+
+      {tab === 'backup' && (
+        <div className="grid gap-3 xl:grid-cols-[1.6fr_1fr]">
+          <Panel
+            kicker="Backups"
+            title="备份记录"
+            desc={`最近备份 ${backups[0]?.time ?? '—'} · 共 ${backups.length} 份`}
+            flush
+            right={
+              <AButton size="sm" variant="primary" icon={<DatabaseBackup size={11} />} onClick={startBackup} disabled={backingUp}>
+                {backingUp ? '备份中…' : '立即备份'}
+              </AButton>
+            }
+          >
+            <div className="overflow-x-auto no-scrollbar">
+              <div className="admin-zebra min-w-[760px]">
+                <TableHead cols={['备份', '内容', '大小', '类型', '时间', '状态', '操作']} template="minmax(0,1fr) 128px 64px 56px 96px 72px 100px" />
+                {backups.map((b) => (
+                  <div
+                    key={b.id}
+                    className="grid grid-cols-[minmax(0,1fr)_128px_64px_56px_96px_72px_100px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
+                  >
+                    <span className="truncate font-mono text-[10.5px]">{b.name}</span>
+                    <span className="truncate text-[9.5px] text-admin-muted">{b.items}</span>
+                    <span className="font-mono text-[10px] text-admin-muted">{b.size}</span>
+                    <Badge tone={b.type === '自动' ? 'neutral' : 'amber'}>{b.type}</Badge>
+                    <span className="font-mono text-[9.5px] text-admin-muted">{b.time}</span>
+                    <Status>{b.status}</Status>
+                    <div className="flex items-center justify-end gap-1">
+                      <IconButton label="下载" onClick={() => show('备份包已开始下载')}>
+                        <Download size={11} />
+                      </IconButton>
+                      <AButton size="sm" variant="soft" disabled={b.status !== '成功'} onClick={() => setRestoring(b.name)}>
+                        恢复
+                      </AButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Panel>
+
+          <div className="space-y-3">
+            <Panel kicker="Schedule" title="自动备份">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-ink/15 px-3 py-2.5">
+                <div>
+                  <p className="text-[11.5px] font-medium">每日自动备份</p>
+                  <p className="mt-0.5 text-[9.5px] text-admin-muted">保留最近 14 份，超出自动清理</p>
+                </div>
+                <Toggle on={autoBackup} onChange={setAutoBackup} label="自动备份" />
+              </div>
+              <div className="mt-3 grid gap-3">
+                <Field label="执行时间">
+                  <Select defaultValue="03:00">
+                    {['01:00', '03:00', '05:00', '每日 12:00'].map((t) => (
+                      <option key={t}>{t}</option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="保留份数">
+                  <Select defaultValue="14 份">
+                    {['7 份', '14 份', '30 份'].map((t) => (
+                      <option key={t}>{t}</option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <AButton className="mt-3 w-full" onClick={() => show('备份计划已保存')}>
+                保存计划
+              </AButton>
+            </Panel>
+
+            <Panel kicker="Storage" title="备份存储">
+              <div className="space-y-2 text-[10.5px]">
+                {[
+                  ['存储位置', 'Supabase Storage'],
+                  ['当前占用', '507 MB'],
+                  ['加密方式', 'AES-256'],
+                  ['上次校验', '今天 03:12 · 通过'],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between border-b border-ink/10 pb-1.5 last:border-0">
+                    <span className="text-admin-muted">{k}</span>
+                    <span className="font-mono text-[10px]">{v}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <AButton size="sm" icon={<CloudDownload size={11} />} onClick={() => show('已导出配置 JSON')}>
+                  导出配置
+                </AButton>
+                <AButton size="sm" icon={<RotateCcw size={11} />} onClick={() => show('导入配置（演示）')}>
+                  导入配置
+                </AButton>
+              </div>
+            </Panel>
+
+            <Panel kicker="Cleanup" title="旧备份清理">
+              <p className="text-[10.5px] leading-relaxed text-admin-muted">已过期 1 份，占用 119 MB，删除后不可恢复。</p>
+              <AButton
+                variant="danger"
+                className="mt-2 w-full"
+                icon={<Trash2 size={11} />}
+                onClick={() => {
+                  setBackups((l) => l.filter((b) => b.status !== '已过期'))
+                  show('过期备份已清理')
+                }}
+              >
+                清理过期备份
+              </AButton>
+            </Panel>
+          </div>
+        </div>
+      )}
+
+      <AdminModal
+        open={restoring !== null}
+        onClose={() => setRestoring(null)}
+        title={`从 ${restoring ?? ''} 恢复`}
+        desc="恢复会覆盖当前内容与配置，建议先做一次手动备份。"
+        footer={
+          <>
+            <AButton onClick={() => setRestoring(null)}>取消</AButton>
+            <AButton
+              variant="primary"
+              onClick={() => {
+                setRestoring(null)
+                show('恢复任务已排入队列')
+              }}
+            >
+              确认恢复
+            </AButton>
+          </>
+        }
+      >
+        <div className="rounded-lg bg-paper px-3 py-2.5 text-[11.5px] leading-relaxed text-admin-ink/75">
+          恢复范围：文章、项目、动态、文件元数据、主题与 SEO 配置。恢复期间站点会进入只读模式，预计 40 秒。
+        </div>
+      </AdminModal>
+    </div>
+  )
+}

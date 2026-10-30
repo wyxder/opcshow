@@ -1,0 +1,516 @@
+import { AnimatePresence, motion, useScroll, useSpring } from 'framer-motion'
+import {
+  ArrowUpRight,
+  BookOpen,
+  Bot,
+  Box,
+  ChevronDown,
+  Command,
+  Compass,
+  FileText,
+  Folder,
+  Gauge,
+  Github,
+  GitBranch,
+  Heart,
+  Home,
+  Layers,
+  Link2,
+  Mail,
+  Map,
+  Menu,
+  MessageCircle,
+  Music,
+  Search,
+  Send,
+  Settings,
+  Share2,
+  Sparkles,
+  Trophy,
+  User,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { navItems } from '@/data/nav'
+import { projects } from '@/data/projects'
+import { articles } from '@/data/articles'
+import { profile } from '@/data/site'
+import { cn } from '@/lib/utils'
+import { Marquee } from '@/components/ui/primitives'
+import { Modal } from '@/components/ui/Modal'
+
+const icons: Record<string, LucideIcon> = {
+  home: Home,
+  sparkles: Sparkles,
+  layers: Layers,
+  trophy: Trophy,
+  book: BookOpen,
+  search: Search,
+  gauge: Gauge,
+  bot: Bot,
+  file: FileText,
+  box: Box,
+  folder: Folder,
+  heart: Heart,
+  chat: MessageCircle,
+  map: Map,
+  music: Music,
+  user: User,
+  share: Share2,
+  timeline: GitBranch,
+  send: Send,
+  link: Link2,
+}
+
+/* ------------------------------ scroll helpers ----------------------------- */
+function ScrollToTop() {
+  const { pathname, hash } = useLocation()
+  useEffect(() => {
+    if (hash) {
+      const id = hash.replace('#', '')
+      let tries = 0
+      const run = () => {
+        const el = document.getElementById(id)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        } else if (tries++ < 20) {
+          requestAnimationFrame(run)
+        }
+      }
+      const timer = window.setTimeout(run, 80)
+      return () => window.clearTimeout(timer)
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  }, [pathname, hash])
+  return null
+}
+
+function ScrollProgress() {
+  const { scrollYProgress } = useScroll()
+  const scaleX = useSpring(scrollYProgress, { stiffness: 140, damping: 26, restDelta: 0.001 })
+  return (
+    <motion.div
+      style={{ scaleX }}
+      className="fixed inset-x-0 top-0 z-[80] h-[3px] origin-left bg-gradient-to-r from-lime via-coral to-blue"
+    />
+  )
+}
+
+/* ---------------------------------- header -------------------------------- */
+function Header() {
+  const [openKey, setOpenKey] = useState<string | null>(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 16)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    setMobileOpen(false)
+    setOpenKey(null)
+  }, [pathname])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const isActive = (item: (typeof navItems)[number]) =>
+    item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key) || (item.key === 'me' && pathname === '/me')
+
+  return (
+    <>
+      <header className="fixed inset-x-0 top-0 z-[70]">
+        <div className="shell">
+          <div
+            className={cn(
+              'mt-3 flex items-center justify-between gap-3 rounded-[18px] border-1.5 border-ink bg-cream/90 px-3 py-2 backdrop-blur-xl transition-all duration-300',
+              scrolled ? 'shadow-hard-sm' : 'shadow-none',
+            )}
+          >
+            {/* logo */}
+            <Link to="/" className="group flex items-center gap-2.5" onMouseEnter={() => setOpenKey(null)}>
+              <span className="relative flex h-9 w-9 -rotate-6 items-center justify-center rounded-[11px] border-1.5 border-ink bg-ink text-[13px] font-extrabold text-lime transition-transform duration-300 group-hover:rotate-0">
+                W
+                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-ink bg-lime" />
+              </span>
+              <span className="leading-none">
+                <span className="block text-[15px] font-extrabold tracking-tight">魏云潇</span>
+                <span className="mt-1 block font-mono text-[9px] tracking-[0.18em] text-ink/45">WYX.SPACE / 2026</span>
+              </span>
+            </Link>
+
+            {/* desktop nav */}
+            <nav className="hidden items-center gap-1 lg:flex" onMouseLeave={() => setOpenKey(null)}>
+              {navItems.map((item) => (
+                <div key={item.key} className="relative" onMouseEnter={() => setOpenKey(item.key)}>
+                  <Link
+                    to={item.to}
+                    className={cn(
+                      'relative flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-medium transition-colors',
+                      isActive(item) ? 'text-ink' : 'text-ink/60 hover:text-ink',
+                    )}
+                  >
+                    {isActive(item) && (
+                      <motion.span
+                        layoutId="nav-pill"
+                        className="absolute inset-0 -z-10 rounded-full border-1.5 border-ink bg-lime"
+                        transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                      />
+                    )}
+                    <span className="font-mono text-[9px] opacity-40">{item.index}</span>
+                    {item.label}
+                    <ChevronDown size={11} className={cn('transition-transform', openKey === item.key && 'rotate-180')} />
+                  </Link>
+                </div>
+              ))}
+            </nav>
+
+            {/* actions */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPaletteOpen(true)}
+                className="hidden items-center gap-2 rounded-full border-1.5 border-ink/15 bg-paper px-2.5 py-1.5 font-mono text-[10px] text-ink/50 transition hover:border-ink/40 hover:text-ink sm:flex"
+                aria-label="搜索"
+              >
+                <Search size={13} />
+                <span>搜索</span>
+                <kbd className="rounded border border-ink/20 bg-cream px-1 py-0.5 text-[9px]">⌘K</kbd>
+              </button>
+              <Link
+                to="/admin"
+                className="hidden h-8 w-8 items-center justify-center rounded-full border-1.5 border-ink/15 bg-paper text-ink/55 transition hover:border-ink hover:text-ink sm:flex"
+                aria-label="后台管理"
+              >
+                <Settings size={14} />
+              </Link>
+              <a
+                href={`mailto:${profile.email}`}
+                className="hidden items-center gap-1.5 rounded-full border-1.5 border-ink bg-ink px-3.5 py-2 text-[12px] font-medium text-paper transition hover:-translate-y-0.5 hover:shadow-hard-sm md:flex"
+              >
+                <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime" />
+                约个面试
+              </a>
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-full border-1.5 border-ink bg-lime lg:hidden"
+                onClick={() => setMobileOpen(true)}
+                aria-label="打开菜单"
+              >
+                <Menu size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* dropdown */}
+          <AnimatePresence>
+            {openKey && (
+              <motion.div
+                key={openKey}
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                onMouseEnter={() => setOpenKey(openKey)}
+                onMouseLeave={() => setOpenKey(null)}
+                className="absolute left-1/2 hidden w-[min(680px,92vw)] -translate-x-1/2 pt-2 lg:block"
+              >
+                <div className="overflow-hidden rounded-[20px] border-1.5 border-ink bg-cream shadow-hard">
+                  <div className="grid grid-cols-2 gap-px bg-ink/10">
+                    {navItems
+                      .find((n) => n.key === openKey)!
+                      .children.map((child) => {
+                        const Icon = icons[child.icon ?? 'sparkles'] ?? Sparkles
+                        return (
+                          <Link
+                            key={child.to}
+                            to={child.to}
+                            onClick={() => setOpenKey(null)}
+                            className="group flex items-start gap-3 bg-cream px-4 py-3.5 transition-colors hover:bg-lime/25"
+                          >
+                            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink/80 bg-paper transition group-hover:bg-ink group-hover:text-lime">
+                              <Icon size={14} />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="flex items-center gap-1 text-[13.5px] font-semibold">
+                                {child.label}
+                                <ArrowUpRight size={12} className="opacity-0 transition group-hover:opacity-100" />
+                              </span>
+                              <span className="mt-0.5 block truncate text-[11.5px] text-ink/50">{child.desc}</span>
+                            </span>
+                          </Link>
+                        )
+                      })}
+                  </div>
+                  <div className="flex items-center justify-between border-t border-ink/10 bg-paper px-4 py-2 font-mono text-[9.5px] tracking-[0.14em] text-ink/40">
+                    <span>{navItems.find((n) => n.key === openKey)!.en} CHANNEL</span>
+                    <span>ESC / 移开关闭</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </header>
+
+      {/* mobile sheet */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            className="fixed inset-0 z-[85] bg-ink text-paper lg:hidden"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="flex h-full flex-col overflow-y-auto px-6 pb-10 pt-6 no-scrollbar">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px] tracking-[0.2em] text-lime">MENU / 2026</span>
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border-1.5 border-paper/40"
+                  aria-label="关闭菜单"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="mt-8 space-y-6">
+                {navItems.map((item) => (
+                  <div key={item.key}>
+                    <Link to={item.to} className="flex items-baseline gap-3">
+                      <span className="font-mono text-[10px] text-lime/70">{item.index}</span>
+                      <span className="text-3xl font-extrabold">{item.label}</span>
+                      <span className="font-mono text-[9px] tracking-[0.2em] text-paper/35">{item.en}</span>
+                    </Link>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {item.children.map((c) => (
+                        <Link
+                          key={c.to}
+                          to={c.to}
+                          className="rounded-xl border border-paper/15 px-3 py-2.5 text-[12px] text-paper/75 active:bg-lime active:text-ink"
+                        >
+                          {c.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-auto pt-10">
+                <Link to="/admin" className="flex items-center justify-between rounded-xl border border-lime/60 px-4 py-3 text-sm text-lime">
+                  后台管理系统 <ArrowUpRight size={16} />
+                </Link>
+                <p className="mt-5 font-hand text-xl text-paper/50">随时到岗，欢迎随时找我聊聊。</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+    </>
+  )
+}
+
+/* ------------------------------ command palette ---------------------------- */
+type CmdItem = { id: string; label: string; hint: string; to: string; group: string; icon: LucideIcon }
+
+function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate()
+  const [q, setQ] = useState('')
+  const [cursor, setCursor] = useState(0)
+
+  const items: CmdItem[] = useMemo(() => {
+    const navCmds = navItems.flatMap((n) => [
+      { id: n.key, label: n.label + ' · 首页', hint: n.en, to: n.to, group: '页面', icon: Compass },
+      ...n.children.map((c) => ({ id: n.key + c.to, label: c.label, hint: c.desc, to: c.to, group: n.label, icon: icons[c.icon ?? 'sparkles'] ?? Sparkles })),
+    ])
+    const projectCmds = projects.map((p) => ({ id: p.id, label: p.title, hint: p.category, to: '/#projects', group: '项目', icon: Sparkles }))
+    const articleCmds = articles.map((a) => ({ id: a.id, label: a.title, hint: a.category, to: `/learn/${a.id}`, group: '文章', icon: BookOpen }))
+    return [...navCmds, ...articleCmds, ...projectCmds]
+  }, [])
+
+  const filtered = useMemo(() => {
+    const key = q.trim().toLowerCase()
+    if (!key) return items.slice(0, 10)
+    return items.filter((i) => (i.label + i.hint + i.group).toLowerCase().includes(key)).slice(0, 12)
+  }, [items, q])
+
+  useEffect(() => {
+    if (open) {
+      setQ('')
+      setCursor(0)
+    }
+  }, [open])
+
+  const go = (item?: CmdItem) => {
+    if (!item) return
+    navigate(item.to)
+    onClose()
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} bare className="max-w-xl self-start !bg-transparent !border-0 !shadow-none">
+      <div className="overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream shadow-hard-lg">
+        <div className="flex items-center gap-3 border-b-1.5 border-ink/12 px-4 py-3.5">
+          <Command size={16} className="text-ink/40" />
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value)
+              setCursor(0)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setCursor((c) => Math.min(c + 1, filtered.length - 1))
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setCursor((c) => Math.max(c - 1, 0))
+              }
+              if (e.key === 'Enter') go(filtered[cursor])
+            }}
+            placeholder="搜索页面、文章、项目…"
+            className="w-full bg-transparent text-[14px] outline-none placeholder:text-ink/35"
+          />
+          <kbd className="rounded border border-ink/20 px-1.5 py-0.5 font-mono text-[9px] text-ink/40">ESC</kbd>
+        </div>
+        <div className="max-h-[52vh] overflow-y-auto py-2 no-scrollbar">
+          {filtered.length === 0 && <p className="px-5 py-8 text-center text-[13px] text-ink/40">没有找到，换个词试试。</p>}
+          {filtered.map((item, i) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.id}
+                onMouseEnter={() => setCursor(i)}
+                onClick={() => go(item)}
+                className={cn(
+                  'flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                  i === cursor ? 'bg-lime/35' : 'hover:bg-paper',
+                )}
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-md border border-ink/20 bg-paper">
+                  <Icon size={13} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-medium">{item.label}</span>
+                  <span className="block truncate text-[11px] text-ink/45">{item.hint}</span>
+                </span>
+                <span className="font-mono text-[9px] tracking-widest text-ink/30">{item.group}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/* ---------------------------------- footer -------------------------------- */
+function Footer() {
+  return (
+    <footer className="relative z-10 mt-20">
+      <div className="border-y-1.5 border-ink bg-ink py-3 text-paper">
+        <Marquee
+          speed={38}
+          items={[
+            <span className="font-display text-[15px] tracking-wide">OPEN TO INTERNSHIP</span>,
+            <span className="font-display text-[15px] tracking-wide">AI 全栈 / 智能体开发</span>,
+            <span className="font-display text-[15px] tracking-wide text-lime">6 个月 · 5 天/周 · 随时到岗</span>,
+            <span className="font-display text-[15px] tracking-wide">西安 · 可远程</span>,
+            <span className="font-display text-[15px] tracking-wide text-lime">WYXCODE@QQ.COM</span>,
+          ]}
+          separator="✦"
+        />
+      </div>
+
+      <div className="shell py-12">
+        <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
+          <div>
+            <p className="kicker mb-3">LET'S BUILD SOMETHING</p>
+            <a
+              href={`mailto:${profile.email}`}
+              className="group mt-1 block font-display text-[clamp(26px,4vw,40px)] font-extrabold leading-[1.06]"
+            >
+              一起做点
+              <span className="marker ml-1">有用的东西</span>
+              <ArrowUpRight className="mb-1.5 ml-1 inline-block transition group-hover:-translate-y-1 group-hover:translate-x-1" size={26} />
+            </a>
+            <p className="mt-4 max-w-sm text-[13px] leading-relaxed text-ink-soft">
+              如果这里有个项目让你觉得「这人可以聊一聊」，直接发邮件。我通常 12 小时内回复。
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <a href={`mailto:${profile.email}`} className="tag hover:bg-lime">
+                <Mail size={12} /> {profile.email}
+              </a>
+              <span className="tag">
+                <MessageCircle size={12} /> {profile.wechat}
+              </span>
+              <a href="#" className="tag hover:bg-lime">
+                <Github size={12} /> GitHub
+              </a>
+            </div>
+          </div>
+
+          {navItems.map((item) => (
+            <div key={item.key}>
+              <p className="mb-3 flex items-baseline gap-2 text-[13px] font-bold">
+                <span className="font-mono text-[9px] text-ink/35">{item.index}</span>
+                {item.label}
+              </p>
+              <ul className="space-y-2">
+                {item.children.map((c) => (
+                  <li key={c.to}>
+                    <Link to={c.to} className="link-underline text-[12.5px] text-ink/55 hover:text-ink">
+                      {c.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-ink/12 pt-5 font-mono text-[10px] text-ink/40 sm:flex-row sm:items-center">
+          <span>© 2026 魏云潇 · 用 React 手搓，AI 只负责打下手</span>
+          <div className="flex items-center gap-4">
+            <span>BUILD 2026.10.29</span>
+            <NavLink to="/admin" className="hover:text-ink">
+              后台
+            </NavLink>
+          </div>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+/* --------------------------------- layout --------------------------------- */
+export default function Layout() {
+  return (
+    <div className="relative min-h-screen">
+      <ScrollProgress />
+      <Header />
+      <ScrollToTop />
+      <main className="relative z-10 pt-[88px]">
+        <Outlet />
+      </main>
+      <Footer />
+    </div>
+  )
+}
