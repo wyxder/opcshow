@@ -267,7 +267,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
             >
               上传文件
             </AButton>
-            <input ref={inputRef} type="file" multiple hidden onChange={(e) => void onPick(e.target.files)} />
+            <input ref={inputRef} type="file" multiple hidden disabled={!real} onChange={(e) => void onPick(e.target.files)} />
           </>
         }
       />
@@ -292,7 +292,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
             <Panel kicker="Drop zone" title="拖拽上传" desc={real ? '单个文件不超过 50 MB，单次最多 10 个' : '未配置服务端：拖拽与点击上传已禁用'}>
               <div
                 role="button"
-                tabIndex={0}
+                tabIndex={real ? 0 : -1}
                 aria-disabled={!real}
                 onClick={() => real && inputRef.current?.click()}
                 onKeyDown={(e) => {

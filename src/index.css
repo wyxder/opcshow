@@ -83,7 +83,7 @@
     --hl: rgb(var(--c-lime) / 0.9);
     --squiggle: rgb(var(--c-coral));
 
-    --gutter: clamp(16px, 4vw, 56px);
+    --gutter: clamp(20px, 4vw, 56px);
   }
 
   /* ----------------------------- 02 · 实验室科技 ---------------------------- */
@@ -419,7 +419,7 @@
 @layer components {
   .shell {
     width: 100%;
-    max-width: 1320px;
+    max-width: 1460px;
     margin-inline: auto;
     padding-inline: var(--gutter);
   }
@@ -611,7 +611,12 @@
   .prose-read h3 {
     @apply mt-8 mb-3 text-[19px] font-bold text-ink;
   }
-  .prose-read code {
+  /* 只给正文里的行内代码加底色；代码块里的 <pre><code> 由深色面板自己接管，
+     之前这里无差别命中，导致代码块内部出现一块灰色矩形。 */
+  .prose-read p code,
+  .prose-read li code,
+  .prose-read blockquote code,
+  .prose-read td code {
     @apply rounded-md border border-ink/10 bg-sand/60 px-1.5 py-0.5 font-mono text-[13px] text-ink;
   }
   .prose-read li {
@@ -630,6 +635,150 @@
   .reader-lg li {
     @apply text-[17px] leading-[2.05];
   }
+
+  /* ---------------------------------------------------------------------------
+     首页第一面（2026 改版）
+     暖色光晕 + 描边大字 + 双 CTA。全部走 tokens，五套主题自动适配。
+     ------------------------------------------------------------------------ */
+  .home-hero-glow {
+    background:
+      radial-gradient(72% 62% at 88% 112%, rgb(var(--c-rose) / 0.5) 0%, transparent 62%),
+      radial-gradient(52% 42% at 2% 6%, rgb(var(--c-amber) / 0.14) 0%, transparent 60%);
+  }
+
+  /* 名字改用实心字 + 荧光笔底纹：原来的描边空心字在小屏上会糊成重影 */
+  .hero-name {
+    color: rgb(var(--c-ink));
+    background-image: linear-gradient(transparent 64%, var(--hl) 64%, var(--hl) 96%, transparent 96%);
+    padding-inline: 0.06em;
+    transition: color 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .hero-name:hover {
+    color: rgb(var(--c-coral));
+  }
+
+  .hero-cta-primary,
+  .hero-cta-secondary {
+    @apply inline-flex min-h-[46px] items-center justify-center gap-2 px-5 text-[13px] font-bold;
+    border-radius: 999px;
+    transition: transform 0.2s ease, box-shadow 0.25s ease, filter 0.25s ease, border-color 0.25s ease;
+  }
+  .hero-cta-primary {
+    background: linear-gradient(
+      135deg,
+      rgb(var(--c-coral)) 0%,
+      color-mix(in srgb, rgb(var(--c-coral)) 45%, rgb(var(--c-amber)) 55%) 100%
+    );
+    color: rgb(var(--c-on-accent));
+    box-shadow: 0 16px 30px -16px rgb(var(--c-coral) / 0.7);
+  }
+  .hero-cta-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 36px -16px rgb(var(--c-coral) / 0.78);
+    filter: saturate(1.08);
+  }
+  .hero-cta-secondary {
+    @apply border-1.5 border-ink/25 bg-cream text-ink;
+    box-shadow: var(--sh-soft);
+  }
+  .hero-cta-secondary:hover {
+    transform: translateY(-2px);
+    @apply border-ink/50;
+  }
+  .hero-cta-primary:active,
+  .hero-cta-secondary:active {
+    transform: scale(0.97);
+  }
+  /* 浅色高饱和主题里白字压不住橙底，改用主题墨色；深色主题继续用 on-accent。 */
+  [data-theme='lab'] .hero-cta-primary,
+  [data-theme='pop'] .hero-cta-primary {
+    color: rgb(var(--c-ink));
+  }
+  [data-theme='swiss'] .hero-cta-primary,
+  [data-theme='swiss'] .hero-cta-secondary {
+    border-radius: 0;
+  }
+}
+
+/* =============================================================================
+   代码块（fx: 语法高亮面板）
+   固定深色，不跟随主题反色，保证五种主题下都清晰可读。
+   ========================================================================== */
+.code-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+}
+.code-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.code-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.code-scroll::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.18);
+  border: 2px solid transparent;
+  border-radius: 99px;
+  background-clip: padding-box;
+}
+.code-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.3);
+  background-clip: padding-box;
+}
+
+.code-tok-comment {
+  color: #8b949e;
+  font-style: italic;
+}
+.code-tok-keyword {
+  color: #ff7b72;
+}
+.code-tok-string {
+  color: #a5d6ff;
+}
+.code-tok-number {
+  color: #79c0ff;
+}
+.code-tok-function,
+.code-tok-builtin {
+  color: #d2a8ff;
+}
+.code-tok-type {
+  color: #ffa657;
+}
+.code-tok-literal {
+  color: #79c0ff;
+}
+.code-tok-property,
+.code-tok-tag {
+  color: #7ee787;
+}
+.code-tok-attr {
+  color: #79c0ff;
+}
+.code-tok-variable {
+  color: #ffa657;
+}
+.code-tok-punct {
+  color: #a8b3bf;
+}
+.code-tok-md-heading {
+  color: #79c0ff;
+  font-weight: 600;
+}
+.code-tok-md-bullet {
+  color: #ffa657;
+}
+.code-tok-md-code {
+  color: #a5d6ff;
+}
+.code-tok-md-strong {
+  color: #e6edf3;
+  font-weight: 700;
+}
+.code-tok-md-link {
+  color: #79c0ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* =============================================================================

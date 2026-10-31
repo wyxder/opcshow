@@ -420,6 +420,7 @@ export default function ModerationPage({
                             size="sm"
                             variant="soft"
                             disabled={!real || busy !== null || g.status === '已通过'}
+                            title={real ? '通过后前台弹幕墙可见' : '未配置服务端：不能审核'}
                             icon={busy === approveKey ? <Loader2 size={11} className="animate-spin" /> : <MessageSquare size={11} />}
                             onClick={() => void reviewGuest(g, 'approve')}
                           >
@@ -523,6 +524,7 @@ export default function ModerationPage({
                                 size="sm"
                                 variant="soft"
                                 disabled={!real || busy !== null}
+                                title={real ? '通过后出现在前台友链页' : '未配置服务端：不能审核'}
                                 icon={busy === approveKey ? <Loader2 size={11} className="animate-spin" /> : undefined}
                                 onClick={() => void reviewFriend(f, 'approve')}
                               >

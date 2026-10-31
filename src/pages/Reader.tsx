@@ -22,32 +22,62 @@ import { profile } from '@/data/site'
 import { cn } from '@/lib/utils'
 import { articleJsonLd, useSeo } from '@/lib/seo'
 import { STORAGE_KEYS, isRecordOf, readStored, writeStored } from '@/lib/storage'
+import { languageLabel, splitTokenLines, tokenize } from '@/lib/highlight'
 
 function CodeBlock({ block }: { block: Extract<Block, { t: 'code' }> }) {
   const [copied, setCopied] = useState(false)
+  const lines = useMemo(() => splitTokenLines(tokenize(block.v, block.lang)), [block.v, block.lang])
+  const label = languageLabel(block.lang)
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(block.v)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+
   return (
-    <div className="my-5 overflow-hidden rounded-xl border-1.5 border-ink bg-ink">
-      <div className="flex items-center justify-between border-b border-paper/15 px-3 py-1.5">
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-lime">{block.lang}</span>
+    <div className="my-5 overflow-hidden rounded-xl border border-ink/15 bg-[#0d1117] shadow-[0_10px_30px_-24px_rgba(0,0,0,0.6)]">
+      <div className="flex h-10 items-center justify-between gap-3 border-b border-white/[0.08] bg-white/[0.03] px-3">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#79c0ff]" />
+          <span className="truncate font-mono text-[9.5px] font-medium uppercase tracking-[0.14em] text-white/50">
+            {label}
+          </span>
+        </span>
         <button
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(block.v)
-              setCopied(true)
-              window.setTimeout(() => setCopied(false), 1600)
-            } catch {
-              /* clipboard blocked */
-            }
-          }}
-          className="flex items-center gap-1 font-mono text-[9px] text-paper/50 transition hover:text-paper"
+          onClick={copy}
+          aria-label={copied ? '已复制代码' : '复制代码'}
+          className="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 font-mono text-[10px] text-white/45 transition hover:bg-white/[0.06] hover:text-white"
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}
-          {copied ? '已复制' : '复制'}
+          <span className="hidden sm:inline">{copied ? '已复制' : '复制'}</span>
         </button>
       </div>
-      <pre className="overflow-x-auto whitespace-pre-wrap break-words px-4 py-3 font-mono text-[11.5px] leading-relaxed text-paper/85 no-scrollbar">
-        <code>{block.v}</code>
-      </pre>
+
+      <div className="code-scroll overflow-x-auto overscroll-x-contain">
+        <pre className="m-0 min-w-max py-3.5 font-mono text-[12px] leading-[1.8] text-[#e6edf3] [font-variant-ligatures:none] sm:text-[12.5px]">
+          <code className="block">
+            {lines.map((tokens, i) => (
+              <span key={i} className="flex min-h-[1.8em]">
+                <span className="w-9 shrink-0 select-none pr-3 text-right text-[10px] leading-[inherit] text-white/20">
+                  {i + 1}
+                </span>
+                <span className="whitespace-pre pr-5">
+                  {tokens.map((token, j) => (
+                    <span key={j} className={token.type === 'plain' ? undefined : `code-tok-${token.type}`}>
+                      {token.text}
+                    </span>
+                  ))}
+                </span>
+              </span>
+            ))}
+          </code>
+        </pre>
+      </div>
     </div>
   )
 }

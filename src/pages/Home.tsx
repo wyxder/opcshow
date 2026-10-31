@@ -11,30 +11,28 @@ import {
   Coffee,
   Download,
   Film,
-  GraduationCap,
   Heart,
   Mail,
   MapPin,
   MessageCircle,
   Music,
   Play,
+  Plus,
   Quote,
+  Rocket,
   Sparkles,
-  Star,
   Trophy,
   Utensils,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ProjectModal } from '@/components/ProjectModal'
-import { SmartImage } from '@/components/SmartImage'
 import { Modal } from '@/components/ui/Modal'
-import { CountUp, Marquee, Plate, Reveal, SectionHead, Sticker, Tilt } from '@/components/ui/primitives'
+import { CountUp, Marquee, Plate, Reveal, SectionHead } from '@/components/ui/primitives'
 import { articleMeta } from '@/data/articles.index'
 import { moments, trips } from '@/data/life'
-import { lookupMedia } from '@/data/media'
-import { awards, figures, hobbies, profile, skillGroups, stats } from '@/data/site'
-import { featuredProjects, projects } from '@/data/projects'
+import { awards, figures, focusNow, hobbies, profile, skillGroups, techStack } from '@/data/site'
+import { projects } from '@/data/projects'
 import type { Project } from '@/data/projects'
 import { cn, usePrefersReducedMotion } from '@/lib/utils'
 import { personJsonLd, useSeo } from '@/lib/seo'
@@ -52,274 +50,139 @@ const colorMap: Record<string, string> = {
 
 const hobbyIcons = [Utensils, Bike, Coffee, Camera, Film, BookOpen]
 
-/* -------------------------------- rotating -------------------------------- */
-function RotatingBadge({ text = 'OPEN TO WORK · AI FULLSTACK · ', size = 106, accent = 'rgb(var(--c-ink))' }: { text?: string; size?: number; accent?: string }) {
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 120 120" className="h-full w-full animate-spin-slow">
-        <defs>
-          <path id="circlePath" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0" />
-        </defs>
-        <text fill={accent} fontSize="8.6" letterSpacing="2.4" fontFamily="'JetBrains Mono', monospace">
-          <textPath href="#circlePath">{text.repeat(2)}</textPath>
-        </text>
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full border-1.5 border-ink bg-lime">
-          <Sparkles size={16} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /* ---------------------------------- hero ---------------------------------- */
-function Hero({ onOpenCard }: { onOpenCard: () => void }) {
+/**
+ * 首页第一面（2026 改版）：暖色编辑排版。
+ * 状态胶囊 → 描边大字 → 身份句 → 简介 → 双 CTA → 数据行。
+ * 仍然只用站点 tokens，所以五套主题、对比度门禁都继续生效；
+ * 但不再用边框卡片包住首屏，让内容本身成为视觉主体。
+ */
+function Hero({ onContact }: { onContact: () => void }) {
+  const heroStats = [
+    { value: figures.awards, suffix: '+', label: '竞赛 & 奖项' },
+    { value: figures.hackathonOnsite2026, suffix: '', label: '线下黑客松' },
+    { value: figures.openSourceRepos, suffix: '+', label: '开源项目' },
+    { value: figures.products, suffix: '', label: 'AI 商业产品' },
+  ]
+
   return (
-    <section id="top" className="relative pb-10 pt-2 sm:pb-14 sm:pt-6">
-      <div className="pointer-events-none absolute -left-24 top-16 h-72 w-72 rounded-full bg-lime/25 blur-3xl" />
-      <div className="pointer-events-none absolute right-1/4 top-0 h-60 w-60 rounded-full bg-rose/20 blur-3xl" />
+    <section id="top" className="relative isolate overflow-hidden pb-10 pt-7 sm:pb-16 sm:pt-10">
+      {/* 背景光晕与装饰：全部 aria-hidden，不参与焦点与读屏 */}
+      <div className="home-hero-glow pointer-events-none absolute inset-0 -z-10" aria-hidden />
+      <div className="pointer-events-none absolute -left-36 -top-32 -z-10 h-[340px] w-[340px] rounded-full border-[10px] border-coral/25 sm:-left-28 sm:h-[440px] sm:w-[440px]" aria-hidden />
+      <div className="pointer-events-none absolute -left-24 -top-16 -z-10 hidden h-[240px] w-[240px] rounded-full border-2 border-coral/20 sm:block" aria-hidden />
+      <Plus size={26} strokeWidth={2.5} className="pointer-events-none absolute right-[9%] top-10 -z-10 hidden animate-float text-coral/40 sm:block" aria-hidden />
+      <Plus size={17} strokeWidth={2.5} className="pointer-events-none absolute bottom-28 right-[20%] -z-10 hidden animate-float text-rose sm:block" style={{ animationDelay: '1.8s' }} aria-hidden />
+      <span className="pointer-events-none absolute right-1 top-1/2 -z-10 hidden -translate-y-1/2 rotate-90 font-mono text-[9px] tracking-[0.32em] text-ink/25 xl:block">PORTFOLIO / 2026 — 01</span>
 
-      <Reveal>
-        <div className="relative overflow-hidden rounded-[28px] border-1.5 border-ink bg-cream shadow-hard">
-          <div className="pointer-events-none absolute inset-0 grid-paper opacity-60" />
+      <div className="grid gap-9 lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-start lg:gap-12">
+        <div className="min-w-0">
+        <Reveal>
+          <div className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-cream/95 px-3.5 py-1.5 shadow-soft">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+            </span>
+            <span className="text-[11.5px] font-medium text-ink/80">
+              正在寻找 AI 应用与智能体开发实习 <span className="text-ink/30">·</span> 可实习 6 个月+
+            </span>
+          </div>
+        </Reveal>
 
-          {/* 顶部状态条 */}
-          <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-ink/15 bg-paper/70 px-4 py-2.5 sm:px-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="tag bg-ink text-paper">
-                <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime" /> 现在可实习
-              </span>
-              <span className="tag">
-                <MapPin size={11} /> 西安 · 陕西科技大学
-              </span>
-              <span className="tag">
-                <GraduationCap size={11} /> 研二 · 2028 届
-              </span>
-            </div>
-            <span className="font-mono text-[9px] tracking-[0.2em] text-ink/40">PORTFOLIO / 2026 — 01</span>
+        <Reveal delay={0.06}>
+          <h1 className="mt-6 sm:mt-8">
+            <span className="block text-[clamp(32px,5vw,52px)] font-black leading-[1.06] tracking-[-0.04em] text-ink/85">你好，我是</span>
+            <span className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-2 sm:mt-2">
+              <span className="hero-name whitespace-nowrap text-[clamp(42px,7vw,76px)] font-black leading-[1.08] tracking-[-0.05em]">魏云潇</span>
+              <span aria-hidden className="animate-wiggle text-[clamp(26px,4vw,42px)] leading-none">👋</span>
+            </span>
+          </h1>
+        </Reveal>
+
+        <Reveal delay={0.12}>
+          <p className="mt-5 text-[clamp(17px,2vw,20px)] font-bold text-ink/80">
+            我是一名 <span className="text-coral">AI 应用与智能体开发者</span>
+          </p>
+          <p className="mt-4 max-w-[620px] text-[13.5px] leading-[1.9] text-ink-soft sm:text-[14.5px]">
+            陕西科技大学多模态 AI 方向硕士在读，CCF-A 学生一作在投，{figures.products} 款 AI 商业产品上线者，{figures.mainPlatformFollowers} 粉 AI 自媒体博主。信奉「把 Agent 做成产品，把产品做成事业」。
+          </p>
+        </Reveal>
+
+        <Reveal delay={0.18}>
+          <div className="mt-7 flex flex-wrap items-center gap-2.5 sm:mt-9 sm:gap-3">
+            <a href="#projects" className="hero-cta-primary group">
+              <Rocket size={16} className="transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              看看我的项目
+            </a>
+            <button type="button" onClick={onContact} className="hero-cta-secondary">
+              <Mail size={15} /> 联系我
+            </button>
           </div>
 
-          <div className="relative grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-            {/* 左：主叙事 */}
-            <div className="relative min-w-0 px-5 pb-7 pt-7 sm:px-8 sm:pb-9 sm:pt-9">
-              <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-lime/20 blur-3xl" />
-              <Reveal delay={0.05}>
-                <div className="relative flex items-center gap-3">
-                  <p className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.2em] text-ink/45">
-                    <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime" />
-                    OPEN TO WORK · AI FULLSTACK · AGENT
-                  </p>
-                  <span className="h-px flex-1 bg-ink/15" />
-                  <span className="hidden font-hand text-[17px] text-ink/45 sm:block">Hi, 我是晓叶</span>
-                </div>
-
-                <div className="mt-5 flex items-end justify-between gap-4">
-                  <h1 className="min-w-0 font-display text-[clamp(40px,6.8vw,80px)] font-extrabold leading-[0.94] tracking-[-0.03em]">
-                    把想法
-                    <br />
-                    做成<span className="marker">能上线</span>
-                    <br />
-                    的东西<span className="text-coral">。</span>
-                  </h1>
-                  <div className="mb-1 hidden shrink-0 md:block">
-                    <RotatingBadge size={98} />
-                  </div>
-                </div>
-              </Reveal>
-
-              <Reveal delay={0.1}>
-                <div className="mt-6 flex flex-wrap items-end gap-x-5 gap-y-3 border-t border-dashed border-ink/15 pt-4">
-                  <div className="min-w-0">
-                    <p className="text-[16px] font-extrabold leading-tight">
-                      晓叶 <span className="font-mono text-[9.5px] font-normal tracking-[0.2em] text-ink/40">WEI YUNXIAO</span>
-                    </p>
-                    <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12px] text-ink/55">
-                      AI 全栈开发 / 智能体开发
-                      <span className="inline-flex items-center gap-1 rounded-full border border-lime/70 bg-lime/30 px-2 py-0.5 text-[10px] font-semibold">
-                        <span className="h-1 w-1 rounded-full bg-coral" /> 求职中
-                      </span>
-                    </p>
-                  </div>
-                  <div className="hidden h-9 w-px bg-ink/15 sm:block" />
-                  <p className="max-w-md text-[13px] leading-relaxed text-ink-soft">
-                    <span className="font-bold text-ink">{figures.products} 款</span> AI 付费产品、<span className="font-bold text-ink">{figures.awards} 项</span>竞赛、<span className="font-bold text-ink">{figures.mainPlatformFollowers}</span> 粉的自媒体。喜欢把 Agent、RAG 和大模型能力，落成普通人真的会用的产品。
-                  </p>
-                </div>
-              </Reveal>
-
-              <Reveal delay={0.15}>
-                <div className="mt-6 flex flex-wrap items-center gap-2.5">
-                  <a href="#projects" className="btn-ink group min-h-[42px]">
-                    看我的作品
-                    <ArrowDownRight size={15} className="transition group-hover:translate-y-0.5" />
-                  </a>
-                  <Link to="/work/resume" className="btn group min-h-[42px]">
-                    <Download size={14} /> 简历 · 一页纸
-                  </Link>
-                  <Link to="/me/guestbook" className="btn min-h-[42px] border-dashed">
-                    <MessageCircle size={14} /> 留句话
-                  </Link>
-                </div>
-                <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9px] tracking-[0.12em] text-ink/40">
-                  <span>6 个月 · 5 天/周 · 随时到岗</span>
-                  <span className="hidden h-3 w-px bg-ink/15 sm:block" />
-                  <span className="hidden sm:inline">西安 · 可远程 / 出差</span>
-                </p>
-              </Reveal>
-            </div>
-
-            {/* 右：名片 + NOW */}
-            <div className="relative border-t border-ink/15 bg-sand/60 px-4 pb-5 pt-4 sm:px-5 lg:border-l lg:border-t-0">
-              <div className="pointer-events-none absolute inset-0 halftone opacity-[0.1]" />
-              <div className="relative grid gap-4 md:grid-cols-2 lg:grid-cols-1">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[9px] tracking-[0.18em] text-ink/45">ID CARD / 2026</span>
-                    <span className="tag bg-lime">
-                      <Sparkles size={11} /> OPEN TO WORK
-                    </span>
-                  </div>
-
-                  <div className="relative mt-3">
-                    <div className="absolute -left-1 -top-3 z-10">
-                      <Sticker rotate={-8} color="rgb(var(--c-lime))">2026 可实习</Sticker>
-                    </div>
-                    <Tilt strength={8}>
-                      <button
-                        onClick={onOpenCard}
-                        aria-label="打开晓叶的名片"
-                        className="group relative block w-full rotate-[1deg] overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream p-4 text-left shadow-hard transition-shadow hover:shadow-hard-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-1.5 border-ink bg-lime">
-                            <div className="absolute inset-0 halftone opacity-25" />
-                            <span className="relative font-display text-xl font-extrabold">魏</span>
-                            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-ink bg-cream font-mono text-[7px] font-bold">
-                              AI
-                            </span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[16px] font-extrabold leading-tight">晓叶</p>
-                            <p className="mt-0.5 font-mono text-[9px] tracking-[0.16em] text-ink/40">WYX · 2002 · 西安</p>
-                            <p className="mt-1 text-[11px] leading-snug text-ink/55">
-                              信息与通信工程 · 多模态 AI
-                              <br />
-                              AI 全栈 / 智能体开发
-                            </p>
-                          </div>
-                          <ArrowUpRight size={16} className="shrink-0 text-ink/30 transition group-hover:text-ink" />
-                        </div>
-
-                        <div className="my-2.5 border-t border-dashed border-ink/20" />
-
-                        <div className="space-y-1">
-                          {[
-                            ['坐标', '西安 / 重庆万州'],
-                            ['身份', '研二在读 · 2028 届'],
-                            ['方向', 'Agent 评测 · RAG · AIGC'],
-                          ].map(([k, v]) => (
-                            <div key={k} className="flex items-center justify-between gap-3 text-[11px]">
-                              <span className="font-mono text-[9px] tracking-widest text-ink/35">{k}</span>
-                              <span className="truncate font-medium text-ink/75">{v}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="mt-2.5 flex items-end justify-between gap-3 rounded-xl bg-paper p-2">
-                          <div className="min-w-0">
-                            <p className="font-mono text-[9px] tracking-[0.16em] text-ink/35">CONTACT</p>
-                            <p className="mt-0.5 truncate text-[10.5px] font-medium">wyxcode@qq.com</p>
-                            <p className="truncate text-[10.5px] text-ink/55">微信 wyx200265</p>
-                          </div>
-                          <svg viewBox="0 0 96 96" className="h-12 w-12 shrink-0" aria-hidden>
-                            {Array.from({ length: 144 }).map((_, i) => {
-                              const x = i % 12
-                              const y = Math.floor(i / 12)
-                              const on = (x * 13 + y * 29 + ((x * y) % 7)) % 5 < 2
-                              return on ? <rect key={i} x={x * 8} y={y * 8} width="7" height="7" fill="rgb(var(--c-ink))" /> : null
-                            })}
-                            {[
-                              [0, 0],
-                              [64, 0],
-                              [0, 64],
-                            ].map(([x, y], i) => (
-                              <g key={i}>
-                                <rect x={x} y={y} width="24" height="24" fill="none" stroke="rgb(var(--c-ink))" strokeWidth="5" />
-                                <rect x={x + 10} y={y + 10} width="5" height="5" fill="rgb(var(--c-ink))" />
-                              </g>
-                            ))}
-                          </svg>
-                        </div>
-                        <p className="mt-2 text-center font-hand text-[14px] text-ink/45">点开看看我的名片 →</p>
-                      </button>
-                    </Tilt>
-                  </div>
-                </div>
-
-                <div className="relative flex flex-col">
-                  <div className="relative flex-1 -rotate-[1deg] rounded-2xl border-1.5 border-ink bg-cream p-3.5">
-                    <div className="flex items-center justify-between">
-                      <p className="font-mono text-[9.5px] tracking-[0.2em] text-ink/55">NOW · 2026.10</p>
-                      <span className="h-1.5 w-1.5 animate-blink rounded-full bg-coral" />
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      {[
-                        ['在写', 'RSI 自进化闭环'],
-                        ['在读', 'Building LLM Apps'],
-                        ['在听', '橘色落日 · 房东的猫'],
-                      ].map(([k, v]) => (
-                        <div key={k} className="flex items-baseline justify-between gap-3">
-                          <span className="shrink-0 font-mono text-[9.5px] tracking-widest text-ink/50">{k}</span>
-                          <span className="truncate text-[11px] font-medium text-ink/75">{v}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 核心数据带 */}
-          <div className="relative grid grid-cols-2 border-t border-ink/15 bg-paper/50 sm:grid-cols-4">
-            {stats.map((s, i) => (
-              <div
-                key={s.label}
-                className={cn(
-                  'px-4 py-4 sm:px-5',
-                  i % 2 === 1 && 'border-l border-ink/10',
-                  i >= 2 && 'border-t border-ink/10 sm:border-t-0',
-                  i > 0 && 'sm:border-l sm:border-ink/10',
-                )}
-              >
-                <div className="flex items-baseline gap-0.5 font-display text-[clamp(26px,3.2vw,36px)] font-extrabold leading-none">
-                  <CountUp to={s.value} />
-                  <span className="text-[13px] font-semibold text-ink/60">{s.suffix}</span>
-                </div>
-                <span
-                  className="mt-2 block h-1 w-6 rounded-full"
-                  style={{ background: colorMap[['lime', 'coral', 'blue', 'grape'][i % 4]] }}
-                />
-                <p className="mt-2 text-[11.5px] font-medium text-ink/75">{s.label}</p>
-                <p className="mt-0.5 font-mono text-[9px] tracking-wide text-ink/40">{s.note}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* 底部状态条 */}
-          <div className="relative flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-ink/15 bg-paper/60 px-4 py-2.5 font-mono text-[9.5px] tracking-wide text-ink/50 sm:px-6">
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 animate-blink rounded-full bg-coral" /> 此刻在写 RSI 自进化回归用例 #42
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[9px] tracking-[0.12em] text-ink/40">
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin size={10} /> 西安 · 可远程 / 出差
             </span>
             <span className="hidden h-3 w-px bg-ink/15 sm:block" />
-            <span>西安 22°C · 周四</span>
-            <span className="ml-auto hidden items-center gap-1.5 sm:flex">
-              <ArrowDownRight size={11} /> SCROLL / 继续往下看
+            <span>6 个月+ · 5 天/周 · 随时到岗</span>
+            <span className="flex items-center gap-3 font-sans text-[10px] tracking-normal">
+              <Link to="/work/resume" className="link-underline font-medium text-ink/55 transition hover:text-ink">
+                简历 · 一页纸
+              </Link>
+              <Link to="/me/guestbook" className="link-underline font-medium text-ink/55 transition hover:text-ink">
+                留句话
+              </Link>
             </span>
           </div>
+        </Reveal>
+
         </div>
-      </Reveal>
+
+        {/* 右栏：数据概览 + 正在推进的事，桌面填满右侧空白，移动端排在正文之后 */}
+        <Reveal delay={0.18}>
+          <aside className="relative min-w-0 overflow-hidden rounded-[24px] border-1.5 border-ink bg-cream p-5 shadow-hard sm:p-6 lg:mt-3">
+            <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-lime/35 blur-2xl" />
+            <div className="relative">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-mono text-[9.5px] tracking-[0.2em] text-ink/45">QUICK LOOK / 2026</span>
+                <span className="tag bg-lime">
+                  <Sparkles size={11} /> OPEN TO WORK
+                </span>
+              </div>
+
+              <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-6">
+                {heroStats.map((s) => (
+                  <div key={s.label}>
+                    <dt className="sr-only">{s.label}</dt>
+                    <dd>
+                      <p className="font-display text-[clamp(26px,2.4vw,34px)] font-extrabold leading-none tracking-[-0.03em]">
+                        <CountUp to={s.value} />
+                        <span className="text-coral">{s.suffix}</span>
+                      </p>
+                      <p className="mt-1.5 text-[11px] font-medium text-ink/55">{s.label}</p>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+
+              <div className="mt-6 border-t border-dashed border-ink/15 pt-4">
+                <p className="font-mono text-[9px] tracking-[0.18em] text-ink/40">FOCUS / NOW</p>
+                <ul className="mt-2.5 space-y-2">
+                  {focusNow.map((f) => (
+                    <li key={f.title} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-coral" />
+                        {f.title}
+                      </span>
+                      <span className="font-mono text-[9px] text-ink/40">{f.meta}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </aside>
+        </Reveal>
+      </div>
     </section>
   )
 }
@@ -338,10 +201,10 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
 
   const go = (next: number) => setIndex(((next % n) + n) % n)
 
-  // 自动向左滑动（每 5s 前进一张）；悬停 / 聚焦 / 弹窗打开 / reduced-motion 时暂停
+  // 自动切换（每 2s 前进一张）；悬停 / 聚焦 / 弹窗打开 / reduced-motion 时暂停
   useEffect(() => {
     if (hold || reduce) return
-    const t = window.setInterval(() => setIndex((i) => (i + 1) % n), 5000)
+    const t = window.setInterval(() => setIndex((i) => (i + 1) % n), 2000)
     return () => window.clearInterval(t)
   }, [hold, reduce, n])
 
@@ -364,16 +227,17 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
 
   return (
     <section id="projects" className="scroll-mt-28">
-      <div className="relative overflow-hidden rounded-[28px] border-1.5 border-ink bg-sand shadow-hard">
-        <div className="pointer-events-none absolute inset-0 grid-paper opacity-[0.08]" />
-        <div className="pointer-events-none absolute inset-0 halftone opacity-[0.06]" />
-
-        {/* 顶栏 */}
-        <div className="relative flex items-center justify-between gap-3 border-b border-ink/15 px-5 py-4 sm:px-7">
-          <div className="flex items-center gap-2.5">
-            <span className="h-2 w-2 shrink-0 animate-blink rounded-full bg-lime" />
-            <span className="text-[15px] font-extrabold tracking-tight">精选项目</span>
-            <span className="hidden font-mono text-[9px] tracking-[0.22em] text-ink/45 sm:inline">FEATURED PROJECTS</span>
+      <div className="relative">
+        {/* 标题行独立于卡片：不再用带标题的边框把整组卡片包起来 */}
+        <div className="relative mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 min-w-9 items-center justify-center rounded-lg border-1.5 border-ink bg-lime px-2 font-mono text-[11px] font-bold">
+              02
+            </span>
+            <div>
+              <h2 className="text-[clamp(24px,3.4vw,38px)] font-extrabold leading-none">精选项目</h2>
+              <p className="mt-1.5 font-mono text-[9px] tracking-[0.22em] text-ink/40">FEATURED PROJECTS / BUILD LOG</p>
+            </div>
           </div>
           {/* 桌面：PREV / 01 07 / NEXT 三段式；移动端简化为下方指示点 */}
           <div className="hidden items-center gap-2 sm:flex">
@@ -410,32 +274,36 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
           aria-roledescription="轮播"
           aria-label="精选项目，可用左右方向键切换"
         >
-          {/* 窄屏卡片为单列堆叠、自然高度更高：按实测最大值留出空间，避免底部按钮/封面被裁切 */}
-          <div className="relative h-[560px] min-[480px]:h-[510px] sm:h-[430px]">
+          {/* 足够的高度让绝对定位的卡片不被裁切 */}
+          <div
+            className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[min(680px,88%)] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-3xl transition-colors duration-500"
+            style={{ background: `color-mix(in srgb, ${list[index].accent} 60%, transparent)` }}
+          />
+          <div className="relative h-[560px] min-[430px]:h-[540px] sm:h-[530px]">
             {list.map((p, i) => {
               const rel = relOf(i)
               const ar = Math.abs(rel)
               const isMain = rel === 0
-              const visible = ar <= 2
+              // 主卡居中，相邻卡在两侧露出并压暗
               return (
                 <div
                   key={p.id}
-                  className="absolute inset-0 flex items-center justify-center px-4"
+                  className="absolute inset-0 flex items-center justify-center px-4 sm:px-6"
                   style={{
                     zIndex: 30 - ar,
-                    pointerEvents: visible ? 'auto' : 'none',
-                    visibility: visible ? 'visible' : 'hidden',
+                    pointerEvents: ar <= 1 ? 'auto' : 'none',
+                    visibility: ar <= 1 ? 'visible' : 'hidden',
                   }}
                   aria-hidden={!isMain}
                 >
                   <motion.div
                     initial={false}
                     animate={{
-                      x: `${rel * 64}%`,
-                      scale: isMain ? 1 : ar === 1 ? 0.82 : 0.6,
-                      opacity: isMain ? 1 : ar === 1 ? 0.5 : 0.16,
+                      x: `${rel * 100}%`,
+                      scale: isMain ? 1 : 0.88,
+                      opacity: isMain ? 1 : 0.38,
                     }}
-                    transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 210, damping: 26 }}
+                    transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }}
                     drag={isMain && !reduce ? 'x' : false}
                     dragConstraints={{ left: 0, right: 0 }}
                     dragElastic={0.14}
@@ -445,67 +313,75 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
                     }}
                     onClick={() => (isMain ? onOpen(p) : go(i))}
                     className={cn(
-                      'w-full max-w-[600px] cursor-pointer select-none',
+                      'w-full max-w-[640px] cursor-pointer select-none',
                       isMain && 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime',
                     )}
                   >
-                    <div className="grid overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream text-ink shadow-hard-lg sm:grid-cols-[1.06fr_0.94fr]">
-                      {/* 左：文案 */}
-                      <div className="flex flex-col p-5 sm:p-6">
+                    <div
+                      className="relative overflow-hidden rounded-[22px] border-1.5 border-lime/70 bg-ink p-5 text-paper sm:p-7"
+                      style={{
+                        boxShadow: isMain
+                          ? `0 0 0 1px color-mix(in srgb, ${p.accent} 55%, transparent), 0 32px 70px -34px color-mix(in srgb, ${p.accent} 60%, transparent)`
+                          : undefined,
+                      }}
+                    >
+                      <div
+                        className="pointer-events-none absolute inset-0 opacity-[0.18]"
+                        style={{ background: `radial-gradient(120% 100% at 100% 0%, ${p.accent} 0%, transparent 62%)` }}
+                      />
+                      <div className="pointer-events-none absolute inset-0 grid-paper opacity-[0.06]" />
+
+                      <div className="relative flex flex-col">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-[10px] tracking-[0.2em] text-ink/40">
-                            {pad2(i + 1)} / {pad2(n)}
+                          <span className="font-mono text-[10px] tracking-[0.18em] text-paper/45">
+                            {pad2(i + 1)} / {pad2(n)} · {p.role}
                           </span>
                           {p.award && (
-                            <span className="inline-flex max-w-[62%] items-center gap-1 truncate rounded-full border border-lime/70 bg-paper px-2 py-0.5 text-[9.5px] font-medium text-ink">
+                            <span className="inline-flex max-w-[62%] items-center gap-1 truncate rounded-full border border-lime/60 bg-lime/10 px-2 py-0.5 text-[9.5px] font-medium text-lime">
                               <Award size={9} className="shrink-0" />
                               <span className="truncate">{p.award}</span>
                             </span>
                           )}
                         </div>
-                        <p className="mt-3 font-mono text-[9px] tracking-[0.22em] text-ink/45">{p.en}</p>
-                        <h3 className="mt-1 text-[clamp(19px,2.5vw,25px)] font-extrabold leading-[1.12]">{p.title}</h3>
-                        <p className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed text-ink-soft">{p.summary}</p>
+                        {/* 封面：Plate 主题图形，随主题色 / 项目类型变化 */}
+                        <div className="relative mt-3.5 h-28 overflow-hidden rounded-[14px] border border-paper/15 sm:h-36">
+                          <Plate motif={p.motif} accent={p.accent} className="absolute inset-0" />
+                          <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-transparent" />
+                          <span className="absolute left-2.5 top-2.5 rounded-full border border-paper/25 bg-ink/70 px-2 py-0.5 font-mono text-[8.5px] tracking-[0.14em] text-paper/80">
+                            COVER / {p.category}
+                          </span>
+                          <span className="absolute inset-x-3 bottom-2.5 flex items-end justify-between gap-2">
+                            <span className="truncate font-mono text-[9px] tracking-[0.16em] text-paper/85">{p.en}</span>
+                            <span className="shrink-0 font-mono text-[9px] text-paper/60">{p.period}</span>
+                          </span>
+                        </div>
+                        <h3 className="mt-3 text-[clamp(20px,2.6vw,27px)] font-extrabold leading-[1.12]">{p.title}</h3>
+                        <p className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed text-paper/65">{p.summary}</p>
 
-                        <div className="mt-4 grid grid-cols-3 gap-2">
+                        <div className="mt-5 grid grid-cols-3 gap-3">
                           {p.metrics.slice(0, 3).map((m) => (
                             <div key={m.label}>
-                              <p className="break-words text-[clamp(14px,1.9vw,20px)] font-extrabold leading-tight">{m.value}</p>
+                              <p className="break-words text-[clamp(16px,2vw,22px)] font-extrabold leading-tight text-lime">{m.value}</p>
                               <span className="mt-1 block h-[3px] w-6 rounded-full" style={{ background: p.accent }} />
-                              <p className="mt-1 truncate font-mono text-[9px] tracking-wide text-ink/45">{m.label}</p>
+                              <p className="mt-1 truncate font-mono text-[9px] tracking-wide text-paper/45">{m.label}</p>
                             </div>
                           ))}
                         </div>
 
-                        <div className="mt-4 flex flex-wrap gap-1.5">
+                        <div className="mt-5 flex flex-wrap gap-1.5">
                           {p.tags.slice(0, 3).map((t) => (
-                            <span key={t} className="rounded-full border border-ink/15 bg-paper px-2 py-0.5 font-mono text-[9.5px] text-ink/60">
+                            <span key={t} className="rounded-full border border-paper/20 bg-paper/5 px-2 py-0.5 font-mono text-[9.5px] text-paper/70">
                               {t}
                             </span>
                           ))}
                         </div>
 
-                        <div className="mt-auto flex items-center justify-between gap-2 pt-5">
-                          <span className="font-mono text-[9px] tracking-wide text-ink/40">{p.period}</span>
-                          <span className="btn-ink inline-flex !py-1.5 !text-[12px]">
-                            查看详情 <ArrowUpRight size={13} />
+                        <div className="mt-5 flex items-center justify-between gap-2 border-t border-paper/15 pt-4">
+                          <span className="font-mono text-[9px] tracking-wide text-paper/45">{p.period}</span>
+                          <span className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.14em] text-lime">
+                            ONLINE · {p.category} <ArrowUpRight size={12} />
                           </span>
                         </div>
-                      </div>
-
-                      {/* 右：16:10 封面（真实图缺失时降级为 Plate 主题图形） */}
-                      <div className="relative min-h-[170px] border-t border-ink/12 sm:min-h-full sm:border-l sm:border-t-0">
-                        <SmartImage
-                          asset={lookupMedia(`${p.en}.cover`)}
-                          className="absolute inset-0"
-                          fallback={<Plate motif={p.motif} accent={p.accent} className="absolute inset-0" />}
-                        />
-                        <span className="pointer-events-none absolute bottom-2 right-3 font-display text-[46px] font-extrabold leading-none text-ink/10">
-                          {pad2(i + 1)}
-                        </span>
-                        <span className="absolute left-3 top-3 rounded-full border border-ink/25 bg-paper/90 px-2 py-0.5 font-mono text-[9px] tracking-wide text-ink/65">
-                          {p.category}
-                        </span>
                       </div>
                     </div>
                   </motion.div>
@@ -516,7 +392,7 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
         </div>
 
         {/* 移动端指示点 */}
-        <div className="relative flex items-center justify-center gap-1.5 border-t border-ink/15 py-3 sm:hidden">
+        <div className="relative mt-2 flex items-center justify-center gap-1.5 py-3 sm:hidden">
           {list.map((item, i) => (
             <button key={item.id} onClick={() => go(i)} className="py-2" aria-label={`切换到 ${item.title}`}>
               <span className={cn('block h-1.5 rounded-full transition-all duration-300', i === index ? 'w-6 bg-lime' : 'w-1.5 bg-ink/25')} />
@@ -529,81 +405,149 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
 }
 
 /* --------------------------------- skills --------------------------------- */
-function SkillCard({ index, skill }: { index: number; skill: (typeof skillGroups)[number] }) {
-  const color = colorMap[skill.color]
-  return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard sm:p-5">
-      <span className="absolute inset-x-0 top-0 h-1.5" style={{ background: color }} />
-
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-mono text-[9px] tracking-[0.18em] text-ink/35">
-            0{index + 1} / {skill.key.toUpperCase()}
-          </p>
-          <h3 className="mt-1.5 flex items-center gap-2 text-[17px] font-extrabold leading-none">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-sm border border-ink/25" style={{ background: color }} />
-            {skill.title}
-          </h3>
-        </div>
-        <span className="shrink-0 rounded-full border border-ink/15 bg-paper px-2 py-1 font-mono text-[9px] tracking-wide text-ink/50">
-          {skill.level}%
-        </span>
-      </div>
-
-      <p className="mt-2.5 line-clamp-2 text-[11.5px] leading-relaxed text-ink/55">{skill.summary}</p>
-
-      <div className="mt-3 flex-1 space-y-2 border-t border-dashed border-ink/15 pt-3">
-        {skill.proofs.map((p) => (
-          <div key={p.label} className="flex items-baseline justify-between gap-3">
-            <span className="min-w-0 truncate text-[11px] text-ink/60">{p.label}</span>
-            <span className="shrink-0 font-display text-[14px] font-extrabold leading-none">{p.value}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-3.5 border-t border-ink/10 pt-2.5">
-        <div className="flex items-center justify-between font-mono text-[8.5px] tracking-[0.14em] text-ink/35">
-          <span>PROFICIENCY</span>
-          <span>{skill.level}%</span>
-        </div>
-        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full border border-ink/10 bg-paper">
-          <div className="h-full rounded-full" style={{ width: `${skill.level}%`, background: color }} />
-        </div>
-      </div>
-    </article>
-  )
-}
-
+/** 参照「运行时能力栈」设计：左侧叙事 + 技术栈 + FOCUS/NOW，右侧可展开的能力模块列表。
+ *  颜色一律走主题 CSS 变量（colorMap / tailwind 主题类），5 套主题自动适配。 */
 function SkillsBento() {
-  const proofCount = skillGroups.reduce((n, s) => n + s.proofs.length, 0)
+  const [openKey, setOpenKey] = useState<string | null>(null)
+  const reduce = usePrefersReducedMotion()
 
   return (
     <section id="skills" className="scroll-mt-28">
-      <SectionHead index="02" title="技能图谱" en="WHAT I DO" desc="不是罗列关键词，是每个方向都有一两个能拿出来的结果。" />
+      <SectionHead
+        index="01"
+        title="技能图谱"
+        en="MODULES"
+        desc="不是罗列关键词，是每个方向都有一两个能拿出来的结果。"
+        action={<span className="font-mono text-[9.5px] tracking-[0.14em] text-ink/45">点击模块展开，查看我实际在用的能力 →</span>}
+      />
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 rounded-2xl border-1.5 border-ink bg-sand/70 px-4 py-3">
-        <p className="flex items-center gap-2 font-mono text-[9.5px] tracking-[0.16em] text-ink/55">
-          <Sparkles size={13} className="text-ink/60" />
-          SKILL LEDGER · {skillGroups.length} 个方向
-        </p>
-        <p className="font-mono text-[9px] tracking-[0.12em] text-ink/40">
-          {proofCount} 条可验证结果 · 来自上线项目 / 竞赛 / 论文
-        </p>
-      </div>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-12">
+        {/* 左：一句话能力回路 + 技术栈标签墙 + FOCUS/NOW */}
+        <div className="min-w-0">
+          <p className="font-display text-[clamp(24px,3.4vw,36px)] font-extrabold leading-[1.22]">
+            一套从<span className="marker">模型原理</span>
+            <br />
+            到<span className="text-coral">交付上线</span>的完整回路。
+          </p>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {skillGroups.map((s, i) => (
-          <Reveal key={s.key} delay={i * 0.05} className="h-full">
-            <SkillCard index={i} skill={s} />
-          </Reveal>
-        ))}
-      </div>
+          <div className="mt-6 flex flex-wrap gap-1.5">
+            {techStack.map((t) => (
+              <span
+                key={t}
+                className="rounded-md border border-ink/20 bg-cream px-2.5 py-1 font-mono text-[10.5px] text-ink/70 transition-colors hover:border-ink hover:bg-lime/40 hover:text-ink"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border-1.5 border-ink bg-cream px-4 py-3">
-        <p className="text-[11.5px] text-ink/55">每一条结果都能在下面的项目、简历或论文里找到出处。</p>
-        <a href="#projects" className="inline-flex min-h-[32px] items-center gap-1 rounded-full px-2 font-mono text-[10px] tracking-[0.14em] text-ink/50 transition hover:bg-lime/25 hover:text-ink">
-          看结果落在哪 <ArrowDownRight size={12} />
-        </a>
+          <p className="mt-4 flex items-center gap-2 font-mono text-[9px] tracking-[0.14em] text-ink/40">
+            <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime ring-1 ring-ink/20" />
+            持续迭代中 · last update 2026.10
+          </p>
+
+          <div className="mt-7 overflow-hidden rounded-2xl border-1.5 border-ink bg-cream shadow-hard-sm">
+            <div className="flex items-center justify-between border-b border-ink/12 bg-sand/70 px-4 py-2.5">
+              <span className="font-mono text-[9.5px] tracking-[0.2em] text-ink/55">FOCUS / NOW</span>
+              <span className="font-mono text-[9.5px] tracking-[0.2em] text-ink/40">{pad2(focusNow.length)} ITEMS</span>
+            </div>
+            {focusNow.map((f, i) => (
+              <div key={f.title} className={cn('flex items-center gap-3 px-4 py-3 transition-colors hover:bg-lime/25', i > 0 && 'border-t border-ink/10')}>
+                <span className="shrink-0 font-mono text-[10px] font-bold text-coral">{pad2(i + 1)}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] font-extrabold">{f.title}</span>
+                <span className="shrink-0 font-mono text-[9.5px] tracking-wide text-ink/45">{f.meta}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 右：能力模块手风琴，展开后看描述 / 关键词 / 可验证结果 */}
+        <div className="min-w-0 border-t border-ink/12">
+          {skillGroups.map((s, i) => {
+            const color = colorMap[s.color]
+            const isOpen = openKey === s.key
+            return (
+              <div key={s.key} className="border-b border-ink/12">
+                <button
+                  onClick={() => setOpenKey(isOpen ? null : s.key)}
+                  aria-expanded={isOpen}
+                  className="group flex w-full items-center gap-3 py-4 text-left"
+                >
+                  <span className={cn('w-6 shrink-0 font-mono text-[10px] transition-colors', isOpen ? 'text-ink/60' : 'text-ink/35 group-hover:text-ink/60')}>
+                    {pad2(i + 1)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[clamp(15px,1.8vw,18px)] font-extrabold leading-tight transition-colors" style={isOpen ? { color } : undefined}>
+                      {s.title}
+                    </span>
+                    <span className="mt-1 block truncate font-mono text-[9.5px] tracking-[0.1em] text-ink/45">{(s.keywords ?? []).slice(0, 3).join(' · ')}</span>
+                  </span>
+                  {/* 熟练度渐变条 */}
+                  <span className="hidden h-1 w-24 shrink-0 overflow-hidden rounded-full bg-ink/10 sm:block" title={`熟练度 ${s.level}%`}>
+                    <span className="block h-full rounded-full" style={{ width: `${s.level}%`, background: `linear-gradient(90deg, ${color}, rgb(var(--c-coral)))` }} />
+                  </span>
+                  <span
+                    className={cn(
+                      'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-ink/50 transition-all duration-300',
+                      isOpen ? 'rotate-45 border-ink bg-lime text-ink' : 'border-ink/20 group-hover:border-ink/50',
+                    )}
+                    aria-hidden
+                  >
+                    <Plus size={14} />
+                  </span>
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={reduce ? { duration: 0 } : { duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pb-5 pl-9 pr-1">
+                        <p className="text-[12.5px] leading-relaxed text-ink-soft">{s.summary}</p>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {(s.keywords ?? []).map((k) => (
+                            <span
+                              key={k}
+                              className="rounded-md border px-2 py-0.5 font-mono text-[9.5px] font-medium"
+                              style={{
+                                borderColor: `color-mix(in srgb, ${color} 55%, transparent)`,
+                                color: `color-mix(in srgb, ${color} 75%, rgb(var(--c-ink)))`,
+                                background: `color-mix(in srgb, ${color} 12%, transparent)`,
+                              }}
+                            >
+                              {k}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-3.5 space-y-1.5 border-t border-dashed border-ink/15 pt-3">
+                          {s.proofs.map((p) => (
+                            <div key={p.label} className="flex items-baseline justify-between gap-3">
+                              <span className="min-w-0 truncate text-[11px] text-ink/60">{p.label}</span>
+                              <span className="shrink-0 font-display text-[13.5px] font-extrabold leading-none" style={{ color: `color-mix(in srgb, ${color} 70%, rgb(var(--c-ink)))` }}>
+                                {p.value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )
+          })}
+
+          <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[9px] tracking-[0.12em] text-ink/40">
+            每一条结果都能在下面的项目、简历或论文里找到出处
+            <a href="#projects" className="inline-flex min-h-[24px] items-center gap-1 rounded-full px-1.5 text-ink/55 transition hover:bg-lime/25 hover:text-ink">
+              看结果落在哪 <ArrowDownRight size={11} />
+            </a>
+          </p>
+        </div>
       </div>
     </section>
   )
@@ -636,7 +580,7 @@ function Honors() {
         }
       />
       <div className="grid gap-6 lg:grid-cols-12">
-        <div className="min-w-0 lg:col-span-8">
+        <div className="order-2 min-w-0 lg:col-span-8">
           {/* 轻量分段控件：按类型筛选 */}
           <div className="mb-3 flex flex-wrap gap-1.5" role="tablist" aria-label="奖项筛选">
             {filters.map((f) => (
@@ -684,7 +628,7 @@ function Honors() {
           </div>
         </div>
 
-        <div className="lg:col-span-4">
+        <div className="order-1 lg:col-span-4">
           <div className="flex h-full flex-col gap-2.5">
             {/* 年度战绩卡：深色底 + 计数动画，与其他区块样式区分 */}
             <div className="relative overflow-hidden rounded-2xl border-1.5 border-ink bg-ink p-5 text-paper">
@@ -1069,7 +1013,7 @@ export default function Home() {
 
   return (
     <div className="shell">
-      <Hero onOpenCard={() => setCardOpen(true)} />
+      <Hero onContact={() => setCardOpen(true)} />
 
       <div className="relative my-10 overflow-hidden border-y-1.5 border-ink bg-lime py-2.5">
         <Marquee
@@ -1087,8 +1031,8 @@ export default function Home() {
       </div>
 
       <section className="space-y-14 pb-6">
-        <ProjectCarousel onOpen={setActiveProject} paused={!!activeProject} />
         <SkillsBento />
+        <ProjectCarousel onOpen={setActiveProject} paused={!!activeProject} />
         <Honors />
         <SceneWall />
         <LifeTeaser />

@@ -1,4 +1,4 @@
-import { ArrowUpRight, Box, Copy, ExternalLink, Flame, Search, Star } from 'lucide-react'
+import { ArrowUpRight, BookOpen, Box, Code2, Copy, ExternalLink, Flame, Palette, Search, Sparkles, Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Modal } from '@/components/ui/Modal'
@@ -8,6 +8,14 @@ import { toolboxGroups, type ToolboxItem } from '@/data/work'
 import { cn, useLocalStorage } from '@/lib/utils'
 import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
 import { useSeo } from '@/lib/seo'
+
+/** 每张卡片都带一个组图标，快速区分 Prompt / 代码 / 设计 / 在读 */
+const groupIcons: Record<string, typeof Box> = {
+  'Prompt 仓库': Sparkles,
+  代码片段: Code2,
+  设计资产: Palette,
+  '在读 / 在听': BookOpen,
+}
 
 export default function Toolbox() {
   const [group, setGroup] = useState<string>('all')
@@ -116,15 +124,31 @@ export default function Toolbox() {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map((item, i) => (
+          {list.map((item, i) => {
+            const GroupIcon = groupIcons[item.group] ?? Box
+            return (
             <Reveal key={item.id} delay={i * 0.03}>
               <div className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard">
                 <div className="flex items-start justify-between gap-2">
-                  <span className="flex items-center gap-1.5 font-mono text-[9px] tracking-wide text-ink/40">
-                    <span className="h-2 w-2 rounded-sm" style={{ background: item.color }} />
-                    {item.tag}
-                  </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex min-w-0 items-start gap-2.5">
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-1.5 border-ink"
+                      style={{ background: `color-mix(in srgb, ${item.color} 42%, transparent)` }}
+                      aria-hidden
+                    >
+                      <GroupIcon size={15} />
+                    </span>
+                    <div className="min-w-0">
+                      <span className="flex items-center gap-1.5 font-mono text-[9px] tracking-wide text-ink/40">
+                        <span className="h-1.5 w-1.5 rounded-sm" style={{ background: item.color }} />
+                        {item.tag}
+                      </span>
+                      <button onClick={() => setDetail(item)} className="mt-1 block text-left">
+                        <span className="block text-[14px] font-bold leading-snug hover:underline">{item.title}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
                     {item.hot && (
                       <span className="flex items-center gap-0.5 rounded-full bg-coral/15 px-1.5 py-0.5 font-mono text-[9px] text-coral">
                         <Flame size={8} /> HOT
@@ -136,10 +160,7 @@ export default function Toolbox() {
                   </div>
                 </div>
 
-                <button onClick={() => setDetail(item)} className="mt-2.5 text-left">
-                  <span className="block text-[14px] font-bold leading-snug hover:underline">{item.title}</span>
-                </button>
-                <p className="mt-1.5 flex-1 text-[11.5px] leading-relaxed text-ink/50">{item.desc}</p>
+                <p className="mt-2.5 flex-1 text-[11.5px] leading-relaxed text-ink/50">{item.desc}</p>
 
                 <div className="mt-3 flex items-center justify-between border-t border-dashed border-ink/12 pt-2.5">
                   <span className="font-mono text-[9px] text-ink/35">
@@ -162,7 +183,8 @@ export default function Toolbox() {
                 </div>
               </div>
             </Reveal>
-          ))}
+            )
+          })}
         </div>
       )}
 

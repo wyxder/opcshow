@@ -18,6 +18,8 @@ export const STORAGE_KEYS = {
   guestbook: namespaced('guestbook'),
   guestbookLikes: namespaced('guestbook-likes'),
   momentsExtra: namespaced('moments-extra'),
+  /** 恋爱记录相册（图片压缩后的 base64，见 services/loveAlbum） */
+  loveAlbum: namespaced('love-album'),
   momentsLiked: namespaced('moments-liked'),
   momentsComments: namespaced('moments-comments'),
   toolboxStars: namespaced('toolbox-stars'),
@@ -119,5 +121,22 @@ export function removeStored(key: StorageKey) {
     safeStorage()?.removeItem(key)
   } catch {
     /* ignore */
+  }
+}
+
+/** 写满配额 / 存储被禁用：调用方需要把它当成一次失败告诉用户，而不是静默丢掉数据 */
+export class QuotaFullError extends Error {}
+
+/**
+ * 与 writeStored 的唯一区别：失败会抛。
+ * 只给「丢了就等于白干」的写入用（相册图片这种大对象），普通偏好设置继续走 writeStored。
+ */
+export function writeStoredStrict<T>(key: StorageKey, value: T) {
+  const store = safeStorage()
+  if (!store) throw new QuotaFullError('浏览器存储不可用（可能是隐私模式），这次上传只留在当前页面')
+  try {
+    store.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
+  } catch {
+    throw new QuotaFullError('本机相册空间已满，先删几张再传')
   }
 }

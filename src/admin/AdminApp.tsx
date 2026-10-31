@@ -140,8 +140,8 @@ export default function AdminApp() {
       {session?.mode === 'demo' && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border-1.5 border-dashed border-warning/60 bg-warning/10 px-3 py-2 text-[11.5px] text-ink">
           <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-admin-warning">DEMO · 未鉴权</span>
-          <span>演示模式：未配置 VITE_API_BASE。列表读本地只读快照，写操作已禁用或明确标注「未接入」；配置后自动切换真实接口。</span>
-          <span className="font-mono text-[9.5px] text-ink/45">接入方式：配置 VITE_API_BASE（{serverConfig.authLoginPath}）</span>
+          <span>演示模式：未配置 VITE_API_BASE。列表只读本地快照，写操作（新建 / 编辑 / 发布 / 删除 / 审核 / 上传 / 分享）已全部禁用，不会伪装成功。</span>
+          <span className="font-mono text-[9.5px] text-ink/45">接入方式：VITE_API_BASE=/api（同源代理到 {serverConfig.authLoginPath}）</span>
         </div>
       )}
       {page}

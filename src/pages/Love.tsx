@@ -1,5 +1,6 @@
 import { CalendarHeart, Coffee, Gift, Heart, MapPin, Music, Plane, Sun } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import LoveAlbum from '@/components/LoveAlbum'
 import { PageHead, Reveal } from '@/components/ui/primitives'
 import { loveMeta, loveRecords, loveStats } from '@/data/life'
 import { cn, daysBetween } from '@/lib/utils'
@@ -48,6 +49,8 @@ export default function Love() {
           </div>
         }
       />
+
+      <LoveAlbum />
 
       <div className="mb-6 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {loveStats.map((s, i) => (

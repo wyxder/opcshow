@@ -174,9 +174,14 @@ function Header() {
           >
             {/* logo */}
             <Link to="/" className="group flex items-center gap-2.5" onMouseEnter={() => setOpenKey(null)}>
-              <span className="relative flex h-9 w-9 -rotate-6 items-center justify-center rounded-[11px] border-1.5 border-ink bg-ink text-[13px] font-extrabold text-lime transition-transform duration-300 group-hover:rotate-0">
-                W
-                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-ink bg-lime" />
+              <span className="relative block h-9 w-9 shrink-0 -rotate-3 overflow-hidden rounded-[11px] border-1.5 border-ink bg-cream shadow-hard-sm transition-transform duration-300 group-hover:rotate-0">
+                <img
+                  src="/image/logo-144.png"
+                  alt="晓叶 · WYX.SPACE 标志"
+                  width={36}
+                  height={36}
+                  className="h-full w-full object-cover"
+                />
               </span>
               <span className="leading-none">
                 <span className="block text-[15px] font-extrabold tracking-tight">晓叶</span>
@@ -538,37 +543,65 @@ const tabIcons: Record<string, LucideIcon> = { home: Home, learn: BookOpen, work
 
 function MobileTabBar() {
   const { pathname } = useLocation()
+  const current = navItems.find((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key)))
+  // 首页不挂子菜单；学习 / 工作 / 生活 / 我的 在底部条上方直接列出子项，点一下就切换
+  const section = current && current.key !== 'home' ? current : null
   return (
     <nav
       aria-label="底部导航"
       className="fixed inset-x-0 bottom-0 z-[75] px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 lg:hidden"
     >
-      <div className="mx-auto flex max-w-md items-stretch gap-0.5 rounded-[20px] border-1.5 border-ink bg-cream/95 p-1.5 shadow-hard">
-        {navItems.map((item) => {
-          const Icon = tabIcons[item.key] ?? Sparkles
-          const active = item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key)
-          return (
-            <Link
-              key={item.key}
-              to={item.to}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'relative flex flex-1 flex-col items-center gap-0.5 rounded-[14px] px-1 py-1.5 transition-colors',
-                active ? 'text-ink' : 'text-ink/45',
-              )}
-            >
-              {active && (
-                <motion.span
-                  layoutId="tab-pill"
-                  className="absolute inset-0 -z-10 rounded-[14px] border-1.5 border-ink bg-lime"
-                  transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                />
-              )}
-              <Icon size={16} strokeWidth={active ? 2.4 : 2} />
-              <span className="text-[10px] font-bold leading-none">{item.label}</span>
-            </Link>
-          )
-        })}
+      <div className="mx-auto max-w-md">
+        {section && (
+          <div className="mb-1.5 flex gap-1.5 overflow-x-auto rounded-[18px] border-1.5 border-ink bg-cream/95 p-1.5 shadow-hard-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {section.children.map((c) => {
+              const Icon = icons[c.icon ?? 'sparkles'] ?? Sparkles
+              const base = c.to.split(/[?#]/)[0]
+              const childActive = base !== '/' && pathname === base
+              return (
+                <Link
+                  key={c.to}
+                  to={c.to}
+                  aria-current={childActive ? 'page' : undefined}
+                  className={cn(
+                    'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-[10.5px] transition-colors',
+                    childActive ? 'border-ink bg-lime text-ink' : 'border-ink/15 bg-paper text-ink/60',
+                  )}
+                >
+                  <Icon size={11} className="shrink-0 opacity-60" />
+                  {c.label}
+                </Link>
+              )
+            })}
+          </div>
+        )}
+        <div className="flex items-stretch gap-0.5 rounded-[20px] border-1.5 border-ink bg-cream/95 p-1.5 shadow-hard">
+          {navItems.map((item) => {
+            const Icon = tabIcons[item.key] ?? Sparkles
+            const active = item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key)
+            return (
+              <Link
+                key={item.key}
+                to={item.to}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'relative flex flex-1 flex-col items-center gap-0.5 rounded-[14px] px-1 py-1.5 transition-colors',
+                  active ? 'text-ink' : 'text-ink/45',
+                )}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="tab-pill"
+                    className="absolute inset-0 -z-10 rounded-[14px] border-1.5 border-ink bg-lime"
+                    transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                  />
+                )}
+                <Icon size={16} strokeWidth={active ? 2.4 : 2} />
+                <span className="text-[10px] font-bold leading-none">{item.label}</span>
+              </Link>
+            )
+          })}
+        </div>
       </div>
     </nav>
   )
@@ -579,7 +612,7 @@ function MobileTabBar() {
 function FooterNavSection({ item, compact }: { item: (typeof navItems)[number]; compact?: boolean }) {
   return (
     <div>
-      <p className={cn('flex items-baseline gap-2 text-[13px] font-bold', compact ? 'mb-2' : 'mb-3')}>
+      <p className={cn('flex items-baseline gap-2 text-[13px] font-normal', compact ? 'mb-2' : 'mb-3')}>
         <span className="font-mono text-[9px] text-ink/35">{item.index}</span>
         {item.label}
       </p>
@@ -612,7 +645,7 @@ function FooterChildLink({ child, className }: { child: NavChild; className?: st
       aria-current={active ? 'page' : undefined}
       className={cn(
         'inline-flex max-w-full items-center gap-1 text-[12.5px]',
-        active ? 'font-semibold text-ink' : 'text-ink/55 hover:text-ink',
+        active ? 'text-ink' : 'text-ink/55 hover:text-ink',
         className,
       )}
     >
@@ -639,7 +672,7 @@ function Footer() {
         />
       </div>
 
-      <div className="shell pb-28 pt-10 lg:pb-12">
+      <div className="shell pb-40 pt-10 lg:pb-12">
         {/* 联系区：移动端单列紧凑，桌面左侧大标题 */}
         <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:gap-10">
           <div>

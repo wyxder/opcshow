@@ -94,6 +94,7 @@ export const skillGroups = [
     title: 'RAG 技术',
     color: 'lime',
     level: 92,
+    keywords: ['切片', '双路召回', '重排', '溯源', 'RAGAS'],
     summary: '文档切片、双路召回与来源追溯，把知识库问答做到可评测、可排查。',
     proofs: [
       { value: '92%', label: '客服系统检索命中率' },
@@ -106,6 +107,7 @@ export const skillGroups = [
     title: 'Agent 开发',
     color: 'coral',
     level: 94,
+    keywords: ['ReAct', 'MCP', 'Multi-Agent', 'RSI 自进化', 'Skills'],
     summary: 'Multi-Agent 协作、RSI 自进化与 MCP / Skills 模块化，做过完整闭环。',
     proofs: [
       { value: '16', label: 'RSI 评测中台接口' },
@@ -118,6 +120,7 @@ export const skillGroups = [
     title: '全栈开发',
     color: 'blue',
     level: 88,
+    keywords: ['React', 'Vue', 'Java', 'FastAPI', '跨端'],
     summary: 'React / Vue 双栈与 Java 微服务，H5、Android、Harmony、小程序都落过地。',
     proofs: [
       { value: '4 个', label: '微服务独立部署' },
@@ -130,6 +133,7 @@ export const skillGroups = [
     title: '评测迭代',
     color: 'grape',
     level: 86,
+    keywords: ['指标体系', 'Badcase', 'A/B 盲测', 'LLM-as-Judge'],
     summary: '用指标体系、评测集与盲测驱动迭代，让「变好」这件事可以被验证。',
     proofs: [
       { value: '22', label: 'LLM-as-Judge 指标' },
@@ -142,6 +146,7 @@ export const skillGroups = [
     title: '大模型原理',
     color: 'rose',
     level: 82,
+    keywords: ['Transformer', 'MoE', 'GRPO', 'LoRA 微调', 'VLM'],
     summary: 'Transformer / MoE / VLM 与 LoRA 微调，理解幻觉与能力边界再做产品。',
     proofs: [
       { value: '90.25%', label: '微表情 UF1（SOTA）' },
@@ -154,6 +159,7 @@ export const skillGroups = [
     title: 'AI 编程',
     color: 'sky',
     level: 96,
+    keywords: ['Codex', 'WorkBuddy', 'Vibe Coding', 'Harness'],
     summary: '用 Codex / WorkBuddy 把原型快速推到线上，同时守住代码风格与可维护性。',
     proofs: [
       { value: '7 款', label: 'AI 付费产品上线' },
@@ -161,6 +167,21 @@ export const skillGroups = [
       { value: '355 条', label: 'AI 教程 / 开源内容' },
     ],
   },
+]
+
+/** 技能图谱左侧「技术栈」标签墙：与简历 / 项目实际用到的工具对齐。 */
+export const techStack = [
+  'Python', 'Java', 'TypeScript', 'Vue 3', 'React', 'Next.js', 'FastAPI',
+  'Spring Boot', 'LangChain4j', 'LangGraph', 'CrewAI', 'Redis', 'PostgreSQL',
+  'SQLite', 'Docker', 'Three.js', 'uniapp', 'MCP', 'RAGAS', 'Langfuse',
+  'Vercel', 'Coze', 'DashScope', 'Seedance',
+]
+
+/** 技能图谱左侧 FOCUS / NOW：此刻正在推进的三件事。 */
+export const focusNow = [
+  { title: 'RSI 自进化评测中台', meta: '影子回归 · 验收写回' },
+  { title: 'KAMER 微表情识别', meta: 'ICCV 2027 在投' },
+  { title: '2026 实习', meta: 'AI 全栈 / 智能体开发' },
 ]
 
 export const education = [

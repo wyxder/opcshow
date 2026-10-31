@@ -9,13 +9,13 @@
  *   · /api → network-first，离线时明确返回 503 + OFFLINE，不伪造成功
  * 更新：新 SW 不自动 skipWaiting，等页面上的「新版本可用」提示确认后切换。
  */
-const VERSION = 'wyx-v2'
+const VERSION = 'wyx-v3'
 const SHELL_CACHE = `${VERSION}-shell`
 const RUNTIME_CACHE = `${VERSION}-runtime`
 const API_CACHE = `${VERSION}-api`
 const KEEP = [SHELL_CACHE, RUNTIME_CACHE, API_CACHE]
 
-const SHELL = ['/', '/offline.html', '/favicon.svg', '/site.webmanifest', '/og-cover.png', '/theme-boot.js']
+const SHELL = ['/', '/offline.html', '/image/logo-192.png', '/site.webmanifest', '/og-cover.png', '/theme-boot.js']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

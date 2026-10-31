@@ -1,21 +1,31 @@
-import { motion } from 'framer-motion'
-import { ArrowRight, ArrowUpRight, BookOpen, Clock, Eye, Search, Sparkles, X } from 'lucide-react'
+import { ChevronDown, Clock, CalendarDays, Bot, Database, PenLine, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHead, Plate, Reveal } from '@/components/ui/primitives'
+import { Plate, Reveal } from '@/components/ui/primitives'
 import { articleCategories, articleMeta } from '@/data/articles.index'
 import { cn } from '@/lib/utils'
 import { useSeo } from '@/lib/seo'
 
-const learningPath = [
-  { step: '01', title: '先把 RAG 打通', desc: '切片、召回、溯源，做出第一个不胡说八道的问答。', color: 'rgb(var(--c-lime))' },
-  { step: '02', title: '再给 Agent 上约束', desc: '工具、预算、越权、回归，让它稳定地重复成功。', color: 'rgb(var(--c-coral))' },
-  { step: '03', title: '最后让评测驱动', desc: '指标、盲测、自进化，把优化变成可审计的闭环。', color: 'rgb(var(--c-grape))' },
+const categoryVisual: Record<string, { icon: typeof Database; color: string }> = {
+  'RAG 工程化': { icon: Database, color: 'rgb(var(--c-blue))' },
+  'Agent 评测': { icon: Bot, color: 'rgb(var(--c-grape))' },
+  '工程手记': { icon: PenLine, color: 'rgb(var(--c-coral))' },
+}
+
+const coverMotifs = ['orbit', 'stack', 'bars', 'grid', 'wave', 'rings'] as const
+const coverAccents = [
+  'rgb(var(--c-blue))',
+  'rgb(var(--c-grape))',
+  'rgb(var(--c-coral))',
+  'rgb(var(--c-lime))',
+  'rgb(var(--c-sky))',
+  'rgb(var(--c-rose))',
 ]
 
 export default function Learn() {
   const [cat, setCat] = useState('all')
   const [q, setQ] = useState('')
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
   useSeo({
     title: '知识库 · 晓叶',
@@ -32,208 +42,248 @@ export default function Learn() {
     })
   }, [cat, q])
 
-  const totalRead = articleMeta.reduce((s, a) => s + a.readMin, 0)
-  const totalViews = articleMeta.reduce((s, a) => s + a.views, 0)
+  const navGroups = useMemo(
+    () =>
+      articleCategories
+        .filter((c) => c.key !== 'all')
+        .map((c) => ({
+          ...c,
+          tags: Array.from(new Set(articleMeta.filter((a) => a.category === c.key).flatMap((a) => a.tags))).map((tag) => ({
+            key: tag,
+            label: tag,
+            count: articleMeta.filter((a) => a.tags.includes(tag)).length,
+          })),
+        })),
+    [],
+  )
+
+  const selected = cat !== 'all'
+  const reset = () => {
+    setCat('all')
+    setQ('')
+  }
 
   return (
-    <div className="shell">
-      <PageHead
-        kicker="02 / LEARN · KNOWLEDGE BASE"
-        title="把踩过的坑，写成能复用的路。"
-        right={
-          <div className="flex items-center gap-3 font-mono text-[9.5px] text-ink/45">
-            <span>{articleMeta.length} 篇</span>
-            <span className="h-0.5 w-0.5 rounded-full bg-ink/30" />
-            <span>{(totalViews / 1000).toFixed(1)}k 阅读</span>
-            <span className="h-0.5 w-0.5 rounded-full bg-ink/30" />
-            <span>{totalRead} min</span>
-          </div>
-        }
-      />
+    <div className="shell py-6 lg:py-8">
+      <h1 className="sr-only">知识库</h1>
 
-      {/* toolbar */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-1.5">
-          {articleCategories.map((c) => (
-            <button
-              key={c.key}
-              onClick={() => setCat(c.key)}
-              className={cn(
-                'rounded-full border-1.5 px-3.5 py-1.5 text-[11.5px] transition',
-                cat === c.key ? 'border-ink bg-ink text-paper' : 'border-ink/15 bg-cream text-ink/60 hover:border-ink/50',
-              )}
-            >
-              {c.label}
-              <span className={cn('ml-1.5 font-mono text-[9px]', cat === c.key ? 'text-lime' : 'text-ink/35')}>
-                {c.key === 'all' ? articleMeta.length : articleMeta.filter((a) => a.category === c.key || a.tags.includes(c.key)).length}
-              </span>
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 rounded-full border-1.5 border-ink/15 bg-cream px-3 py-1.5 focus-within:border-ink">
-          <Search size={13} className="text-ink/40" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="搜索文章 / 标签"
-            className="w-40 bg-transparent text-[11.5px] outline-none placeholder:text-ink/35"
-          />
-          {q && (
-            <button onClick={() => setQ('')} aria-label="清空">
-              <X size={12} className="text-ink/40" />
-            </button>
-          )}
-        </div>
+      {/* 搜索 */}
+      <div className="relative">
+        <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/35" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="搜索文章标题或标签..."
+          aria-label="搜索文章标题或标签"
+          className="h-12 w-full rounded-2xl border border-ink/10 bg-cream pl-12 pr-12 text-[14px] text-ink outline-none shadow-[0_1px_2px_rgba(20,20,15,0.04)] transition placeholder:text-ink/30 focus:border-ink/25 focus:ring-4 focus:ring-blue/10"
+        />
+        {q && (
+          <button
+            onClick={() => setQ('')}
+            aria-label="清空搜索"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink/35 transition hover:bg-ink/5 hover:text-ink"
+          >
+            <X size={15} />
+          </button>
+        )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-12">
-        {/* featured */}
-        <div className="lg:col-span-8">
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[232px_minmax(0,1fr)] lg:gap-7">
+        {/* 左栏：目录导航 */}
+        <aside className="hidden lg:block">
+          <div className="no-scrollbar sticky top-24 max-h-[calc(100vh-7rem)] space-y-3 overflow-y-auto pb-1">
+            <nav
+              aria-label="知识库目录"
+              className="rounded-2xl border border-ink/10 bg-cream p-3 shadow-[0_1px_2px_rgba(20,20,15,0.04)]"
+            >
+            <p className="px-3 pb-2.5 pt-1 text-[12px] font-medium tracking-wide text-ink/40">目录导航</p>
+
+            <button
+              onClick={() => setCat('all')}
+              aria-current={!selected ? 'page' : undefined}
+              className={cn(
+                'flex w-full items-center rounded-xl px-3 py-2.5 text-left text-[13px] transition',
+                !selected ? 'bg-blue/10 font-medium text-ink' : 'text-ink/60 hover:bg-ink/[0.04] hover:text-ink',
+              )}
+            >
+              全部文章
+            </button>
+
+            {navGroups.map((group) => {
+              const visual = categoryVisual[group.key] ?? { icon: Database, color: 'rgb(var(--c-ink))' }
+              const Icon = visual.icon
+              const open = !collapsed[group.key]
+              return (
+                <div key={group.key} className="mt-0.5">
+                  <button
+                    onClick={() => setCollapsed((prev) => ({ ...prev, [group.key]: !prev[group.key] }))}
+                    aria-expanded={open}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] text-ink/75 transition hover:bg-ink/[0.04] hover:text-ink"
+                  >
+                    <span
+                      className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full"
+                      style={{
+                        background: `color-mix(in srgb, ${visual.color} 16%, transparent)`,
+                        color: visual.color,
+                      }}
+                    >
+                      <Icon size={14} />
+                    </span>
+                    <span className="flex-1">{group.label}</span>
+                    <ChevronDown
+                      size={14}
+                      className={cn('shrink-0 text-ink/30 transition-transform duration-200', !open && '-rotate-90')}
+                    />
+                  </button>
+
+                  <div
+                    className={cn(
+                      'grid transition-[grid-template-rows] duration-200 ease-out',
+                      open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+                    )}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="space-y-0.5 py-0.5 pl-[38px] pr-1">
+                        <button
+                          onClick={() => setCat(group.key)}
+                          aria-current={cat === group.key ? 'page' : undefined}
+                          className={cn(
+                            'flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-[12px] transition',
+                            cat === group.key
+                              ? 'bg-blue/10 font-medium text-ink'
+                              : 'text-ink/50 hover:bg-ink/[0.04] hover:text-ink',
+                          )}
+                        >
+                          <span>全部 {group.label}</span>
+                        </button>
+                        {group.tags.map((tag) => (
+                          <button
+                            key={tag.key}
+                            onClick={() => setCat(tag.key)}
+                            aria-current={cat === tag.key ? 'page' : undefined}
+                            className={cn(
+                              'flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-[12px] transition',
+                              cat === tag.key
+                                ? 'bg-blue/10 font-medium text-ink'
+                                : 'text-ink/50 hover:bg-ink/[0.04] hover:text-ink',
+                            )}
+                          >
+                            <span className="truncate">{tag.label}</span>
+                            <span className="ml-2 shrink-0 tabular-nums text-[11px] text-ink/30">{tag.count}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </nav>
+          </div>
+        </aside>
+
+        {/* 右栏：文章网格 */}
+        <section>
+          {/* 移动端分类 */}
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar lg:hidden">
+            <button
+              onClick={() => setCat('all')}
+              aria-current={!selected ? 'page' : undefined}
+              className={cn(
+                'shrink-0 rounded-full border px-3.5 py-1.5 text-[12.5px] transition',
+                !selected ? 'border-blue/50 bg-blue/10 font-medium text-ink' : 'border-ink/10 bg-cream text-ink/55',
+              )}
+            >
+              全部
+            </button>
+            {navGroups.map((group) => (
+              <button
+                key={group.key}
+                onClick={() => setCat(group.key)}
+                aria-current={cat === group.key ? 'page' : undefined}
+                className={cn(
+                  'shrink-0 rounded-full border px-3.5 py-1.5 text-[12.5px] transition',
+                  cat === group.key
+                    ? 'border-blue/50 bg-blue/10 font-medium text-ink'
+                    : 'border-ink/10 bg-cream text-ink/55',
+                )}
+              >
+                {group.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="text-[13px] text-ink/50">
+              共 <span className="font-semibold text-ink">{list.length}</span> 篇文章
+              {q && <span className="ml-1.5 text-ink/35">· “{q.trim()}”</span>}
+            </p>
+            {(selected || q) && (
+              <button onClick={reset} className="text-[12px] text-ink/40 transition hover:text-ink">
+                清除筛选
+              </button>
+            )}
+          </div>
+
           {list.length === 0 ? (
-            <div className="flex h-64 flex-col items-center justify-center rounded-2xl border-1.5 border-dashed border-ink/25 bg-cream/60">
-              <p className="font-hand text-2xl text-ink/40">没找到，换个关键词？</p>
-              <button onClick={() => { setQ(''); setCat('all') }} className="btn mt-4 !py-2 !text-[12px]">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-ink/20 bg-cream/60 px-6 py-20 text-center">
+              <Search size={28} className="text-ink/20" />
+              <p className="mt-4 text-[14px] font-medium text-ink/60">没有找到相关文章</p>
+              <p className="mt-1 text-[12px] text-ink/40">换个关键词，或看看更早的笔记。</p>
+              <button
+                onClick={reset}
+                className="mt-5 rounded-full border border-ink/15 bg-cream px-4 py-1.5 text-[12px] text-ink/70 transition hover:border-ink/40 hover:text-ink"
+              >
                 重置筛选
               </button>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {list.map((a, i) => (
-                <Reveal key={a.id} delay={i * 0.05} className={i === 0 ? 'sm:col-span-2' : ''}>
-                  <Link
-                    to={`/learn/${a.id}`}
-                    className={cn(
-                      'group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream transition-all duration-300 hover:-translate-y-1 hover:shadow-hard',
-                    )}
-                  >
-                    {i === 0 ? (
-                      <div className="grid sm:grid-cols-[0.9fr_1.1fr]">
-                        <div className="relative min-h-[170px] border-b border-ink/12 sm:border-b-0 sm:border-r">
-                          <Plate motif="orbit" accent={a.accent} label={a.category} index={`0${i + 1}`} className="absolute inset-0" />
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {list.map((a, i) => {
+                const artIndex = articleMeta.findIndex((x) => x.id === a.id)
+                return (
+                  <Reveal key={a.id} delay={Math.min(i, 5) * 0.04} y={12} className="h-full">
+                    <Link
+                      to={`/learn/${a.id}`}
+                      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-ink/10 bg-cream shadow-[0_1px_2px_rgba(20,20,15,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-[0_18px_40px_-26px_rgba(20,20,15,0.4)]"
+                    >
+                      <Plate
+                        motif={coverMotifs[artIndex % coverMotifs.length]}
+                        accent={coverAccents[artIndex % coverAccents.length]}
+                        className="relative aspect-[3/2] w-full shrink-0 border-b border-ink/10 [&>svg]:transition-transform [&>svg]:duration-500 group-hover:[&>svg]:scale-[1.04]"
+                      />
+
+                      <div className="flex flex-1 flex-col p-4 sm:p-[18px]">
+                        <span className="text-[11.5px] font-medium text-ink/45">{a.category}</span>
+                        <h2 className="mt-1.5 line-clamp-2 text-[15.5px] font-bold leading-snug transition-colors group-hover:text-blue">
+                          {a.title}
+                        </h2>
+                        <p className="mt-2 line-clamp-3 flex-1 text-[12px] leading-[1.7] text-ink/55">{a.abstract}</p>
+
+                        <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[10.5px] text-ink/40">
+                          {a.tags.map((t) => (
+                            <span key={t}># {t}</span>
+                          ))}
                         </div>
-                        <div className="p-5">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-ink/20 bg-lime/40 px-2 py-0.5 font-mono text-[9px]">置顶</span>
-                            <span className="font-mono text-[9px] text-ink/40">{a.date}</span>
-                          </div>
-                          <h2 className="mt-2.5 text-[20px] font-extrabold leading-tight group-hover:underline">{a.title}</h2>
-                          <p className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-ink/55">{a.abstract}</p>
-                          <div className="mt-3 flex items-center justify-between font-mono text-[9.5px] text-ink/40">
-                            <span className="flex items-center gap-3">
-                              <span className="flex items-center gap-1">
-                                <Clock size={10} /> {a.readMin} min
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Eye size={10} /> {a.views}
-                              </span>
-                            </span>
-                            <span className="flex items-center gap-1 text-ink/70">
-                              阅读 <ArrowRight size={11} />
-                            </span>
-                          </div>
+
+                        <div className="mt-3.5 flex items-center justify-between border-t border-ink/[0.08] pt-3 font-mono text-[10.5px] text-ink/40">
+                          <span className="flex items-center gap-1.5">
+                            <CalendarDays size={12} className="text-ink/30" />
+                            {a.date}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Clock size={12} className="text-ink/30" />
+                            {a.readMin} 分钟
+                          </span>
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between border-b border-ink/10 px-4 py-2.5">
-                          <span className="flex items-center gap-1.5 font-mono text-[9px] tracking-wide text-ink/45">
-                            <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.accent }} />
-                            {a.category}
-                          </span>
-                          <span className="font-mono text-[9px] text-ink/30">0{i + 1}</span>
-                        </div>
-                        <div className="flex flex-1 flex-col p-4">
-                          <h3 className="text-[15px] font-extrabold leading-snug group-hover:underline">{a.title}</h3>
-                          <p className="mt-2 line-clamp-3 flex-1 text-[11.5px] leading-relaxed text-ink/50">{a.abstract}</p>
-                          <div className="mt-3 flex items-center justify-between font-mono text-[9px] text-ink/35">
-                            <span>{a.date}</span>
-                            <span className="flex items-center gap-2">
-                              <Clock size={10} /> {a.readMin} min
-                              <ArrowUpRight size={12} className="transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ink" />
-                            </span>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </Link>
-                </Reveal>
-              ))}
+                    </Link>
+                  </Reveal>
+                )
+              })}
             </div>
           )}
-        </div>
-
-        {/* sidebar */}
-        <div className="space-y-3 lg:col-span-4">
-          <div className="rounded-2xl border-1.5 border-ink bg-ink p-5 text-paper">
-            <div className="flex items-center gap-2">
-              <Sparkles size={14} className="text-lime" />
-              <p className="font-mono text-[9px] tracking-[0.2em] text-lime">LEARNING PATH</p>
-            </div>
-            <h3 className="mt-2 text-[17px] font-extrabold">我的学习路线</h3>
-            <div className="mt-4 space-y-3">
-              {learningPath.map((p) => (
-                <div key={p.step} className="flex gap-3">
-                  <span
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md font-mono text-[9px] font-bold text-ink"
-                    style={{ background: p.color }}
-                  >
-                    {p.step}
-                  </span>
-                  <div>
-                    <p className="text-[12px] font-semibold">{p.title}</p>
-                    <p className="mt-0.5 text-[10.5px] leading-relaxed text-paper/45">{p.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 border-t border-paper/15 pt-3 font-hand text-[17px] text-paper/40">顺序可以打乱，但别跳过评测。</p>
-          </div>
-
-          <div className="rounded-2xl border-1.5 border-ink bg-cream p-5">
-            <p className="font-mono text-[9px] tracking-[0.2em] text-ink/35">TAGS</p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {Array.from(new Set(articleMeta.flatMap((a) => a.tags))).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => {
-                    setCat(t)
-                    setQ('')
-                  }}
-                  className="rounded-full border border-ink/15 bg-paper px-2.5 py-1 text-[10.5px] text-ink/55 transition hover:border-ink hover:bg-lime/40 hover:text-ink"
-                >
-                  # {t}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent('open-assistant'))}
-            className="group flex w-full items-center gap-3 rounded-2xl border-1.5 border-ink bg-lime p-4 text-left transition hover:-translate-y-0.5 hover:shadow-hard"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl border-1.5 border-ink bg-cream">
-              <BookOpen size={16} />
-            </span>
-            <span className="flex-1">
-              <span className="block text-[12.5px] font-bold">不想读？直接问 AI 助手</span>
-              <span className="mt-0.5 block text-[10.5px] text-ink/55">浮屏问答，不打断阅读</span>
-            </span>
-            <ArrowUpRight size={15} className="transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-10 overflow-hidden rounded-2xl border-1.5 border-ink bg-cream">
-        <motion.div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 font-mono text-[9.5px] tracking-wide text-ink/40">
-          <span>知识库持续更新</span>
-          <span className="h-1 w-1 rounded-full bg-ink/20" />
-          <span>最近一次：2026.09.18</span>
-          <span className="h-1 w-1 rounded-full bg-ink/20" />
-          <span>引用请注明来源</span>
-          <span className="ml-auto flex items-center gap-1.5">
-            <Sparkles size={11} /> 有想看的主题？去留言墙告诉我
-          </span>
-        </motion.div>
+        </section>
       </div>
     </div>
   )

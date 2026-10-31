@@ -67,7 +67,14 @@ export async function hydrateSiteData(): Promise<void> {
   if (tracksData?.length) replace(dataLife.playlist, tracksData)
   if (friendsData) replace(dataMe.friends, friendsData)
   if (awardsData?.length) replace(dataSite.awards, awardsData)
-  if (skillsData?.length) replace(dataSite.skillGroups, skillsData)
+  if (skillsData?.length) {
+    // 服务端旧快照可能缺新增字段（如 keywords）：按 key 用本地快照补齐，避免前台整页报错
+    const merged = skillsData.map((s) => {
+      const local = dataSite.skillGroups.find((g) => g.key === (s as { key?: string }).key)
+      return local ? { ...local, ...s, keywords: s.keywords?.length ? s.keywords : local.keywords } : s
+    })
+    replace(dataSite.skillGroups, merged)
+  }
   if (danmakuData?.length) replace(dataMe.danmakuSeeds, danmakuData)
   if (resourcesData) replace(dataWork.resourceFiles, resourcesData)
 }

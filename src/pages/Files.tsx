@@ -1,4 +1,4 @@
-import { CloudUpload, Download, FileArchive, FileCode2, FileSpreadsheet, FileText, FolderOpen, LayoutGrid, List, Lock, Search, Star } from 'lucide-react'
+import { Download, FileArchive, FileCode2, FileSpreadsheet, FileText, FolderOpen, LayoutGrid, List, Lock, Search, Star } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHead } from '@/components/ui/primitives'
@@ -60,9 +60,8 @@ export default function Files() {
   const [q, setQ] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [sort, setSort] = useState<'new' | 'hot' | 'name'>('new')
-  const [drag, setDrag] = useState(false)
   const [stars, setStars] = useLocalStorage<string[]>(STORAGE_KEYS.fileStars, ['f1', 'f4'], isStringArray)
-  const { show, node } = useToast()
+  const { node } = useToast()
 
   // FE-07：服务端公开文件合并进资源中心，角标标明来源
   const [serverFiles, setServerFiles] = useState<ResourceFile[]>([])
@@ -96,15 +95,6 @@ export default function Files() {
   const allFiles = useMemo(() => [...serverFiles, ...resourceFiles], [serverFiles])
   const downloadable = allFiles.filter((f) => f.url).length
   const online = downloadable
-  const pending = allFiles.length - online
-  /** 体积汇总：把 '1.2 MB' / '48 KB' 这类写法算成 MB，避免手写一个假数字 */
-  const totalSizeMb =
-    allFiles
-      .filter((f) => f.url)
-      .reduce((sum, f) => {
-        const num = parseFloat(f.size.replace(/[^\d.]/g, '')) || 0
-        return sum + (f.size.toUpperCase().includes('KB') ? num / 1024 : f.size.toUpperCase().includes('GB') ? num * 1024 : num)
-      }, 0)
 
   useSeo({
     title: '资源中心 · 晓叶',
@@ -139,63 +129,6 @@ export default function Files() {
           </span>
         }
       />
-
-      <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_280px]">
-        <div
-          onDragOver={(e) => {
-            e.preventDefault()
-            setDrag(true)
-          }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(e) => {
-            e.preventDefault()
-            setDrag(false)
-            show('未配置服务端，文件不会真的上传')
-          }}
-          className={cn(
-            'flex flex-col items-center justify-center rounded-2xl border-1.5 border-dashed px-5 py-6 text-center transition-colors',
-            drag ? 'border-ink bg-lime/40' : 'border-ink/25 bg-cream/60',
-          )}
-        >
-          <CloudUpload size={22} className="text-ink/35" />
-          <p className="mt-2 text-[12.5px] font-medium">访客端不开放上传</p>
-          <p className="mt-1 font-mono text-[9.5px] tracking-wide text-ink/35">上传需要服务端直传签名（fx.md B6）</p>
-          <button
-            onClick={() => show('未配置服务端：上传能力已预留接口（services/files.ts requestUploadTicket）')}
-            className="btn mt-3 !px-3.5 !py-1.5 !text-[11px]"
-          >
-            查看接入说明
-          </button>
-          <div className="mt-3 flex flex-wrap justify-center gap-1">
-            {['PDF', 'MD', 'ZIP', 'PY', 'CSV'].map((ext) => (
-              <span key={ext} className="rounded border border-ink/15 bg-paper px-1.5 py-0.5 font-mono text-[9px] text-ink/45">
-                {ext}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-2xl border-1.5 border-ink bg-ink p-4 text-paper">
-          <div className="flex items-center justify-between">
-            <p className="font-mono text-[9px] tracking-[0.18em] text-lime">STORAGE</p>
-            <span className="font-mono text-[9px] text-paper/40">{totalSizeMb.toFixed(1)} MB 已公开</span>
-          </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-paper/15">
-            <div className="h-full rounded-full bg-lime" style={{ width: `${(online / Math.max(allFiles.length, 1)) * 100}%` }} />
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            {[
-              ['可下载', online],
-              ['待上传', pending],
-              ['合计', allFiles.length],
-            ].map(([k, v]) => (
-              <div key={k as string}>
-                <p className="font-display text-[15px] font-extrabold">{v}</p>
-                <p className="font-mono text-[9.5px] text-paper/40">{k}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-1.5">
