@@ -12,6 +12,7 @@
 import { articles } from '@/data/articles'
 import { moments, playlist, trips } from '@/data/life'
 import { friends } from '@/data/me'
+import { danmakuSeeds } from '@/data/me'
 import { projects } from '@/data/projects'
 import { awards, education, research, skillGroups, stats } from '@/data/site'
 import { resourceFiles, toolboxGroups } from '@/data/work'
@@ -28,6 +29,7 @@ export type ContentDomain =
   | 'awards'
   | 'skills'
   | 'resources'
+  | 'danmaku'
 
 export type PublishStatus = 'draft' | 'pending' | 'published' | 'hidden'
 
@@ -55,6 +57,7 @@ export type DomainData = {
   awards: typeof awards
   skills: typeof skillGroups
   resources: typeof resourceFiles
+  danmaku: typeof danmakuSeeds
 }
 
 const localSnapshot: DomainData = {
@@ -67,6 +70,7 @@ const localSnapshot: DomainData = {
   awards,
   skills: skillGroups,
   resources: resourceFiles,
+  danmaku: danmakuSeeds,
 }
 
 export const localContent: ContentRepository = {

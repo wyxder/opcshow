@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { getSiteSettings } from '@/services/settings'
 import {
   DEFAULT_THEME,
   applyTheme,
@@ -34,6 +35,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyTheme(theme)
   }, [theme])
+
+  // 站点默认主题（后台设置 → 新访客生效）；访客显式选过则尊重本机覆盖
+  useEffect(() => {
+    if (isPersonalChoice) return
+    let alive = true
+    getSiteSettings().then((site) => {
+      if (!alive || !site?.defaultTheme || !isThemeId(site.defaultTheme)) return
+      setThemeState((cur) => (cur === site.defaultTheme ? cur : (site.defaultTheme as ThemeId)))
+    })
+    return () => {
+      alive = false
+    }
+    // 只在首次挂载读一次；isPersonalChoice 变化由用户主动切换处理
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const setTheme = useCallback((id: ThemeId) => {
     if (!isThemeId(id)) return

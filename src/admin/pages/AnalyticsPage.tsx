@@ -31,10 +31,11 @@ const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0)
 export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
   const [win, setWin] = useState<'7d' | '30d'>('30d')
   const data = traffic[win]
-  const pv = sum(data.pv)
-  const uv = sum(data.uv)
   /** fx.md B7：未接服务端时的真实可用数据 —— 本机无 Cookie 浏览样本 */
   const [local, setLocal] = useState<AnalyticsSummary | null>(null)
+  const realDays = local?.source === 'server' && local.days?.length ? local.days : null
+  const pv = realDays ? sum(realDays.map((d) => d.pv)) : sum(data.pv)
+  const uv = realDays ? sum(realDays.map((d) => d.uv)) : sum(data.uv)
 
   useEffect(() => {
     let alive = true
@@ -57,6 +58,11 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
     URL.revokeObjectURL(url)
     show('CSV 已导出')
   }
+
+  /** 服务端只有 path/PV；UV/停留/跳出需要额外聚合，先用 — 如实标注 */
+  const pageRows = realDays
+    ? (local?.topPages ?? []).map((p) => ({ title: p.path, path: p.path, pv: p.views, uv: null as number | null, stay: '—', bounce: '—' }))
+    : pageRank
 
   return (
     <div className="space-y-4">
@@ -133,10 +139,10 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: '累计 PV', value: pv.toLocaleString(), note: `日均 ${Math.round(pv / data.labels.length)}`, delta: '+12.6%' },
-          { label: '累计 UV', value: uv.toLocaleString(), note: `去重后访客`, delta: '+8.4%' },
-          { label: '平均停留', value: '2m 18s', note: '较上周期 +14s', delta: '+11.4%' },
-          { label: '跳出率', value: '41.2%', note: '较上周期 -2.6%', delta: '优化' },
+          { label: '累计 PV', value: pv.toLocaleString(), note: realDays ? '服务端埋点' : `日均 ${Math.round(pv / data.labels.length)}`, delta: realDays ? '—' : '+12.6%' },
+          { label: '累计 UV', value: uv.toLocaleString(), note: realDays ? '会话去重' : '去重后访客', delta: realDays ? '—' : '+8.4%' },
+          { label: '平均停留', value: realDays ? `${local?.avgStaySec ?? 0}s` : '2m 18s', note: realDays ? '来自 stayMs' : '较上周期 +14s', delta: realDays ? '—' : '+11.4%' },
+          { label: 'AI 会话', value: realDays ? String(local?.aiSessions ?? realDays.reduce((s, d) => s + d.ai, 0)) : '239', note: realDays ? 'kind=ai 计数' : '预置样本', delta: realDays ? '—' : '优化' },
         ].map((k) => (
           <div key={k.label} className="rounded-[18px] border-1.5 border-ink bg-cream px-3.5 py-3 shadow-hard-sm">
             <p className="text-[10.5px] text-admin-muted">{k.label}</p>
@@ -151,8 +157,8 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
 
       <Panel
         kicker="Visits"
-        title={`访问趋势 · ${data.label}`}
-        desc={data.range}
+        title={`访问趋势 · ${realDays ? win : data.label}`}
+        desc={realDays ? '服务端按日聚合' : data.range}
         right={
           <div className="flex items-center gap-2.5 text-[10px] text-admin-muted">
             <span className="flex items-center gap-1">
@@ -165,23 +171,23 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
         }
       >
         <TrendChart
-          labels={data.labels}
+          labels={realDays ? realDays.map((d) => d.date.slice(5)) : data.labels}
           series={[
-            { name: 'pv', color: 'rgb(var(--c-coral))', values: data.pv },
-            { name: 'uv', color: 'rgb(var(--c-blue))', values: data.uv },
+            { name: 'pv', color: 'rgb(var(--c-coral))', values: realDays ? realDays.map((d) => d.pv) : data.pv },
+            { name: 'uv', color: 'rgb(var(--c-blue))', values: realDays ? realDays.map((d) => d.uv) : data.uv },
           ]}
-          bars={{ values: data.ai, color: 'rgb(var(--c-lime))' }}
+          bars={{ values: realDays ? realDays.map((d) => d.ai) : data.ai, color: 'rgb(var(--c-lime))' }}
           height={230}
           labelStep={win === '7d' ? 1 : 5}
         />
       </Panel>
 
       <div className="grid gap-3 xl:grid-cols-[1.55fr_1fr]">
-        <Panel kicker="Pages" title="页面排行" desc="按 PV 排序，停留时间为中位数" flush>
+        <Panel kicker="Pages" title="页面排行" desc={realDays ? '服务端只聚合 PV；UV/停留/跳出需额外埋点' : '预置样本'} flush>
           <div className="overflow-x-auto no-scrollbar">
             <div className="admin-zebra min-w-[620px]">
               <TableHead cols={['页面', 'PV', 'UV', '停留', '跳出', '趋势']} template="minmax(0,1fr) 70px 70px 76px 64px 84px" />
-              {pageRank.map((p, i) => (
+              {pageRows.map((p, i) => (
                 <div
                   key={p.path}
                   className="grid grid-cols-[minmax(0,1fr)_70px_70px_76px_64px_84px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
@@ -191,7 +197,7 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
                     <p className="mt-0.5 font-mono text-[9.5px] text-admin-muted">{p.path}</p>
                   </div>
                   <span className="font-mono text-[10.5px]">{p.pv.toLocaleString()}</span>
-                  <span className="font-mono text-[10.5px] text-admin-muted">{p.uv.toLocaleString()}</span>
+                  <span className="font-mono text-[10.5px] text-admin-muted">{p.uv === null ? '—' : p.uv.toLocaleString()}</span>
                   <span className="font-mono text-[10.5px] text-admin-muted">{p.stay}</span>
                   <span className="font-mono text-[10.5px] text-admin-muted">{p.bounce}</span>
                   <div className="flex justify-end">
@@ -204,7 +210,7 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
         </Panel>
 
         <div className="space-y-3">
-          <Panel kicker="Devices" title="设备分布">
+          <Panel kicker="Devices" title="设备分布（静态示意）">
             <div className="flex items-center gap-4">
               <Donut data={deviceShare} size={112} thickness={14} centerValue="61%" centerLabel="桌面" />
               <Legend
@@ -214,7 +220,7 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
             </div>
           </Panel>
 
-          <Panel kicker="Read depth" title="阅读深度">
+          <Panel kicker="Read depth" title="阅读深度（静态示意）">
             <div className="space-y-2">
               {readDepth.map((r) => (
                 <div key={r.label}>

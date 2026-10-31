@@ -357,3 +357,117 @@
 **脚本/工程**：`scripts/{check-api,check-data,check-budget,eval-ai,gen-seo,prerender}.mjs`、`package.json`（`verify`）、`.github/workflows/verify.yml`（新）、`.dockerignore`（新）、`docker-compose.yml`、`.env.example`、`index.html`、`public/{theme-boot.js,_headers}`（新）、`public/{robots.txt,site.webmanifest}`、`README.md`
 
 > 本轮未提交 Git（遵循协作规则与「未经要求不自动提交」）；工作区中 `fx1.md`、`src/components/Layout.tsx` 等历史变更不在本轮修改范围内。
+
+---
+
+## 11. 后台 23 Tab 真实化回写（2026-10-31 第二轮）
+
+### 11.1 先明确两种运行形态
+
+| 形态 | 行为 |
+|---|---|
+| 配了 `VITE_API_BASE` | 每个 Tab 的列表/写操作都走 `/api/*`，落 `server/data/*.json` 或文件系统；刷新、重新登录后仍在 |
+| 未配 `VITE_API_BASE` | 列表读 `src/data` / `src/admin/data.ts` 只读快照并显式标注「预置样本」；写操作一律 disabled 或提示「未接入 + 原因 + 替代做法」，**不修改任何状态、不报假成功** |
+| 单一真源 | `src/services/hydrate.ts` + `src/main.tsx`：挂载前拉一次已发布内容，原地替换 `src/data` 数组；后台改完 → 前台刷新即生效；失败回落本地快照 |
+
+### 11.2 8 大区块 × 23 Tab 状态
+
+| 区块 | Tab | 状态 | 真实能力 / 降级说明 | 关键文件 |
+|---|---|---|---|---|
+| 1 首页总览 | 总览 | ✅ | KPI/趋势/热门页面/今日 AI 全部来自 `/api/admin/overview`；周报由服务端按真实数据生成（规则，不冒充模型）；发送邮件降级为复制正文 | `server/routes/admin.mjs`、`OverviewPage.tsx` |
+| 1 首页总览 | 数据看板 | ✅ | PV/UV/AI/热门页来自埋点；7d/30d 分窗缓存；CSV 真实导出；设备分布与阅读深度明确标「静态示意」（未采集 UA/滚动） | `AnalyticsPage.tsx`、`services/analytics.ts` |
+| 2 个人中心 | 资料 | ✅ | 读 `/api/profile`，保存写 `settings.profile`（乐观合并）；头像另需对象存储，已禁用并说明 | `ProfilePage.tsx`、`settings.mjs` |
+| 2 个人中心 | 账号 | ✅ | 邮箱写 profile；用户名/角色只读（来自环境变量与 RBAC）；真实会话列表 + 撤销 | `ProfilePage.tsx`、`services/admin.ts` |
+| 2 个人中心 | 安全 | ✅ | 改密校验当前口令、改后撤销其它会话；登录/改密/撤销写审计；2FA 与 IP 白名单如实标注未接入（需 TOTP/反代） | `ProfilePage.tsx`、`admin.mjs` |
+| 3 内容管理 | 文章 | ✅/🟡 | 列表含草稿、状态机、乐观锁、下线、新建均真实；**正文块编辑器未接入**，正文框只读并注明「请在数据源编辑」 | `ContentPage.tsx`、`content.mjs` |
+| 3 内容管理 | 项目 | ✅ | 新建/编辑/推荐位/下架全部走 content API（projects 域），刷新后仍在 | 同上 |
+| 3 内容管理 | 动态 | ✅ | 发布进 `pending`；置顶/下线真实；列表来自服务端 | 同上 |
+| 4 简历管理 | 解析 | ✅/🟡 | `.txt/.md` 上传→任务→`completed`→字段/模块/版本入库；PDF/DOCX 明确提示未接解析库 | `ResumeAdminPage.tsx`、`system.mjs` |
+| 4 简历管理 | 模块 | ✅ | 加载/排序/开关/新增/删除后「保存布局」写 `resume.json` | 同上、`lib/resume.mjs` |
+| 4 简历管理 | 版本 | ✅ | 解析自动建版；手动建版/恢复（二次确认）/删除（二次确认）/下载 JSON 均真实 | 同上 |
+| 5 文件资源 | 上传 | ✅ | 签名→直传→登记→列表刷新；未签名/过期/超限被服务端拒绝 | `FilesAdminPage.tsx`、`files.mjs` |
+| 5 文件资源 | 分享 | ✅ | 密码/有效期/访问计数/关闭分享真实；密码错误单独限流 | 同上 |
+| 5 文件资源 | 清理 | ✅/🟡 | 回收站列表/恢复/彻底删除（删磁盘+元数据）/清空真实；重复文件检测与一键清理标「静态示意」 | 同上 |
+| 6 互动审核 | 弹幕 | ✅ | 以 `danmaku` 内容域为真源，通过/拒绝/删除/批量通过走状态机 | `ModerationPage.tsx`、`content.mjs` |
+| 6 互动审核 | 留言 | ✅/🟡 | 下方「本机真实留言/服务端队列」可审核/删除；上方预置表明确标「预置演示」 | 同上、`guestbook.mjs` |
+| 6 互动审核 | 友链 | ✅ | 待审列表来自 `/api/admin/friend-requests`，通过/拒绝写 content；前台「交换友链」表单可提交进 pending | 同上、`settings.mjs`、`Friends.tsx` |
+| 7 AI 配置 | 模型 | ✅ | 列表/新增/启停/设默认/删除真实；环境变量模型不可删；密钥只在 .env | `AiConfigPage.tsx`、`ai.mjs` |
+| 7 AI 配置 | 提示词 | ✅ | 新建/编辑升版/启停/回滚/删除真实；场景只剩一条时禁止删 | 同上 |
+| 7 AI 配置 | 用量 | ✅ | Token/成本/延迟/成功率来自记账；新增「助手反馈」面板，可标记已处理 | 同上 |
+| 8 系统设置 | 主题 | ✅ | 本机覆盖 + 「设为站点默认」写 settings；新访客启动时读取站点默认；打印回落保留 | `SettingsPage.tsx`、`ThemeProvider.tsx` |
+| 8 系统设置 | SEO | ✅ | 标题/描述/关键词/OG/sitemap/structuredData/analytics 全部持久化 | 同上、`settings.mjs` |
+| 8 系统设置 | 备份 | ✅/🟡 | 列表/创建/恢复（二次确认）/逐条删除真实；定时调度与自动保留策略需外部 cron | 同上、`system.mjs`、`admin.mjs` |
+
+### 11.3 新增 / 变更接口
+
+| 方法 | 路径 | 作用 | 权限 |
+|---|---|---|---|
+| GET | `/api/admin/overview` | 总览聚合（内容/留言/文件/AI/埋点/任务） | admin / editor |
+| POST | `/api/admin/password` | 改密（校验当前口令，撤销其它会话） | admin |
+| GET | `/api/admin/security` | 安全状态（会话数、2FA 不可用原因） | admin / editor |
+| GET | `/api/admin/sessions` · DELETE `/api/admin/sessions/:id` | 会话列表 / 撤销（当前会话 422） | 本人 |
+| GET | `/api/admin/audit` | 最近审计日志 | admin |
+| POST | `/api/admin/report` | 规则周报（不调用模型） | admin / editor |
+| GET/PUT | `/api/admin/resume` · `/api/admin/resume/modules` | 简历模块与版本 / 保存模块 | admin / editor |
+| POST | `/api/admin/resume/versions` · `POST /:id/restore` · `DELETE /:id` | 建版 / 恢复 / 删除 | admin / editor |
+| DELETE | `/api/admin/backup/:id` | 删除备份文件 | admin |
+| DELETE | `/api/files/:id?permanent=1` | 彻底删除文件（磁盘 + 元数据 + 分享） | admin / editor |
+| GET/POST/PATCH/DELETE | `/api/ai/models*` · `/api/ai/prompts*` · `/api/ai/feedback*` | 模型/提示词/反馈完整 CRUD | admin（提示词 editor 可写） |
+| POST | `/api/resume/parse` | 解析完成后自动写入模块 + 版本 | admin / editor |
+
+OpenAPI：`server/routes/system.mjs` 的 `paths` 已同步上述接口；`GET /api/openapi.json` 返回 3.1 文档。
+
+### 11.4 可复现的验收路径（真实模式，`VITE_API_BASE` 已配）
+
+| Tab | 操作路径 | 期望 | 刷新后 | 复核命令 |
+|---|---|---|---|---|
+| 总览 | 打开 /admin/overview → 刷新 | KPI 与趋势来自服务端；徽标「服务端真实数据」 | 数字不变 | `curl -b c.txt /api/admin/overview` |
+| 看板 | 切换 7d/30d → 导出 | 窗口数字变化；下载 CSV 行数=热门页数 | 仍按窗口展示 | `check-api` 的「7d/30d 不串窗」 |
+| 资料 | 改邮箱 → 保存 | Toast「已保存到服务端」 | 邮箱仍在 | `GET /api/profile` |
+| 账号/安全 | 改密（旧口令错→401；新口令登录成功） | 其它会话从列表消失 | 旧口令失效 | `check-api` 的「修改密码」 |
+| 文章 | 编辑摘要/状态下线 | 列表状态变化、公开列表少一条 | 仍在 | `GET /api/content/articles?scope=admin` |
+| 项目 | 新建/推荐位/下架 | 卡片与推荐标记变化 | 仍在 | `GET /api/content/projects` |
+| 动态 | 发布 → 置顶 → 下线 | 新动态 pending，置顶写入 | 仍在 | `GET /api/content/moments?scope=admin` |
+| 简历解析 | 上传 .txt → 等待完成 | 字段、模块、版本同时出现 | 仍在 | `GET /api/admin/resume` |
+| 简历模块 | 上移/开关 → 保存布局 | Toast 成功 | 顺序/开关保持 | 同上 |
+| 简历版本 | 建版 → 恢复（确认）→ 删除（确认） | 每次都有服务端返回 | 仍在/已删 | 同上 |
+| 文件上传 | 选文件 → 上传 | 队列 100%，列表出现 private | 仍在 | `GET /api/files?scope=admin` |
+| 文件分享 | 分享 → 复制链接 → 关闭 | 链接可下载；关闭后 404 | 仍在/失效 | `check-api` 的「分享短链」 |
+| 文件清理 | 移入回收站 → 恢复；再删除 → 彻底删除 | 回收站条目变化 | 状态保持 | `GET /api/files?scope=admin` |
+| 弹幕 | 通过/拒绝/删除/批量通过 | 状态变化 | 仍在 | `GET /api/content/danmaku?scope=admin` |
+| 留言 | 下方真实队列审核 | 通过后公共墙可见 | 仍在 | `GET /api/guestbook` |
+| 友链 | 前台提交 → 后台通过 | 前台列表出现（前端启动水合后） | 仍在 | `GET /api/admin/friend-requests` |
+| AI 模型 | 新增 → 启用 → 设默认 → 删除 | 默认标记互斥；env 模型不可删 | 仍在 | `GET /api/ai/models` |
+| AI 提示词 | 新建 → 编辑 → 停用 → 回滚 → 删除 | 版本号递增；场景最后一条禁删 | 仍在 | `GET /api/ai/prompts` |
+| AI 用量 | 打开用量/反馈 | Token 与反馈来自记账 | 仍在 | `GET /api/ai/usage`、`GET /api/ai/feedback` |
+| 主题 | 选主题 → 设为站点默认 | 本机切换即时；服务端保存 defaultTheme | 新访客生效 | `GET /api/admin/settings` |
+| SEO | 改开关 → 保存 | 三个开关持久化 | 仍保持 | 同上 |
+| 备份 | 创建 → 删除（确认）→ 创建 → 恢复（确认） | 列表/内容真实变化 | 仍在 | `GET /api/admin/backup` |
+
+### 11.5 仍未完全“真”的按钮（全部明确降级，不发假成功）
+
+| 按钮 | 现状 | 原因 / 替代 |
+|---|---|---|
+| 文章正文编辑 | 🟡 只读并标注 | 需要块编辑器 + 与 `articles.ts` 的 Section/Block 结构双向映射，超出本轮；当前只保存元数据 |
+| 头像上传、API 令牌生成、第三方绑定、验证邮箱 | 🟡 禁用/提示原因 | 需对象存储、令牌表、OAuth 与 SMTP；当前鉴权用 HttpOnly Cookie + RBAC |
+| 2FA、IP 白名单 | 🟡 显示不可用 | 需 TOTP 密钥托管与反代 allow/deny；已在 `/api/admin/security` 返回原因 |
+| 简历 PDF 解析/导出 PDF | 🟡 仅 txt/md；打印版可用 | 需 pdfjs/mammoth 与出图/排版服务，不引新依赖；可打开 `/files/wyx-resume-print.html` |
+| 存储用量、重复文件、清理建议 | 🟡 标「静态示意」 | 需存储驱动统计与内容哈希；真实可用的是回收站/彻底删除 |
+| 自动备份计划、清理过期备份 | 🟡 提示需外部调度 | 应用内无 cron；可逐条删除备份文件 |
+| 周报发送邮件 | 🟡 改为复制正文 | 无 SMTP；正文由服务端规则生成，可手动发送 |
+| 看板设备分布/阅读深度 | 🟡 标「静态示意」 | 当前埋点不存 UA 与滚动深度；PV/UV/AI/热门页是真的 |
+
+### 11.6 本轮回归（全绿）
+
+| 命令 | 结果 |
+|---|---|
+| `npm run build` | ✅ 2008 modules；admin 拆出 `AiConfigPage` / `ResumeAdminPage` 两个 chunk |
+| `npm run check` | ✅ data（含种子同源）/ contrast 5×5 / budget：入口 **34.24 kB ≤ 45**、CSS 15.00 ≤ 20、页面 chunk ≤ 50 |
+| `node scripts/check-api.mjs` | ✅ **53 项**：新增总览、会话/撤销、安全、弹幕状态机、简历模块/版本、SEO 开关、文件彻底删除、editor 403、改密全链路 |
+| `node scripts/eval-ai.mjs` | ✅ HitRate 0.85 / MRR 0.654 / 上下文 1.00 / 引用 1.00 / 拦截 1.00 |
+
+### 11.7 本轮新增/修改文件
+
+- 服务端：`server/routes/admin.mjs`（新）、`server/lib/resume.mjs`（新）、`server/routes/{content,ai,system,files,settings}.mjs`、`server/lib/{store,auth}.mjs`、`server/index.mjs`
+- 前端：`src/services/admin.ts`（新）、`src/services/hydrate.ts`（新）、`src/main.tsx`、`src/theme/ThemeProvider.tsx`、`src/services/{content,files,analytics,settings}.ts`、`src/admin/AdminApp.tsx`、`src/admin/pages/{Overview,Analytics,Profile,Content,ResumeAdmin,FilesAdmin,Moderation,AiConfig,Settings}Page.tsx`、`src/pages/Friends.tsx`
+- 脚本：`scripts/{check-api,gen-content-snapshot}.mjs`

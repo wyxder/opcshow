@@ -105,6 +105,8 @@ export async function getStores() {
     audit: new JsonStore('audit.json', { logs: [] }),
     /** BE-14：个人资料 / 站点设置（后台资料页与 SEO 页的真源） */
     settings: new JsonStore('settings.json', { profile: null, site: null, updatedAt: null }),
+    /** 简历模块与版本（后台「简历管理」三个 Tab 的真源） */
+    resume: new JsonStore('resume.json', { modules: [], versions: [] }),
   }
   return stores
 }

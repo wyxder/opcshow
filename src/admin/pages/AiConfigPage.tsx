@@ -1,7 +1,8 @@
-import { Activity, Bot, Check, Cpu, KeyRound, Plus, Sparkles, Wand2, Zap } from 'lucide-react'
+import { Activity, Bot, Check, Cpu, KeyRound, Plus, Sparkles, Trash2, Wand2, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { aiModels as modelSeed, aiUsage, prompts as promptSeed } from '@/admin/data'
 import { serverConfig } from '@/services/config'
+import { deleteModel, deletePrompt, getFeedback, reviewFeedback, type FeedbackRow } from '@/services/admin'
 import { apiJson } from '@/services/http'
 import {
   AButton,
@@ -94,6 +95,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
   const [editingPrompt, setEditingPrompt] = useState<PromptRow | null>(null)
   const [promptDraft, setPromptDraft] = useState({ name: '', scene: '', model: '', body: '' })
   const [limit, setLimit] = useState('3000000')
+  const [feedback, setFeedback] = useState<FeedbackRow[]>([])
 
   /** F-01：配置页接服务端真实读写；未接服务端时保持纯演示态并在文案里说清楚 */
   useEffect(() => {
@@ -109,6 +111,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
       if (p) setPrompts(p.map(toPromptRow))
       if (u) setUsage(u)
     })
+    void getFeedback().then((f) => alive && setFeedback(f))
     return () => {
       alive = false
     }
@@ -256,6 +259,22 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                           void patchModel(m.id, { enabled: v }, v ? `${m.name} 已启用` : `${m.name} 已停用`)
                         }}
                       />
+                      <IconButton
+                        label="删除模型"
+                        className="hover:border-coral/60 hover:text-admin-danger"
+                        onClick={() => {
+                          if (m.id === 'm_env' || m.provider === '环境变量') return show('环境变量模型不能删除，请改 .env')
+                          if (!window.confirm(`删除模型「${m.name}」？`)) return
+                          void deleteModel(m.id)
+                            .then(() => {
+                              setModels((l) => l.filter((x) => x.id !== m.id))
+                              show('模型已删除')
+                            })
+                            .catch((err: Error) => show(`删除失败：${err.message}`))
+                        }}
+                      >
+                        <Trash2 size={11} />
+                      </IconButton>
                     </div>
                   ))}
                 </div>
@@ -363,6 +382,21 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                   <AButton size="sm" variant="soft" onClick={() => openPrompt(p)}>
                     编辑
                   </AButton>
+                  <IconButton
+                    label="删除提示词"
+                    className="hover:border-coral/60 hover:text-admin-danger"
+                    onClick={() => {
+                      if (!window.confirm(`删除提示词「${p.name}」？`)) return
+                      void deletePrompt(p.id)
+                        .then(() => {
+                          setPrompts((l) => l.filter((x) => x.id !== p.id))
+                          show('提示词已删除')
+                        })
+                        .catch((err: Error) => show(`删除失败：${err.message}`))
+                    }}
+                  >
+                    <Trash2 size={11} />
+                  </IconButton>
                   <Toggle
                     on={p.enabled}
                     label={p.name}
@@ -505,6 +539,39 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
             </Panel>
 
             <div className="space-y-3">
+              <Panel kicker="Feedback" title="助手反馈（真实）" desc={real ? '来自 /api/ai/feedback' : '未接服务端'} flush>
+                <div className="divide-y divide-ink/10">
+                  {feedback.slice(0, 6).map((f) => (
+                    <div key={f.id} className="flex items-center gap-2 px-4 py-2.5 text-[11px]">
+                      <Badge tone={f.rating === 'up' ? 'teal' : 'red'}>{f.rating === 'up' ? '👍' : '👎'}</Badge>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate">{f.reason || '未填写原因'}</p>
+                        <p className="font-mono text-[9px] text-admin-muted">{new Date(f.ts).toLocaleString('zh-CN')} · {f.sessionId.slice(0, 10)}</p>
+                      </div>
+                      {f.reviewed ? (
+                        <Badge tone="neutral">已处理</Badge>
+                      ) : (
+                        <AButton
+                          size="sm"
+                          variant="soft"
+                          onClick={() => {
+                            void reviewFeedback(f.id)
+                              .then(() => {
+                                setFeedback((l) => l.map((x) => (x.id === f.id ? { ...x, reviewed: true } : x)))
+                                show('已标记为处理')
+                              })
+                              .catch((err: Error) => show(`操作失败：${err.message}`))
+                          }}
+                        >
+                          标记
+                        </AButton>
+                      )}
+                    </div>
+                  ))}
+                  {feedback.length === 0 && <p className="px-4 py-6 text-center text-[11px] text-admin-muted">还没有反馈</p>}
+                </div>
+              </Panel>
+
               <Panel kicker="Quota" title="额度与限流">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-admin-muted">本月已用</span>
@@ -535,7 +602,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                 </AButton>
               </Panel>
 
-              <Panel kicker="Health" title="服务健康">
+              <Panel kicker="Health" title="服务健康（静态示意）" desc="真实可用的是「测试连接」与 /api/ai/health">
                 <div className="space-y-2 text-[10.5px]">
                   {[
                     ['网关可用性', '99.98%', 'teal'],
@@ -709,7 +776,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
         </div>
         <div className="mt-2 flex items-center justify-between text-[10px] text-admin-muted">
           <span>约 {Math.round(promptDraft.body.length / 2)} tokens</span>
-          <IconButton label="复制" onClick={() => show('提示词已复制')}>
+          <IconButton label="复制" onClick={() => void navigator.clipboard?.writeText(editingPrompt?.body ?? promptDraft.body).then(() => show('提示词已复制'))}>
             <KeyRound size={11} />
           </IconButton>
         </div>

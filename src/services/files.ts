@@ -111,6 +111,8 @@ export type ServerFile = {
   date: string
   /** 回收站条目没有下载地址 */
   url?: string
+  /** published / trashed */
+  status?: string
 }
 
 export async function listFiles(scope: 'public' | 'admin' = 'public'): Promise<ServerFile[]> {
@@ -127,6 +129,11 @@ export async function setVisibility(id: string, visibility: 'public' | 'private'
 export async function trashFile(id: string): Promise<void> {
   if (!serverConfig.enabled) throw new NotSupportedError('文件删除')
   await apiJson(`/api/files/${id}`, { method: 'DELETE' })
+}
+
+export async function restoreFile(id: string): Promise<void> {
+  if (!serverConfig.enabled) throw new NotSupportedError('文件恢复')
+  await apiJson(`/api/files/${id}/restore`, { method: 'POST' })
 }
 
 /** 简历附件（fx.md F6）：当前给真实 DOCX + 打印版 HTML，PDF 需要服务端渲染（B-08） */

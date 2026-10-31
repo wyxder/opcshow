@@ -8,12 +8,14 @@ import {
   listFiles,
   listShares,
   requestUploadTicket,
+  restoreFile,
   setVisibility,
   shareHref,
   trashFile,
   uploadToTicket,
   type ServerFile,
 } from '@/services/files'
+import { purgeFile } from '@/services/admin'
 import {
   AButton,
   AdminModal,
@@ -77,7 +79,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
   const [shares, setShares] = useState(shareSeed)
   const [creating, setCreating] = useState(false)
   const [shareDraft, setShareDraft] = useState({ file: adminFiles[0].name, password: '', expires: '永久' })
-  const [trash, setTrash] = useState(storage.trash)
+  const [trash, setTrash] = useState<{ id: string; name: string; size: string; deleted: string }[]>([])
   const [shareLinks, setShareLinks] = useState<Record<string, string>>({})
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -94,6 +96,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
         const [list, links] = await Promise.all([listFiles('admin'), listShares()])
         if (!alive) return
         setFiles(list.map(rowFromServer))
+        setTrash(list.filter((f) => f.status === 'trashed').map((f) => ({ id: f.id, name: f.name, size: f.size, deleted: f.date })))
         setShares(
           links.map((s) => ({
             id: s.id,
@@ -347,7 +350,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
           </div>
 
           <div className="space-y-3">
-            <Panel kicker="Storage" title="存储用量">
+            <Panel kicker="Storage" title="存储用量（静态示意）" desc="真实占用需存储驱动统计，当前仅版式示意">
               <div className="flex items-end justify-between">
                 <p className="font-display text-[28px] font-extrabold leading-none">{storage.used} <span className="text-[12px] font-medium text-admin-muted">/ {storage.total} GB</span></p>
                 <Badge tone={usedPercent > 80 ? 'red' : 'teal'}>{usedPercent}%</Badge>
@@ -365,7 +368,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
               </div>
             </Panel>
 
-            <Panel kicker="Limits" title="上传限制">
+            <Panel kicker="Limits" title="上传限制（来自 .env）">
               <div className="space-y-2.5 text-[11px]">
                 {[
                   ['单文件大小', '50 MB'],
@@ -379,7 +382,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                   </div>
                 ))}
               </div>
-              <AButton className="mt-3 w-full" onClick={() => show('存储配置（演示）')}>
+              <AButton className="mt-3 w-full" onClick={() => show('上传限制由服务端环境变量控制（UPLOAD_MAX_BYTES / UPLOAD_ALLOWED_EXT），后台不支持热改')}>
                 调整限制
               </AButton>
             </Panel>
@@ -518,13 +521,36 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                         <p className="truncate text-[11.5px]">{t.name}</p>
                         <p className="font-mono text-[9px] text-admin-muted">{t.size} · 删除于 {t.deleted}</p>
                       </div>
-                      <AButton size="sm" variant="soft" onClick={() => { setTrash((l) => l.filter((x) => x.id !== t.id)); show('已恢复文件') }}>
+                      <AButton
+                        size="sm"
+                        variant="soft"
+                        onClick={() => {
+                          if (!real) return show('未接服务端：不能恢复')
+                          void restoreFile(t.id)
+                            .then(async () => {
+                              const list = await listFiles('admin')
+                              setFiles(list.map(rowFromServer))
+                              setTrash(list.filter((x) => x.status === 'trashed').map((x) => ({ id: x.id, name: x.name, size: x.size, deleted: x.date })))
+                              show('已恢复文件')
+                            })
+                            .catch((err: Error) => show(`恢复失败：${err.message}`))
+                        }}
+                      >
                         恢复
                       </AButton>
                       <IconButton
                         label="彻底删除"
                         className="hover:border-coral/60 hover:text-admin-danger"
-                        onClick={() => { setTrash((l) => l.filter((x) => x.id !== t.id)); show('已彻底删除') }}
+                        onClick={() => {
+                          if (!real) return show('未接服务端：不能彻底删除')
+                          if (!window.confirm(`彻底删除「${t.name}」？不可恢复。`)) return
+                          void purgeFile(t.id)
+                            .then(() => {
+                              setTrash((l) => l.filter((x) => x.id !== t.id))
+                              show('已彻底删除')
+                            })
+                            .catch((err: Error) => show(`删除失败：${err.message}`))
+                        }}
                       >
                         <XIcon />
                       </IconButton>
@@ -532,7 +558,17 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                   ))}
                   <div className="flex items-center justify-between border-t border-ink/10 bg-paper px-4 py-2.5">
                     <span className="text-[10px] text-admin-muted">共 {trash.length} 个文件</span>
-                    <AButton size="sm" variant="danger" onClick={() => { setTrash([]); show('回收站已清空') }}>
+                    <AButton size="sm" variant="danger" onClick={async () => {
+                      if (!real) return show('未接服务端：不能清空')
+                      if (!window.confirm('清空回收站？所有文件将被永久删除。')) return
+                      try {
+                        for (const t of trash) await purgeFile(t.id)
+                        setTrash([])
+                        show('回收站已清空')
+                      } catch (err) {
+                        show(`清空失败：${(err as Error).message}`)
+                      }
+                    }}>
                       清空回收站
                     </AButton>
                   </div>
@@ -540,7 +576,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
               )}
             </Panel>
 
-            <Panel kicker="Duplicates" title="重复文件" desc="同名且内容哈希一致，可合并保留一份">
+            <Panel kicker="Duplicates" title="重复文件（静态示意）" desc="当前未实现内容哈希去重；以下为版式示意">
               <div className="space-y-2">
                 {storage.duplicates.map((d) => (
                   <div key={d.name} className="flex items-center gap-3 rounded-lg border border-ink/15 px-3 py-2">
@@ -548,7 +584,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                       <p className="truncate text-[11.5px]">{d.name}</p>
                       <p className="font-mono text-[9px] text-admin-muted">{d.copies} 份副本 · 占用 {d.size}</p>
                     </div>
-                    <AButton size="sm" variant="soft" onClick={() => show('已合并重复文件（演示）')}>
+                    <AButton size="sm" variant="soft" onClick={() => show('重复文件检测未接入（需内容哈希）')}>
                       合并
                     </AButton>
                   </div>
@@ -558,7 +594,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
           </div>
 
           <div className="space-y-3">
-            <Panel kicker="Suggestions" title="清理建议">
+            <Panel kicker="Suggestions" title="清理建议（静态示意）">
               <div className="space-y-2">
                 {[
                   ['回收站可释放', '3.4 GB', '立即清理'],
@@ -570,13 +606,13 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                       <p className="text-[11px]">{k}</p>
                       <p className="font-mono text-[9.5px] text-admin-muted">{v}</p>
                     </div>
-                    <AButton size="sm" onClick={() => show(`${act}任务已创建（演示）`)}>
+                    <AButton size="sm" onClick={() => show('批量任务未接入（需队列）')}>
                       {act}
                     </AButton>
                   </div>
                 ))}
               </div>
-              <AButton variant="primary" className="mt-3 w-full" icon={<Check size={12} />} onClick={() => show('已执行安全清理，释放 3.4 GB')}>
+              <AButton variant="primary" className="mt-3 w-full" icon={<Check size={12} />} onClick={() => show('“一键安全清理”需策略引擎，未接入；请用上方回收站逐项处理')}>
                 一键安全清理
               </AButton>
             </Panel>

@@ -1,23 +1,42 @@
-import { ArrowUpRight, BookOpen, Download, Eye, MessageSquare, RefreshCw, Sparkles, TrendingUp, Users } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowUpRight, BookOpen, Download, Eye, MessageSquare, RefreshCw, Sparkles, Users } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { realtime, sourceShare, topArticles, traffic } from '@/admin/data'
+import { realtime, traffic } from '@/admin/data'
 import type { SectionKey } from '@/admin/AdminShell'
-import {
-  AButton,
-  AdminModal,
-  Badge,
-  Donut,
-  Legend,
-  Meter,
-  PageTitle,
-  Panel,
-  Segmented,
-  TrendChart,
-} from '@/admin/ui'
+import { AButton, AdminModal, Badge, EmptyState, Meter, PageTitle, Panel, Segmented, TrendChart } from '@/admin/ui'
 import { cn } from '@/lib/utils'
+import { serverConfig } from '@/services/config'
+import { generateReport, getOverview, type Overview, type Report } from '@/services/admin'
 
 const kpiIcons = [Eye, Users, Sparkles, MessageSquare, BookOpen, Download]
+
+/** 未接服务端时的只读回退：明确标注「预置样本」，不冒充真实统计 */
+const demoOverview = (win: '7d' | '30d'): Overview => {
+  const t = traffic[win]
+  const days = t.labels.map((date, i) => ({ date, pv: t.pv[i], uv: t.uv[i], ai: t.ai[i] }))
+  return {
+    generatedAt: new Date().toISOString(),
+    content: {
+      articles: { total: 6, published: 6, draft: 0, pending: 0, hidden: 0 },
+      projects: { total: 7, published: 7, draft: 0, pending: 0, hidden: 0 },
+      moments: { total: 0, published: 0, draft: 0, pending: 0, hidden: 0 },
+      danmaku: { total: 10, published: 10, draft: 0, pending: 0, hidden: 0 },
+    },
+    guestbook: { total: 0, pending: 0, published: 0 },
+    files: { total: 9, public: 5, private: 0, trashed: 0, shares: 0 },
+    ai: { todayCalls: 0, todayTokens: 0, successRate: null, quota: 60 },
+    analytics: {
+      days,
+      pv: days.reduce((s, d) => s + d.pv, 0),
+      uv: days.reduce((s, d) => s + d.uv, 0),
+      ai: days.reduce((s, d) => s + d.ai, 0),
+      topPages: [],
+    },
+    jobs: { total: 0, dead: 0, running: 0 },
+    resume: { modules: 0 },
+    env: { model: 'retrieval' },
+  }
+}
 
 export default function OverviewPage({
   show,
@@ -27,161 +46,185 @@ export default function OverviewPage({
   go: (section: SectionKey, tab?: string) => void
 }) {
   const [win, setWin] = useState<'7d' | '30d'>('7d')
-  const [report, setReport] = useState(false)
-  const data = traffic[win]
+  const [data, setData] = useState<Overview | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [report, setReport] = useState<Report | null>(null)
+  const [generating, setGenerating] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!serverConfig.enabled) {
+      setData(demoOverview(win))
+      return
+    }
+    setLoading(true)
+    const next = await getOverview()
+    setLoading(false)
+    if (next) setData(next)
+    else show('总览接口不可用：保留上一次数据')
+  }, [win, show])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const view = data ?? demoOverview(win)
+  const live = serverConfig.enabled && Boolean(data)
+  const days = win === '30d' && live ? view.analytics.days.slice(-7) : view.analytics.days
+  const kpis = [
+    { label: '近 7 天 PV', value: view.analytics.pv.toLocaleString(), note: live ? '服务端埋点' : '预置样本' },
+    { label: '近 7 天 UV', value: view.analytics.uv.toLocaleString(), note: live ? '会话去重' : '预置样本' },
+    { label: 'AI 轮次', value: view.analytics.ai.toLocaleString(), note: live ? 'kind=ai' : '预置样本' },
+    { label: '待审留言', value: String(view.guestbook.pending), note: live ? '互动审核' : '预置样本' },
+    { label: '非公开内容', value: String(view.content.articles.draft + view.content.projects.draft + view.content.moments.draft), note: '文章/项目/动态' },
+    { label: '文件 / 分享', value: `${view.files.total} / ${view.files.shares}`, note: `回收站 ${view.files.trashed}` },
+  ]
+
+  const makeReport = async () => {
+    if (!serverConfig.enabled) {
+      setReport({
+        generatedAt: new Date().toISOString(),
+        source: 'demo',
+        note: '未接服务端：这是页面内置的示例周报',
+        kpis: {},
+        text: '尚未接入服务端，无法生成真实周报。配置 VITE_API_BASE 后这里会按真实埋点与内容统计生成。',
+      })
+      return
+    }
+    setGenerating(true)
+    try {
+      setReport(await generateReport())
+    } catch (err) {
+      show(`周报生成失败：${(err as Error).message}`)
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
       <PageTitle
         kicker="Dashboard"
         title="首页总览"
-        desc="数据来自埋点与日聚合表；实时卡片读当天聚合，趋势图为 7 / 30 天窗口。"
+        desc={live ? '数据来自服务端埋点、内容库与任务队列（7 天窗口）。' : '未接服务端：以下为只读预置样本，仅用于预览版式。'}
         right={
           <>
-            <Segmented
-              value={win}
-              onChange={setWin}
-              options={[
-                { key: '7d', label: '近 7 天' },
-                { key: '30d', label: '近 30 天' },
-              ]}
-            />
-            <AButton icon={<RefreshCw size={13} />} onClick={() => show('数据已刷新 · 刚刚')}>
-              刷新
+            <Segmented value={win} onChange={setWin} options={[{ key: '7d', label: '近 7 天' }, { key: '30d', label: '近 30 天' }]} />
+            <AButton icon={<RefreshCw size={13} />} onClick={() => void load()} disabled={loading}>
+              {loading ? '刷新中…' : '刷新'}
             </AButton>
-            <AButton variant="dark" icon={<Sparkles size={13} />} onClick={() => setReport(true)}>
-              AI 周报
+            <AButton variant="dark" icon={<Sparkles size={13} />} onClick={() => void makeReport()} disabled={generating}>
+              {generating ? '生成中…' : 'AI 周报'}
             </AButton>
           </>
         }
       />
 
-      {/* KPI */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={live ? 'teal' : 'amber'}>{live ? '服务端真实数据' : '预置样本 · 只读'}</Badge>
+        <Badge tone={view.env.model === 'configured' ? 'teal' : 'neutral'}>AI：{view.env.model === 'configured' ? '模型已配置' : '检索模式'}</Badge>
+        <span className="font-mono text-[9.5px] text-admin-muted">生成于 {new Date(view.generatedAt).toLocaleString('zh-CN')}</span>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
-        {data.kpis.map((k, i) => {
+        {kpis.map((k, i) => {
           const Icon = kpiIcons[i]
-          const flat = k.delta === '0%'
           return (
-            <div
-              key={k.label}
-              className={cn(
-                'rounded-[18px] border-1.5 border-ink px-3.5 py-3 shadow-hard-sm transition hover:-translate-y-0.5 hover:shadow-hard-sm',
-                i === 0 ? 'bg-lime' : 'bg-cream',
-              )}
-            >
+            <div key={k.label} className={cn('rounded-[18px] border-1.5 border-ink px-3.5 py-3 shadow-hard-sm', i === 0 ? 'bg-lime' : 'bg-cream')}>
               <div className="flex items-start justify-between gap-2">
                 <p className={cn('text-[10.5px]', i === 0 ? 'text-ink/70' : 'text-admin-muted')}>{k.label}</p>
-                <Icon size={13} className={cn('mt-0.5 shrink-0', i === 0 ? 'text-admin-muted' : 'text-admin-muted')} strokeWidth={1.7} />
+                <Icon size={13} className="mt-0.5 shrink-0 text-admin-muted" strokeWidth={1.7} />
               </div>
               <p className="mt-2 font-display text-[27px] font-extrabold leading-none tracking-tight text-ink">{k.value}</p>
-              <p className="mt-2 flex items-center gap-1 text-[10px]">
-                <span className={cn('flex items-center gap-0.5 font-mono', flat ? 'text-admin-muted' : 'text-admin-teal')}>
-                  {flat ? '—' : <TrendingUp size={9} />} {k.delta}
-                </span>
-                <span className="text-admin-muted">{k.note}</span>
-              </p>
+              <p className="mt-2 text-[10px] text-admin-muted">{k.note}</p>
             </div>
           )
         })}
       </div>
 
-      {/* trend + sources */}
       <div className="grid gap-3 xl:grid-cols-[1.62fr_1fr]">
         <Panel
           kicker="Traffic trend"
           title="访问 / 访客 / AI 会话"
-          desc={data.range}
-          right={
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2.5 text-[10px] text-admin-muted">
-                <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-coral" /> PV
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue" /> UV
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-sm bg-lime" /> AI 会话
-                </span>
-              </div>
-              <span className="rounded-full border border-ink/15 px-2.5 py-1 font-mono text-[9.5px] text-admin-muted">窗口 {data.label}</span>
-            </div>
-          }
-          bodyClassName="pr-2 sm:pr-3"
+          desc={live ? '服务端埋点按日聚合' : '预置样本（未接服务端）'}
+          right={<span className="rounded-full border border-ink/15 px-2.5 py-1 font-mono text-[9.5px] text-admin-muted">{win}</span>}
         >
-          <TrendChart
-            labels={data.labels}
-            series={[
-              { name: 'pv', color: 'rgb(var(--c-coral))', values: data.pv },
-              { name: 'uv', color: 'rgb(var(--c-blue))', values: data.uv },
-            ]}
-            bars={{ values: data.ai, color: 'rgb(var(--c-lime))' }}
-            height={214}
-            labelStep={win === '7d' ? 1 : 5}
-          />
-        </Panel>
-
-        <Panel kicker="Traffic sources" title="来源渠道占比" desc="按会话首次来源归因">
-          <div className="flex flex-col items-center gap-4 sm:flex-row xl:flex-col 2xl:flex-row">
-            <Donut data={sourceShare} centerValue={win === '7d' ? '1.5k' : '5.6k'} centerLabel="VISITS" size={148} thickness={17} />
-            <Legend
-              className="w-full flex-1"
-              data={sourceShare.map((s) => ({ label: s.label, value: `${s.value}%`, color: s.color }))}
+          {days.length ? (
+            <TrendChart
+              labels={days.map((d) => d.date.slice(5))}
+              series={[
+                { name: 'pv', color: 'rgb(var(--c-coral))', values: days.map((d) => d.pv) },
+                { name: 'uv', color: 'rgb(var(--c-blue))', values: days.map((d) => d.uv) },
+              ]}
+              bars={{ values: days.map((d) => d.ai), color: 'rgb(var(--c-lime))' }}
+              height={214}
+              labelStep={days.length > 10 ? 5 : 1}
             />
-          </div>
-          <p className="mt-3 border-t border-dashed border-ink/15 pt-2.5 text-[10px] text-admin-muted">
-            公众号带来的访问环比 <span className="text-admin-teal">+6.2%</span>，小红书收藏率最高。
-          </p>
+          ) : (
+            <EmptyState title="还没有埋点" desc="前台访问后会自动写入 /api/track" />
+          )}
         </Panel>
-      </div>
 
-      {/* top articles + realtime */}
-      <div className="grid gap-3 xl:grid-cols-[1.62fr_1fr]">
-        <Panel
-          kicker="Top articles"
-          title="阅读榜（按累计浏览）"
-          right={
-            <button onClick={() => go('content', 'articles')} className="flex items-center gap-1 text-[10.5px] text-admin-muted transition hover:text-admin-ink">
-              内容管理 <ArrowUpRight size={11} />
-            </button>
-          }
-          bodyClassName="px-0 pb-1 pt-1"
-        >
-          <div>
-            {topArticles.map((a, i) => (
-              <div
-                key={a.id}
-                className={cn('group flex items-center gap-3 px-4 py-2.5 transition hover:bg-lime/20 sm:px-5', i !== 0 && 'border-t border-ink/10')}
-              >
-                <span className="w-5 shrink-0 font-mono text-[10px] text-admin-muted">{a.rank}</span>
-                <div className="min-w-0 flex-1">
-                  <Link to={`/learn/${a.id}`} className="block truncate text-[12px] font-medium text-admin-ink hover:text-admin-danger">
-                    {a.title}
-                  </Link>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    {a.tags.map((t) => (
-                      <span key={t} className="rounded border border-ink/15 px-1.5 py-px text-[9px] text-admin-muted">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <span className="shrink-0 font-mono text-[10.5px] text-admin-muted">{a.views.toLocaleString()}</span>
-                <div className="w-14 shrink-0">
-                  <Meter value={a.ratio} color={i === 0 ? 'rgb(var(--c-coral))' : 'rgb(var(--c-blue))'} />
-                </div>
+        <Panel kicker="Queue" title="内容与任务" desc="待审 / 草稿 / 任务队列">
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { label: '待审留言', value: view.guestbook.pending, hint: '互动审核' },
+              { label: '文章草稿', value: view.content.articles.draft + view.content.articles.pending, hint: '内容管理' },
+              { label: '项目草稿', value: view.content.projects.draft + view.content.projects.pending, hint: '内容管理' },
+              { label: '任务死信', value: view.jobs.dead, hint: '简历解析' },
+            ].map((r) => (
+              <div key={r.label} className="rounded-xl border border-ink/15 bg-paper px-3 py-2.5">
+                <p className="text-[10px] text-admin-muted">{r.label}</p>
+                <p className="mt-1.5 font-display text-[20px] font-extrabold leading-none">{r.value}</p>
+                <p className="mt-1 font-mono text-[9px] text-admin-muted">{r.hint}</p>
               </div>
             ))}
           </div>
+          <div className="mt-3 space-y-1.5 border-t border-dashed border-ink/15 pt-2.5">
+            <button onClick={() => go('review', 'guestbook')} className="flex w-full items-center justify-between text-[10.5px] text-admin-muted hover:text-admin-ink">
+              去审核留言 <ArrowUpRight size={11} />
+            </button>
+            <button onClick={() => go('content', 'articles')} className="flex w-full items-center justify-between text-[10.5px] text-admin-muted hover:text-admin-ink">
+              去内容管理 <ArrowUpRight size={11} />
+            </button>
+            <button onClick={() => go('resume', 'versions')} className="flex w-full items-center justify-between text-[10.5px] text-admin-muted hover:text-admin-ink">
+              去简历版本 <ArrowUpRight size={11} />
+            </button>
+          </div>
+        </Panel>
+      </div>
+
+      <div className="grid gap-3 xl:grid-cols-[1.62fr_1fr]">
+        <Panel kicker="Top pages" title="热门页面（7 天）" right={<span className="font-mono text-[9.5px] text-admin-muted">来自 /api/track</span>}>
+          {view.analytics.topPages.length ? (
+            <div>
+              {view.analytics.topPages.map((p, i) => {
+                const max = view.analytics.topPages[0]?.pv || 1
+                return (
+                  <div key={p.path} className={cn('flex items-center gap-3 py-2.5', i !== 0 && 'border-t border-ink/10')}>
+                    <span className="w-5 shrink-0 font-mono text-[10px] text-admin-muted">{i + 1}</span>
+                    <Link to={p.path} className="min-w-0 flex-1 truncate text-[12px] font-medium hover:text-admin-danger">
+                      {p.path}
+                    </Link>
+                    <span className="shrink-0 font-mono text-[10.5px] text-admin-muted">{p.pv}</span>
+                    <div className="w-14 shrink-0">
+                      <Meter value={(p.pv / max) * 100} color={i === 0 ? 'rgb(var(--c-coral))' : 'rgb(var(--c-blue))'} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <EmptyState title="还没有页面数据" desc="埋点只记录 path / 停留 / 会话哈希" />
+          )}
         </Panel>
 
-        <Panel dark kicker="Realtime" title="实时" desc="每 60 秒更新一次">
+        <Panel dark kicker="Today" title="今日" desc={live ? '服务端记账' : '预置样本'}>
           <div className="grid grid-cols-2 gap-2.5">
             {[
-              { label: '在线', value: realtime.online, icon: Users },
-              { label: '今日 PV', value: realtime.pv, icon: Eye },
-              { label: '今日 UV', value: realtime.uv, icon: Users },
-              { label: '今日 AI', value: realtime.ai, icon: Sparkles },
+              { label: '今日 PV', value: days[days.length - 1]?.pv ?? realtime.pv, icon: Eye },
+              { label: '今日 UV', value: days[days.length - 1]?.uv ?? realtime.uv, icon: Users },
+              { label: '今日 AI', value: view.ai.todayCalls, icon: Sparkles },
+              { label: 'AI 成功率', value: view.ai.successRate === null ? '—' : `${view.ai.successRate}%`, icon: Sparkles },
             ].map((r) => (
               <div key={r.label} className="rounded-xl border border-paper/15 bg-paper/5 px-3 py-2.5">
                 <p className="flex items-center gap-1.5 text-[10px] text-paper/70">
@@ -192,60 +235,50 @@ export default function OverviewPage({
             ))}
           </div>
           <div className="mt-3 flex items-center justify-between border-t border-dashed border-paper/15 pt-2.5 text-[10px] text-paper/70">
-            <span>运行 {realtime.uptime}</span>
-            <span>累计 PV {realtime.totalPv}</span>
+            <span>日配额 {view.ai.quota}</span>
+            <span>Token {view.ai.todayTokens}</span>
           </div>
         </Panel>
       </div>
 
       <AdminModal
-        open={report}
-        onClose={() => setReport(false)}
-        title="AI 周报 · 2026.10.23 — 2026.10.29"
-        desc="由站点数据 + 内容表现自动生成，可直接发到邮箱。"
+        open={Boolean(report)}
+        onClose={() => setReport(null)}
+        title="AI 周报"
+        desc={report?.note ?? '按埋点与内容统计生成'}
         width="max-w-xl"
         footer={
           <>
-            <AButton onClick={() => setReport(false)}>关闭</AButton>
+            <AButton onClick={() => setReport(null)}>关闭</AButton>
             <AButton
               variant="primary"
               onClick={() => {
-                setReport(false)
-                show('周报已发送到 wyxcode@qq.com')
+                if (!report) return
+                void navigator.clipboard?.writeText(report.text).then(() => show('周报正文已复制'))
               }}
             >
-              发送到邮箱
+              复制正文
             </AButton>
           </>
         }
       >
-        <div className="space-y-3 text-[12px] leading-relaxed text-admin-ink/85">
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              ['PV', '1.5k', '+4.8%'],
-              ['UV', '930', '+19.2%'],
-              ['AI 会话', '239', '+0.4%'],
-            ].map(([l, v, d]) => (
-              <div key={l} className="rounded-lg border border-ink/15 bg-paper px-2.5 py-2">
-                <p className="text-[9.5px] text-admin-muted">{l}</p>
-                <p className="mt-0.5 font-display text-[16px] font-bold leading-none">{v}</p>
-                <p className="mt-1 font-mono text-[9px] text-admin-teal">{d}</p>
-              </div>
-            ))}
+        {report ? (
+          <div className="space-y-3 text-[12px] leading-relaxed text-admin-ink/85">
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(report.kpis)
+                .slice(0, 3)
+                .map(([k, v]) => (
+                  <div key={k} className="rounded-lg border border-ink/15 bg-paper px-2.5 py-2">
+                    <p className="text-[9.5px] text-admin-muted">{k}</p>
+                    <p className="mt-0.5 font-display text-[16px] font-bold leading-none">{v}</p>
+                  </div>
+                ))}
+            </div>
+            <p className="whitespace-pre-line">{report.text}</p>
+            <Badge tone={report.source === 'rules' ? 'teal' : 'amber'}>{report.source === 'rules' ? '规则生成（未调用模型）' : '示例'}</Badge>
+            <p className="font-mono text-[9px] text-admin-muted">发送邮件未接入：需邮件服务与账号；可先复制正文手动发送。</p>
           </div>
-          <p>
-            本周 UV 涨幅明显高于 PV，说明「来的人变多了」而不是「老访客刷得更勤」。增长主要来自公众号与小红书的两篇 RAG 长文，阅读时长中位数提升到 2 分 40 秒。
-          </p>
-          <div>
-            <p className="mb-1.5 font-medium">三条建议</p>
-            <ul className="space-y-1.5 text-[11.5px] text-admin-muted">
-              <li>· 把「RAG 工程化」系列在公众号做一次合集，承接新增访客。</li>
-              <li>· 简历下载页转化率 2%，建议在阅读页底部补一个下载入口。</li>
-              <li>· AI 助手 3 条未命中问题已沉淀，补进站点知识库可减少重复问答。</li>
-            </ul>
-          </div>
-          <Badge tone="amber">演示数据 · 生成于 2026-10-30 09:00</Badge>
-        </div>
+        ) : null}
       </AdminModal>
     </div>
   )

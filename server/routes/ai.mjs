@@ -342,7 +342,7 @@ route('POST', '/api/ai/models', async ({ req, res }) => {
   const model = text(body.model, { field: '模型 ID', min: 1, max: 80 })
   const ai = await ensureAiSeed()
   const item = await ai.update((data) => {
-    const record = { id: `m_${Date.now()}`, name, provider, model, enabled: false, isDefault: false, source: 'env', createdAt: new Date().toISOString() }
+    const record = { id: `m_${Date.now()}`, name, provider, model, enabled: false, isDefault: false, source: 'custom', createdAt: new Date().toISOString() }
     data.models.push(record)
     return record
   })
@@ -370,6 +370,50 @@ route('PATCH', '/api/ai/models/:id', async ({ req, res, reqId, params }) => {
   })
   await audit(session.user, 'ai.model.update', params.id, null, { enabled: item.enabled, isDefault: item.isDefault })
   sendJson(res, 200, item)
+})
+
+route('DELETE', '/api/ai/models/:id', async ({ req, res, reqId, params }) => {
+  const session = requireRole(await getSession(req), ROLE_ADMIN)
+  const ai = await ensureAiSeed()
+  const target = (await ai.read()).models.find((m) => m.id === params.id)
+  if (!target) return sendError(res, 404, 'NOT_FOUND', '模型不存在', reqId)
+  if (target.source === 'env') return sendError(res, 422, 'ENV_MODEL_READONLY', '环境变量模型不能删除，请改 .env', reqId)
+  await ai.update((data) => {
+    data.models = data.models.filter((m) => m.id !== params.id)
+    if (target.isDefault) data.models.forEach((m) => (m.isDefault = false))
+  })
+  await audit(session.user, 'ai.model.delete', params.id, null, null)
+  sendJson(res, 200, { ok: true })
+})
+
+/** AI-07：后台标记反馈已处理（审阅闭环） */
+route('PATCH', '/api/ai/feedback/:id', async ({ req, res, reqId, params }) => {
+  const session = requireRole(await getSession(req), ROLE_ADMIN)
+  const body = await readJson(req, 8 * 1024)
+  const ai = await getStores().then((s) => s.ai)
+  const item = await ai.update((data) => {
+    const f = data.feedback.find((x) => x.id === params.id)
+    if (!f) throw Object.assign(new Error('反馈不存在'), { status: 404, code: 'NOT_FOUND' })
+    f.reviewed = body.reviewed !== false
+    f.reviewedAt = new Date().toISOString()
+    return f
+  })
+  await audit(session.user, 'ai.feedback.review', params.id, null, { reviewed: item.reviewed })
+  sendJson(res, 200, item)
+})
+
+route('DELETE', '/api/ai/prompts/:id', async ({ req, res, reqId, params }) => {
+  const session = requireRole(await getSession(req), ['admin', 'editor'])
+  const ai = await ensureAiSeed()
+  const data = await ai.read()
+  const target = data.prompts.find((p) => p.id === params.id)
+  if (!target) return sendError(res, 404, 'NOT_FOUND', '提示词不存在', reqId)
+  if (data.prompts.filter((p) => p.scene === target.scene).length <= 1) return sendError(res, 422, 'LAST_PROMPT', '该场景至少保留一条提示词', reqId)
+  await ai.update((d) => {
+    d.prompts = d.prompts.filter((p) => p.id !== params.id)
+  })
+  await audit(session.user, 'ai.prompt.delete', params.id, null, null)
+  sendJson(res, 200, { ok: true })
 })
 
 route('GET', '/api/ai/prompts', async ({ req, res }) => {

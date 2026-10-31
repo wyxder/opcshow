@@ -26,6 +26,8 @@ export type AnalyticsSummary = {
   avgStaySec?: number
   /** AI 会话轮次（服务端 kind='ai' 计数） */
   aiSessions?: number
+  /** 服务端按日聚合（图表用） */
+  days?: { date: string; pv: number; uv: number; ai: number }[]
   /** 数据口径说明，UI 直接展示，避免把本机样本讲成全站流量 */
   note: string
 }
@@ -131,7 +133,7 @@ type ServerSummary = {
   since?: string | null
   avgStaySec?: number
   aiSessions?: number
-  days?: { ai?: number }[]
+  days?: { date: string; pv?: number; uv?: number; ai?: number }[]
   note?: string
 }
 
@@ -146,6 +148,7 @@ export function mapServerSummary(data: ServerSummary): AnalyticsSummary {
     since: data.since ?? null,
     avgStaySec: data.avgStaySec ?? 0,
     aiSessions: data.aiSessions ?? days.reduce((s, d) => s + (d.ai ?? 0), 0),
+    days: days.map((d) => ({ date: d.date, pv: d.pv ?? 0, uv: d.uv ?? 0, ai: d.ai ?? 0 })),
     note: data.note ?? '真实站点指标 · 无 Cookie 埋点聚合',
   }
 }

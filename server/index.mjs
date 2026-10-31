@@ -20,6 +20,7 @@ import './routes/analytics.mjs'
 import './routes/ai.mjs'
 import './routes/system.mjs'
 import './routes/settings.mjs'
+import './routes/admin.mjs'
 
 const bootAt = Date.now()
 

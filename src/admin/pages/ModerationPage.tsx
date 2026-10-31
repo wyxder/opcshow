@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { approvePending, listPending, rejectPending, type GuestMessage } from '@/services/guestbook'
 import { serverConfig } from '@/services/config'
 import { listFriendRequests, reviewFriendRequest } from '@/services/settings'
+import { contents } from '@/services/content'
 
 type Tab = 'danmaku' | 'guestbook' | 'friends'
 
@@ -67,6 +68,24 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
     loadRequests()
   }, [])
 
+  // 弹幕从内容域 danmaku 读取（真实数据；未接服务端时回退演示种子）
+  const loadDanmaku = () => {
+    if (!serverConfig.enabled) return
+    contents.listAdmin('danmaku').then((list) => {
+      setDanmaku(
+        list.map((d) => {
+          const row = d as unknown as { id: string; user: string; text: string; color: string; status?: string; page?: string; time?: string }
+          const status = row.status === 'published' ? '已通过' : row.status === 'hidden' ? '已拒绝' : '待审'
+          return { id: row.id, user: row.user, text: row.text, color: row.color, page: row.page ?? '/', time: row.time ?? '刚刚', status }
+        }),
+      )
+    })
+  }
+
+  useEffect(() => {
+    loadDanmaku()
+  }, [])
+
   const reviewFriend = async (id: string, status: 'published' | 'hidden') => {
     if (!serverConfig.enabled) return show('未接服务端：友链审核不会保存')
     try {
@@ -78,9 +97,20 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
     }
   }
 
+  const reviewDanmaku = async (id: string, next: 'published' | 'hidden') => {
+    if (!serverConfig.enabled) return show('未接服务端：弹幕审核不会保存')
+    try {
+      await contents.setStatus('danmaku', id, next)
+      setDanmaku((l) => l.map((x) => (x.id === id ? { ...x, status: next === 'published' ? '已通过' : '已拒绝' } : x)))
+      show(next === 'published' ? '弹幕已通过' : '弹幕已拒绝')
+    } catch (err) {
+      show(`审核失败：${(err as Error).message}`)
+    }
+  }
+
   const setGuestDemo = (id: string, status: string) => {
     setGuest((l) => l.map((x) => (x.id === id ? { ...x, status } : x)))
-    show('仅本页演示：留言审核不会保存（真实队列见下方）')
+    show('仅本页演示：预置留言审核不会保存（真实队列见下方）')
   }
 
   const pendingDanmaku = danmaku.filter((d) => d.status === '待审').length
@@ -156,20 +186,29 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
                     <IconButton
                       label="通过"
                       className={cn('hover:border-admin-teal/40 hover:text-admin-teal')}
-                      onClick={() => show('弹幕审核未接入服务端（不会保存）')}
+                      onClick={() => void reviewDanmaku(d.id, 'published')}
                     >
                       <Check size={11} />
                     </IconButton>
                     <IconButton
                       label="拒绝"
                       className="hover:border-coral/60 hover:text-admin-danger"
-                      onClick={() => show('弹幕审核未接入服务端（不会保存）')}
+                      onClick={() => void reviewDanmaku(d.id, 'hidden')}
                     >
                       <X size={11} />
                     </IconButton>
                     <IconButton
                       label="删除"
-                      onClick={() => show('弹幕删除未接入服务端（不会保存）')}
+                      onClick={async () => {
+                        if (!serverConfig.enabled) return show('未接服务端：不能删除')
+                        try {
+                          await contents.setStatus('danmaku', d.id, 'hidden')
+                          setDanmaku((l) => l.filter((x) => x.id !== d.id))
+                          show('弹幕已下线')
+                        } catch (err) {
+                          show(`删除失败：${(err as Error).message}`)
+                        }
+                      }}
                     >
                       <Trash2 size={11} />
                     </IconButton>
@@ -179,10 +218,20 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
               {danmaku.filter((d) => match(d.status, d.user + d.text)).length === 0 && <EmptyState title="没有匹配的弹幕" />}
             </div>
             <div className="flex items-center justify-between border-t border-ink/10 bg-paper px-4 py-2.5">
-              <span className="text-[10px] text-admin-muted">弹幕审核未接入服务端（演示数据，不会保存）</span>
+              <span className="text-[10px] text-admin-muted">通过后出现在前台弹幕墙；拒绝/删除会下架</span>
               <AButton
                 size="sm"
-                onClick={() => show('批量审核未接入服务端（不会保存）')}
+                onClick={async () => {
+                  if (!serverConfig.enabled) return show('未接服务端：批量审核不可用')
+                  try {
+                    const pending = danmaku.filter((d) => d.status === '待审')
+                    for (const d of pending) await contents.setStatus('danmaku', d.id, 'published')
+                    setDanmaku((l) => l.map((x) => (x.status === '待审' ? { ...x, status: '已通过' } : x)))
+                    show(`已通过 ${pending.length} 条`)
+                  } catch (err) {
+                    show(`批量审核失败：${(err as Error).message}`)
+                  }
+                }}
               >
                 全部通过
               </AButton>

@@ -16,7 +16,7 @@ import { audit } from '../lib/auth.mjs'
 import { text, object, oneOf } from '../lib/validate.mjs'
 import { invalidate } from '../ai/indexer.mjs'
 
-const DOMAINS = ['articles', 'projects', 'moments', 'trips', 'tracks', 'friends', 'awards', 'skills', 'resources']
+const DOMAINS = ['articles', 'projects', 'moments', 'trips', 'tracks', 'friends', 'awards', 'skills', 'resources', 'danmaku']
 const STATUSES = ['draft', 'pending', 'published', 'hidden']
 const TRANSITIONS = {
   draft: ['pending', 'published', 'hidden'],

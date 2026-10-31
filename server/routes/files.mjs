@@ -152,9 +152,22 @@ route('POST', '/api/files/:id/visibility', async ({ req, res, reqId, params }) =
   sendJson(res, 200, { id: item.id, visibility: item.visibility })
 })
 
-route('DELETE', '/api/files/:id', async ({ req, res, reqId, params }) => {
+route('DELETE', '/api/files/:id', async ({ req, res, reqId, params, url }) => {
   const session = requireRole(await getSession(req))
   const { files } = await getStores()
+  const permanent = url.searchParams.get('permanent') === '1'
+  if (permanent) {
+    const data = await files.read()
+    const target = data.files.find((f) => f.id === params.id)
+    if (!target) return sendError(res, 404, 'NOT_FOUND', '文件不存在', reqId)
+    await rm(join(UPLOAD_DIR, target.storageKey), { force: true })
+    await files.update((d) => {
+      d.files = d.files.filter((f) => f.id !== params.id)
+      d.shares = d.shares.filter((s) => s.fileId !== params.id)
+    })
+    await audit(session.user, 'files.purge', params.id, null, null)
+    return sendJson(res, 200, { id: params.id, purged: true })
+  }
   const item = await files.update((data) => {
     const f = data.files.find((x) => x.id === params.id)
     if (!f) throw Object.assign(new Error('文件不存在'), { status: 404, code: 'NOT_FOUND' })

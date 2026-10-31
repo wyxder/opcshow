@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AdminShell, { getSection, sections, type SectionKey } from '@/admin/AdminShell'
 import LoginPage from '@/admin/LoginPage'
@@ -8,15 +8,16 @@ import { getSession, logout, type AdminSession } from '@/services/auth'
 import { serverConfig } from '@/services/config'
 import { apiJsonSafe } from '@/services/http'
 import { listPending } from '@/services/guestbook'
-import AiConfigPage from '@/admin/pages/AiConfigPage'
 import AnalyticsPage from '@/admin/pages/AnalyticsPage'
 import ContentPage from '@/admin/pages/ContentPage'
 import FilesAdminPage from '@/admin/pages/FilesAdminPage'
 import ModerationPage from '@/admin/pages/ModerationPage'
 import OverviewPage from '@/admin/pages/OverviewPage'
 import ProfilePage from '@/admin/pages/ProfilePage'
-import ResumeAdminPage from '@/admin/pages/ResumeAdminPage'
 import SettingsPage from '@/admin/pages/SettingsPage'
+// 重页面拆 chunk，避免 Admin 首包超过 50 kB 预算
+const AiConfigPage = lazy(() => import('@/admin/pages/AiConfigPage'))
+const ResumeAdminPage = lazy(() => import('@/admin/pages/ResumeAdminPage'))
 
 export default function AdminApp() {
   const location = useLocation()
@@ -111,7 +112,7 @@ export default function AdminApp() {
       {session?.mode === 'demo' && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border-1.5 border-dashed border-warning/60 bg-warning/10 px-3 py-2 text-[11.5px] text-ink">
           <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-admin-warning">DEMO · 未鉴权</span>
-          <span>当前没有服务端，任何访客都能打开这个后台；所有写操作只改内存，刷新就没了。</span>
+          <span>演示模式：未配置 VITE_API_BASE。列表读本地只读快照，写操作已禁用或明确标注「未接入」；配置后自动切换真实接口。</span>
           <span className="font-mono text-[9.5px] text-ink/45">接入方式：配置 VITE_API_BASE（{serverConfig.authLoginPath}）</span>
         </div>
       )}

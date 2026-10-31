@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-30T15:44:16.004Z",
+  "generatedAt": "2026-10-31T02:37:58.922Z",
   "articles": [
     {
       "id": "rag-engineering",
@@ -2093,6 +2093,88 @@
       "version": 1
     }
   ],
+  "danmaku": [
+    {
+      "id": "d1",
+      "user": "路过的前端",
+      "text": "这个转场好丝滑，做了多久？",
+      "color": "rgb(var(--c-blue))",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "d2",
+      "user": "小羊",
+      "text": "记得吃饭。",
+      "color": "rgb(var(--c-coral))",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "d3",
+      "user": "Lily",
+      "text": "求 RAG 系列的完整代码～",
+      "color": "rgb(var(--c-grape))",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "d4",
+      "user": "陈师兄",
+      "text": "ICCV 加油，等你中稿。",
+      "color": "rgb(var(--c-ink))",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "d5",
+      "user": "阿哲",
+      "text": "下一场黑客松还带你。",
+      "color": "rgb(var(--c-lime))",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "d6",
+      "user": "匿名网友",
+      "text": "第一次看到把评测讲这么清楚的博主。",
+      "color": "rgb(var(--c-blue))",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "d7",
+      "user": "OPC 小编",
+      "text": "杭州分享的回放剪好啦！",
+      "color": "rgb(var(--c-coral))",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "d8",
+      "user": "西交学妹",
+      "text": "学长，本科怎么准备 AI 实习？",
+      "color": "rgb(var(--c-grape))",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "d9",
+      "user": "Kevin",
+      "text": "希望能合作一次 Agent 项目。",
+      "color": "rgb(var(--c-ink))",
+      "status": "published",
+      "version": 1
+    },
+    {
+      "id": "d10",
+      "user": "重庆老乡",
+      "text": "万州人报道，面馆在哪家？",
+      "color": "rgb(var(--c-lime))",
+      "status": "published",
+      "version": 1
+    }
+  ],
   "toolboxGroups": [
     {
       "key": "prompt",
@@ -2105,33 +2187,41 @@
           "title": "RAG 引用约束 Prompt",
           "desc": "强制每句结论绑定 chunk_id，不允许无源回答。",
           "tag": "RAG",
-          "link": "#",
           "stars": 42,
-          "hot": true
+          "hot": true,
+          "updated": "2026.09.20",
+          "license": "CC BY 4.0",
+          "body": "你是站内知识库助手，只依据【检索片段】回答。\n规则：\n1. 不得引入检索片段之外的知识，也不得凭印象补全；\n2. 每个结论后用 [chunk_id] 标注来源，多个来源写成 [c1][c3]；\n3. 片段不足以回答时，直接说「站内没有足够依据」，并推荐最接近的一篇文章；\n4. 不猜测、不补全、不编造链接；不确定的地方明确说「不确定」。\n\n用户问题：{{question}}\n检索片段：{{chunks}}"
         },
         {
           "id": "p2",
           "title": "Judge 评分模板 v3",
           "desc": "带 rubric 与反例的 6 维评分，附 ±0.05 校准方法。",
           "tag": "评测",
-          "link": "#",
-          "stars": 37
+          "stars": 37,
+          "updated": "2026.09.12",
+          "license": "MIT",
+          "body": "你是严格但可解释的评审。按 6 个维度打 1-5 分，每条扣分都要给出原文证据：\n相关性 / 完整性 / 事实准确 / 引用可溯源 / 表达清晰 / 安全性。\n\n只输出 JSON：\n{\"scores\":{\"relevance\":4,\"completeness\":3,\"factuality\":5,\"traceability\":4,\"clarity\":4,\"safety\":5},\n \"total\":25,\n \"deduct\":[{\"dim\":\"completeness\",\"reason\":\"缺少边界条件\",\"quote\":\"原文第 2 段\"}],\n \"verdict\":\"pass\"}\n\n校准方法：同一输入 temperature=0 连跑 3 次取中位数；任意两维差值 > 0.05 判定不稳定，需重写 rubric 而不是调阈值。"
         },
         {
           "id": "p3",
           "title": "Agent 交接文档生成器",
           "desc": "把需求变成「目标/约束/验收」三段式。",
           "tag": "协作",
-          "link": "#",
-          "stars": 28
+          "stars": 28,
+          "updated": "2026.08.30",
+          "license": "CC BY 4.0",
+          "body": "把下面的需求整理成可执行的交接文档，必须包含三段：\n【目标】一句话说明要达成的结果与衡量方式；\n【约束】技术栈 / 时间 / 不可改动范围 / 依赖方；\n【验收】3-5 条可观测的完成标准，每条都能被脚本或人眼验证。\n\n信息不足时列在「待确认」里，不要替需求方做决定。\n\n原始需求：{{requirement}}"
         },
         {
           "id": "p4",
           "title": "多智能体主席合议 Prompt",
           "desc": "5 类专家 + 主席汇总，输出可问责结论。",
           "tag": "Agent",
-          "link": "#",
-          "stars": 31
+          "stars": 31,
+          "updated": "2026.08.18",
+          "license": "CC BY 4.0",
+          "body": "角色：产品 / 工程 / 数据 / 安全 / 用户代表，各自独立给出结论与风险。\n流程：\n① 各角色独立作答，不得互看对方结论；\n② 主席汇总分歧点；\n③ 主席给出最终结论，并标注采纳了谁、否决了谁、为什么。\n\n输出格式：\n共识：……\n分歧：……（每条附两方理由）\n结论：……（可执行、可问责，写明谁在什么时候做什么）"
         }
       ]
     },
@@ -2146,33 +2236,41 @@
           "title": "RRF 融合实现（Python）",
           "desc": "双路召回排名融合，k 可配，30 行搞定。",
           "tag": "RAG",
-          "link": "#",
           "stars": 56,
-          "hot": true
+          "hot": true,
+          "updated": "2026.09.15",
+          "license": "MIT",
+          "body": "def rrf(rankings, k=60, top_n=5):\n    \"\"\"rankings: 多路召回结果，每路是按相关性排序的 id 列表\"\"\"\n    score = {}\n    for ranking in rankings:\n        for rank, doc_id in enumerate(ranking, start=1):\n            score[doc_id] = score.get(doc_id, 0.0) + 1.0 / (k + rank)\n    return sorted(score.items(), key=lambda kv: kv[1], reverse=True)[:top_n]\n\n\n# 用法\nbm25_ids = [\"rag-01\", \"eval-02\", \"agent-03\"]\nvector_ids = [\"eval-02\", \"rag-01\", \"chunk-04\"]\nprint(rrf([bm25_ids, vector_ids]))  # [('eval-02', ...), ('rag-01', ...), ...]"
         },
         {
           "id": "c2",
           "title": "SSE 流式对话 Hook",
           "desc": "断线重连、节流、卸载清理一次处理完。",
           "tag": "React",
-          "link": "#",
-          "stars": 48
+          "stars": 48,
+          "updated": "2026.09.08",
+          "license": "MIT",
+          "body": "export function streamChat(url: string, body: unknown, onDelta: (s: string) => void) {\n  const ctrl = new AbortController()\n  const run = async () => {\n    const res = await fetch(url, { method: 'POST', body: JSON.stringify(body), signal: ctrl.signal })\n    if (!res.body) throw new Error('stream not supported')\n    const reader = res.body.getReader()\n    const decoder = new TextDecoder()\n    let buffer = ''\n    while (true) {\n      const { done, value } = await reader.read()\n      if (done) break\n      buffer += decoder.decode(value, { stream: true })\n      const frames = buffer.split('\\n\\n')\n      buffer = frames.pop() ?? ''\n      for (const frame of frames) {\n        const data = frame.replace(/^data:\\s*/, '')\n        if (!data || data === '[DONE]') continue\n        onDelta(JSON.parse(data).delta ?? '')\n      }\n    }\n  }\n  // 组件卸载 / 用户点「停止」时调用\n  return { run, cancel: () => ctrl.abort() }\n}"
         },
         {
           "id": "c3",
           "title": "Zod 校验的 API Route",
           "desc": "Next.js 统一异常处理 + 类型守卫。",
           "tag": "Node",
-          "link": "#",
-          "stars": 26
+          "stars": 26,
+          "updated": "2026.08.26",
+          "license": "MIT",
+          "body": "import { z } from 'zod'\n\nconst Body = z.object({\n  name: z.string().trim().min(1).max(12),\n  text: z.string().trim().min(1).max(60),\n})\n\nexport async function POST(req: Request) {\n  const parsed = Body.safeParse(await req.json().catch(() => null))\n  if (!parsed.success) {\n    return Response.json(\n      { code: 'INVALID_BODY', message: parsed.error.issues[0].message },\n      { status: 422 },\n    )\n  }\n  try {\n    const created = await repo.create(parsed.data)\n    return Response.json(created, { status: 201 })\n  } catch {\n    return Response.json({ code: 'INTERNAL', message: '服务暂时不可用' }, { status: 500 })\n  }\n}"
         },
         {
           "id": "c4",
           "title": "无限画布视口变换",
           "desc": "坐标转换 + 虚拟化，200 节点不掉帧。",
           "tag": "Canvas",
-          "link": "#",
-          "stars": 33
+          "stars": 33,
+          "updated": "2026.07.30",
+          "license": "MIT",
+          "body": "type Point = { x: number; y: number }\ntype Viewport = { x: number; y: number; scale: number }\n\nexport const toWorld = (p: Point, v: Viewport): Point => ({\n  x: (p.x - v.x) / v.scale,\n  y: (p.y - v.y) / v.scale,\n})\n\nexport const toScreen = (p: Point, v: Viewport): Point => ({\n  x: p.x * v.scale + v.x,\n  y: p.y * v.scale + v.y,\n})\n\n// 以鼠标位置为中心缩放：先求世界坐标，改 scale，再把该点拉回原位\nexport function zoomAt(v: Viewport, pointer: Point, nextScale: number): Viewport {\n  const world = toWorld(pointer, v)\n  return {\n    scale: nextScale,\n    x: pointer.x - world.x * nextScale,\n    y: pointer.y - world.y * nextScale,\n  }\n}"
         }
       ]
     },
@@ -2187,24 +2285,30 @@
           "title": "Paper Brutal 色板",
           "desc": "米白纸感 + 墨黑硬边 + 酸性绿点缀。",
           "tag": "配色",
-          "link": "#",
-          "stars": 64
+          "stars": 64,
+          "updated": "2026.10.02",
+          "license": "CC BY 4.0",
+          "body": ":root {\n  --paper: 250 247 240;  /* 米白纸 */\n  --ink: 22 22 24;       /* 墨黑硬边 */\n  --lime: 200 240 96;    /* 酸性绿点缀 */\n  --coral: 240 112 96;   /* 珊瑚红 */\n  --sky: 96 152 240;\n  --grape: 142 112 220;\n}\n\n/* 硬边卡片：1.5px 边框 + 无模糊阴影，靠位移造\"纸片\"感 */\n.card {\n  border: 1.5px solid rgb(var(--ink));\n  box-shadow: 4px 4px 0 rgb(var(--ink));\n  background: rgb(var(--paper));\n}"
         },
         {
           "id": "d2",
           "title": "卡片硬阴影规范",
           "desc": "2/4/8px 三档硬阴影，hover 位移 3px。",
           "tag": "UI",
-          "link": "#",
-          "stars": 22
+          "stars": 22,
+          "updated": "2026.09.24",
+          "license": "CC BY 4.0",
+          "body": "--shadow-1: 2px 2px 0 rgb(var(--ink));\n--shadow-2: 4px 4px 0 rgb(var(--ink));\n--shadow-3: 8px 8px 0 rgb(var(--ink));\n\n/* 交互规则 */\n静息       → shadow-1\nhover      → translate(-3px,-3px) + shadow-2\nactive     → translate(0,0) + shadow-1（按下有回弹感）\n浮层/弹窗   → shadow-3\n\n注意：硬阴影必须是不透明纯色；带 alpha 的阴影会看起来像脏污，而不是\"纸片\"。"
         },
         {
           "id": "d3",
           "title": "杂志式版式栅格",
           "desc": "12 列非对称栅格，适合信息密度高的首页。",
           "tag": "版式",
-          "link": "#",
-          "stars": 19
+          "stars": 19,
+          "updated": "2026.09.10",
+          "license": "CC BY 4.0",
+          "body": "桌面三栏：236px（目录）/ 1fr（正文）/ 200px（侧栏）；\n正文最大行宽 68ch，超过就分栏，不要靠加大字号撑满；\n标题跨 8 列、正文跨 7 列，留白列专门放批注与图注；\n断点：lg 1024px 以下折成单列，间距统一 16px，不做横向滚动。"
         }
       ]
     },
@@ -2219,24 +2323,32 @@
           "title": "《Building LLM Apps》",
           "desc": "工程视角讲评测与可观测性，第三章反复读。",
           "tag": "书",
-          "link": "#",
-          "stars": 15
+          "stars": 15,
+          "updated": "2026.09.06",
+          "license": "读书笔记",
+          "body": "第 3 章 · 可观测性 读书笔记\n· 评测不是打分，是回归：每次改 Prompt 都要能回答「哪一条变差了」。\n· 日志四件套：request_id / model / latency / token_count，缺一条就无法定位。\n· 线上失败样本要能一键回流到评测集，否则永远在重复踩同一个坑。\n· 灰度不是可选项：先 5% 流量对比，再放量。"
         },
         {
           "id": "r2",
           "title": "Anthropic: Building effective agents",
           "desc": "少即是多，能不用框架就不用框架。",
           "tag": "论文",
-          "link": "#",
-          "stars": 41
+          "stars": 41,
+          "updated": "2026.08.20",
+          "license": "原文链接",
+          "link": "https://www.anthropic.com/research/building-effective-agents",
+          "body": "原文：https://www.anthropic.com/research/building-effective-agents\n\n核心观点：\n· 先用最简单的工作流；只有「步骤无法预先确定」时才上智能体。\n· 工具描述要写得像给新人看的文档，模型才知道什么时候该调用。\n· 能用一个循环解决的问题，不要拆成五个角色互相传话。"
         },
         {
           "id": "r3",
           "title": "Latent Space 播客",
           "desc": "通勤路上听，采访比教程真实。",
           "tag": "播客",
-          "link": "#",
-          "stars": 12
+          "stars": 12,
+          "updated": "2026.08.02",
+          "license": "原文链接",
+          "link": "https://www.latent.space",
+          "body": "https://www.latent.space\n\n为什么听：嘉宾都是把系统真正跑上线的人，踩坑细节比教程真实。\n最近反复听的两期：RAG in production、Evals for agents（都讲了失败案例，比成功案例有用）。"
         }
       ]
     }

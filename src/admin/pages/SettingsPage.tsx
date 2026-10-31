@@ -22,6 +22,7 @@ import { cn, newId } from '@/lib/utils'
 import { serverConfig } from '@/services/config'
 import { apiJson, apiJsonSafe } from '@/services/http'
 import { getSiteSettings, saveSiteSettings } from '@/services/settings'
+import { deleteBackup } from '@/services/admin'
 import { useTheme } from '@/theme/ThemeProvider'
 import { SWATCH_TOKENS } from '@/theme/theme'
 import { siteMeta } from '@/data/site'
@@ -83,6 +84,9 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
         description: site.description ?? cur.description,
         keywords: Array.isArray(site.keywords) ? site.keywords.join(',') : cur.keywords,
         ogImage: site.ogImage ?? cur.ogImage,
+        sitemap: site.sitemap ?? cur.sitemap,
+        structuredData: site.structuredData ?? cur.structuredData,
+        analytics: site.analytics ?? cur.analytics,
       }))
     })
     return () => {
@@ -150,6 +154,9 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
         description: seo.description,
         keywords: seo.keywords.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
         ogImage: seo.ogImage,
+        sitemap: seo.sitemap,
+        structuredData: seo.structuredData,
+        analytics: seo.analytics,
       })
       show('SEO 设置已保存到服务端')
     } catch (err) {
@@ -228,8 +235,22 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <AButton variant="primary" icon={<Check size={12} />} onClick={() => show(`「${current.name}」已保存到本机，前台同步生效（站点缺省主题需服务端下发）`)}>
+                <AButton variant="primary" icon={<Check size={12} />} onClick={() => show(`「${current.name}」已保存到本机`)}>
                   保存当前主题
+                </AButton>
+                <AButton
+                  icon={<DatabaseBackup size={12} />}
+                  onClick={async () => {
+                    if (!serverConfig.enabled) return show('未接服务端：不能下发站点默认主题')
+                    try {
+                      await saveSiteSettings({ defaultTheme: current.id })
+                      show(`已将「${current.name}」设为站点默认主题（新访客生效）`)
+                    } catch (err) {
+                      show(`保存失败：${(err as Error).message}`)
+                    }
+                  }}
+                >
+                  设为站点默认
                 </AButton>
                 <AButton onClick={() => { resetTheme(); show('已恢复默认主题 · 01 纸感极简') }}>恢复默认</AButton>
                 <AButton variant="soft" onClick={() => { followSiteDefault(); show('已取消本机覆盖，回到站点缺省 + 系统偏好') }}>跟随站点默认</AButton>
@@ -495,6 +516,13 @@ Sitemap: ${seo.canonical}/sitemap.xml`}
                       <IconButton label="下载" onClick={() => show('备份文件在服务端 data/backups，浏览器下载未接入')}>
                         <Download size={11} />
                       </IconButton>
+                      <IconButton label="删除" onClick={() => {
+                        if (!serverConfig.enabled) return show('未接服务端：不能删除备份')
+                        if (!window.confirm(`删除备份 ${b.name}？`)) return
+                        void deleteBackup(b.id).then(async () => { await loadBackups(); show('备份已删除') }).catch((err: Error) => show(`删除失败：${err.message}`))
+                      }}>
+                        <Trash2 size={11} />
+                      </IconButton>
                       <AButton size="sm" variant="soft" disabled={b.status !== '成功'} onClick={() => setRestoring(b.name)}>
                         恢复
                       </AButton>
@@ -565,7 +593,7 @@ Sitemap: ${seo.canonical}/sitemap.xml`}
                 variant="danger"
                 className="mt-2 w-full"
                 icon={<Trash2 size={11} />}
-                onClick={() => show('旧备份清理未接入（需存储层删除接口）')}
+                onClick={() => show('旧备份保留策略需外部调度器，未接入；可逐条删除上方备份')}
               >
                 清理过期备份
               </AButton>

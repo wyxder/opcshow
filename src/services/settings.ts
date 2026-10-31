@@ -32,6 +32,9 @@ export type SiteSettings = {
   keywords?: string[]
   ogImage?: string
   defaultTheme?: string
+  sitemap?: boolean
+  structuredData?: boolean
+  analytics?: boolean
   updatedAt?: string
 }
 

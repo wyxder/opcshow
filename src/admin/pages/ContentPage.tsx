@@ -24,7 +24,8 @@ import { serverConfig } from '@/services/config'
 
 type Tab = 'articles' | 'projects' | 'moments'
 type ArticleRow = (typeof adminArticles)[number] & { version?: number }
-type PostRow = (typeof adminPosts)[number]
+type PostRow = (typeof adminPosts)[number] & { status?: string; version?: number; pinned?: boolean }
+type ProjectRow = (typeof adminProjects)[number] & { version?: number; status?: string }
 
 const statusFilters = ['全部', '已发布', '草稿', '待审核']
 /** 演示模式写操作的统一说法：不伪装成功 */
@@ -42,8 +43,11 @@ export default function ContentPage({
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('全部')
   const [articles, setArticles] = useState<ArticleRow[]>(adminArticles)
-  const [projects, setProjects] = useState(adminProjects)
+  const [projects, setProjects] = useState<ProjectRow[]>(adminProjects)
   const [posts, setPosts] = useState<PostRow[]>(adminPosts)
+  const [editingProject, setEditingProject] = useState<ProjectRow | null>(null)
+  const [projectOpen, setProjectOpen] = useState(false)
+  const [projectDraft, setProjectDraft] = useState({ title: '', category: '项目', status: '草稿' })
   const [editing, setEditing] = useState<ArticleRow | null>(null)
   const [creating, setCreating] = useState(false)
   const [draft, setDraft] = useState({ title: '', category: '工程手记', status: '草稿', abstract: '', body: '' })
@@ -53,7 +57,11 @@ export default function ContentPage({
   /** X-02：服务端模式下列表必须读真实数据（含草稿/状态/version），不再用演示种子 */
   const loadArticles = useCallback(async () => {
     if (!serverConfig.enabled) return
-    const list = await contents.listAdmin('articles')
+    const [list, projectList, momentList] = await Promise.all([
+      contents.listAdmin('articles'),
+      contents.listAdmin('projects'),
+      contents.listAdmin('moments'),
+    ])
     setArticles(
       list.map((a) => {
         const row = a as typeof a & { status?: string; comments?: number; words?: number; version?: number }
@@ -67,6 +75,43 @@ export default function ContentPage({
           comments: row.comments ?? 0,
           date: a.date ?? '',
           words: row.words ?? 0,
+          version: row.version,
+        }
+      }),
+    )
+    setProjects(
+      projectList.map((p) => {
+        const row = p as typeof p & { status?: string; version?: number; stack?: string[]; views?: number; stars?: number; updatedAt?: string; motif?: string }
+        return {
+          id: p.id,
+          title: p.title,
+          category: p.category ?? '项目',
+          status: STATUS_LABELS[row.status as keyof typeof STATUS_LABELS] ?? '已发布',
+          featured: Boolean((p as { featured?: boolean }).featured),
+          views: row.views ?? 0,
+          stars: row.stars ?? 0,
+          stack: row.stack ?? [],
+          accent: row.motif ?? 'rgb(var(--c-lime))',
+          updated: (row.updatedAt ?? '').slice(0, 10) || '—',
+          version: row.version,
+        }
+      }),
+    )
+    setPosts(
+      momentList.map((m) => {
+        const row = m as typeof m & { status?: string; version?: number; pinned?: boolean; likes?: number; comments?: number; visibility?: string; tag?: string; text?: string; place?: string; date?: string }
+        return {
+          id: m.id,
+          date: (row.date ?? '').slice(0, 10) || '—',
+          text: row.text ?? '',
+          tag: (row.tag ?? '生活') as PostRow['tag'],
+          visibility: row.visibility ?? '公开',
+          likes: typeof row.likes === 'number' ? row.likes : 0,
+          comments: Array.isArray((m as { comments?: unknown }).comments)
+            ? ((m as { comments: unknown[] }).comments).length
+            : Number((m as unknown as { comments?: number }).comments) || 0,
+          pinned: Boolean(row.pinned),
+          status: row.status ?? 'published',
           version: row.version,
         }
       }),
@@ -132,6 +177,27 @@ export default function ContentPage({
     }
   }
 
+  const saveProject = async () => {
+    if (!projectDraft.title.trim()) return show('项目标题不能为空')
+    if (!serverConfig.enabled) return show(demoNote)
+    try {
+      const id = editingProject?.id ?? newId('project')
+      if (editingProject) {
+        await contents.upsert('projects', id, { title: projectDraft.title, category: projectDraft.category }, editingProject.version)
+        const next = toServerStatus(projectDraft.status)
+        if (next !== toServerStatus(editingProject.status ?? '已发布')) await contents.setStatus('projects', id, next)
+      } else {
+        await contents.create('projects', id, { title: projectDraft.title, category: projectDraft.category, status: toServerStatus(projectDraft.status), stack: [], featured: false })
+      }
+      setProjectOpen(false)
+      setEditingProject(null)
+      await loadArticles()
+      show('项目已保存')
+    } catch (err) {
+      show(`保存失败：${(err as Error).message}`)
+    }
+  }
+
   const publishPost = async () => {
     if (!postText.trim()) return show('先说点什么吧')
     const text = postText.trim()
@@ -169,7 +235,17 @@ export default function ContentPage({
               </AButton>
             )}
             {tab === 'projects' && (
-              <AButton variant="primary" icon={<Plus size={13} />} onClick={() => show('项目创建面板（演示）')}>
+              <AButton
+                variant="primary"
+                icon={<Plus size={13} />}
+                onClick={() => {
+                  setEditingProject(null)
+                  setProjectDraft({ title: '', category: '项目', status: '草稿' })
+                  setProjectOpen(true)
+                }}
+                disabled={!serverConfig.enabled}
+                title={serverConfig.enabled ? '' : '未接服务端：不能新建'}
+              >
                 新建项目
               </AButton>
             )}
@@ -178,7 +254,12 @@ export default function ContentPage({
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {contentStats.map((s) => (
+        {[
+          { label: '已发布内容', value: articles.filter((a) => a.status === '已发布').length + projects.filter((p) => p.status === '已发布').length + posts.filter((p) => p.status === 'published').length, note: '文章 + 项目 + 动态' },
+          { label: '草稿 / 待审', value: articles.filter((a) => a.status !== '已发布').length + projects.filter((p) => p.status !== '已发布').length + posts.filter((p) => p.status !== 'published').length, note: '来自服务端状态' },
+          { label: '文章总浏览', value: articles.reduce((s, a) => s + (a.views || 0), 0).toLocaleString(), note: '后端字段 views' },
+          { label: '项目推荐位', value: String(projects.filter((p) => p.featured).length), note: 'featured=true' },
+        ].map((s) => (
           <div key={s.label} className="flex items-center justify-between rounded-[18px] border-1.5 border-ink bg-cream px-3.5 py-3 shadow-hard-sm">
             <div>
               <p className="text-[10.5px] text-admin-muted">{s.label}</p>
@@ -244,8 +325,12 @@ export default function ContentPage({
                       label="删除"
                       className="hover:border-coral/60 hover:text-admin-danger"
                       onClick={() => {
-                        setArticles((l) => l.filter((x) => x.id !== a.id))
-                        show(`已从列表移除 · ${demoNote}`)
+                        if (!serverConfig.enabled) return show(demoNote)
+                        void contents
+                          .setStatus('articles', a.id, 'hidden')
+                          .then(() => loadArticles())
+                          .then(() => show('已下线（可在服务端重新发布）'))
+                          .catch((err) => show(`下线失败：${(err as Error).message}`))
                       }}
                     >
                       <Trash2 size={12} />
@@ -273,8 +358,12 @@ export default function ContentPage({
                 <button
                   aria-label="首页推荐"
                   onClick={() => {
-                    setProjects((l) => l.map((x) => (x.id === p.id ? { ...x, featured: !x.featured } : x)))
-                    show(p.featured ? '已取消首页推荐' : '已设为首页推荐')
+                    if (!serverConfig.enabled) return show(demoNote)
+                    void contents
+                      .upsert('projects', p.id, { featured: !p.featured }, p.version)
+                      .then(() => loadArticles())
+                      .then(() => show(p.featured ? '已取消首页推荐' : '已设为首页推荐'))
+                      .catch((err) => show(`更新失败：${(err as Error).message}`))
                   }}
                   className={cn('shrink-0 rounded-md p-1 transition', p.featured ? 'text-admin-amber' : 'text-admin-muted/60 hover:text-admin-muted')}
                 >
@@ -298,15 +387,28 @@ export default function ContentPage({
               <div className="mt-3 flex items-center justify-between border-t border-dashed border-ink/15 pt-2.5">
                 <Badge tone={p.status === '已发布' ? 'teal' : 'neutral'}>{p.status}</Badge>
                 <div className="flex items-center gap-1">
-                  <AButton size="sm" variant="soft" onClick={() => show('项目编辑面板（演示）')}>
+                  <AButton
+                    size="sm"
+                    variant="soft"
+                    onClick={() => {
+                      if (!serverConfig.enabled) return show(demoNote)
+                      setEditingProject(p)
+                      setProjectDraft({ title: p.title, category: p.category, status: p.status })
+                      setProjectOpen(true)
+                    }}
+                  >
                     编辑
                   </AButton>
                   <IconButton
                     label="下架"
                     className="hover:border-coral/60 hover:text-admin-danger"
                     onClick={() => {
-                      setProjects((l) => l.filter((x) => x.id !== p.id))
-                      show('项目已下架（演示）')
+                      if (!serverConfig.enabled) return show(demoNote)
+                      void contents
+                        .setStatus('projects', p.id, 'hidden')
+                        .then(() => loadArticles())
+                        .then(() => show('项目已下架'))
+                        .catch((err) => show(`下架失败：${(err as Error).message}`))
                     }}
                   >
                     <Trash2 size={12} />
@@ -353,8 +455,12 @@ export default function ContentPage({
                         <IconButton
                           label={p.pinned ? '取消置顶' : '置顶'}
                           onClick={() => {
-                            setPosts((l) => l.map((x) => (x.id === p.id ? { ...x, pinned: !x.pinned } : x)))
-                            show(p.pinned ? '已取消置顶' : '已置顶')
+                            if (!serverConfig.enabled) return show(demoNote)
+                            void contents
+                              .upsert('moments', p.id, { pinned: !p.pinned }, p.version)
+                              .then(() => loadArticles())
+                              .then(() => show(p.pinned ? '已取消置顶' : '已置顶'))
+                              .catch((err) => show(`置顶失败：${(err as Error).message}`))
                           }}
                         >
                           <Pin size={11} />
@@ -363,8 +469,12 @@ export default function ContentPage({
                           label="删除"
                           className="hover:border-coral/60 hover:text-admin-danger"
                           onClick={() => {
-                            setPosts((l) => l.filter((x) => x.id !== p.id))
-                            show('动态已删除')
+                            if (!serverConfig.enabled) return show(demoNote)
+                            void contents
+                              .setStatus('moments', p.id, 'hidden')
+                              .then(() => loadArticles())
+                              .then(() => show('动态已下线'))
+                              .catch((err) => show(`删除失败：${(err as Error).message}`))
                           }}
                         >
                           <Trash2 size={11} />
@@ -463,8 +573,48 @@ export default function ContentPage({
           <Field label="摘要" className="sm:col-span-2">
             <Textarea value={draft.abstract} onChange={(e) => setDraft({ ...draft, abstract: e.target.value })} rows={2} placeholder="一两句话说明这篇在讲什么" />
           </Field>
-          <Field label="正文（Markdown）" className="sm:col-span-2">
-            <Textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={8} placeholder={'## 小标题\n\n写点什么…'} className="font-mono text-[11.5px]" />
+          <Field label="正文（Markdown）" hint="块编辑器未接入：当前只保存标题/分类/摘要/状态，正文请在 src/data/articles.ts 编辑" className="sm:col-span-2">
+            <Textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={8} placeholder={'正文块编辑器未接入（保存不会写入正文）'} className="font-mono text-[11.5px]" readOnly />
+          </Field>
+        </div>
+      </AdminModal>
+      <AdminModal
+        open={projectOpen}
+        onClose={() => {
+          setProjectOpen(false)
+          setEditingProject(null)
+        }}
+        title={editingProject ? '编辑项目' : '新建项目'}
+        desc="保存后写入 /api/content/projects，重新拉取列表确认"
+        footer={
+          <>
+            <AButton
+              onClick={() => {
+                setProjectOpen(false)
+                setEditingProject(null)
+              }}
+            >
+              取消
+            </AButton>
+            <AButton variant="primary" onClick={saveProject}>
+              保存
+            </AButton>
+          </>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
+          <Field label="项目标题">
+            <Input autoFocus value={projectDraft.title} onChange={(e) => setProjectDraft({ ...projectDraft, title: e.target.value })} placeholder="例如：Agent 评测中台" />
+          </Field>
+          <Field label="状态">
+            <Select value={projectDraft.status} onChange={(e) => setProjectDraft({ ...projectDraft, status: e.target.value })}>
+              {statusFilters.slice(1).map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="分类" className="sm:col-span-2">
+            <Input value={projectDraft.category} onChange={(e) => setProjectDraft({ ...projectDraft, category: e.target.value })} placeholder="项目 / 实习 / 开源" />
           </Field>
         </div>
       </AdminModal>

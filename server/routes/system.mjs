@@ -20,6 +20,7 @@ import { getStores, backupSnapshot, restoreSnapshot } from '../lib/store.mjs'
 import { getSession, requireRole, audit, ROLE_ADMIN } from '../lib/auth.mjs'
 import { text, object } from '../lib/validate.mjs'
 import { invalidate } from '../ai/indexer.mjs'
+import { createVersion } from '../lib/resume.mjs'
 
 const BACKUP_DIR = resolve(env.dataDir, 'backups')
 const startedAt = Date.now()
@@ -108,12 +109,26 @@ route('POST', '/api/resume/parse', async ({ req, res }) => {
   const session = requireRole(await getSession(req))
   const body = object(await readJson(req, 2 * 1024 * 1024))
   const raw = text(body.text ?? body.content ?? '', { field: '简历文本', min: 10, max: 60000 })
-  const job = await pushJob('resume.parse', { chars: raw.length }, async () => ({
-    fileName: body.fileName ? String(body.fileName).slice(0, 120) : 'resume.txt',
-    fields: parseResumeText(raw),
-    extractedAt: new Date().toISOString(),
-    engine: 'local-rules',
-  }))
+  const job = await pushJob('resume.parse', { chars: raw.length }, async () => {
+    const fields = parseResumeText(raw)
+    // 解析结果同时写成一个简历版本，后台「模块 / 版本」两个 Tab 直接可用
+    const modules = fields.map((f) => ({ id: `m_${f.key}`, title: f.key, summary: f.value, items: [], enabled: true }))
+    const version = await createVersion({
+      name: `解析 ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`,
+      note: '简历解析生成',
+      modules,
+      source: 'parse',
+      actor: session.user,
+    })
+    return {
+      fileName: body.fileName ? String(body.fileName).slice(0, 120) : 'resume.txt',
+      fields,
+      modules,
+      versionId: version.id,
+      extractedAt: new Date().toISOString(),
+      engine: 'local-rules',
+    }
+  })
   await audit(session.user, 'resume.parse', job.id, null, { status: job.status })
   sendJson(res, 202, job)
 })
@@ -234,7 +249,7 @@ const openapi = {
     },
   },
   paths: {
-    '/auth/login': { post: { summary: '登录（HttpOnly Cookie）', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['user', 'password'], properties: { user: { type: 'string' }, password: { type: 'string' } } } } } }, responses: { 200: { description: '会话' }, 401: { description: '账号或密码错误', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } } } } },
+    '/auth/login': { post: { summary: '登录（HttpOnly Cookie）', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['user', 'password'], properties: { user: { type: 'string' }, password: { type: 'string' } } } } } }, responses: { 200: { description: '会话' }, 401: { description: '账号或密码错误', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } } } },
     '/auth/logout': { post: { summary: '退出登录', responses: { 200: { description: '已清除 Cookie' } } } },
     '/auth/session': { get: { summary: '当前会话', responses: { 200: { description: '会话' }, 401: { description: '未登录' } } } },
     '/content/{domain}': { get: { summary: '读内容（只返回 published）', parameters: [{ name: 'domain', in: 'path', required: true, schema: { type: 'string' } }, { name: 'cursor', in: 'query', schema: { type: 'string' } }, { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 100 } }], responses: { 200: { description: '数组或分页对象' }, 304: { description: 'ETag 未变化' } } } },
@@ -259,25 +274,45 @@ const openapi = {
     '/ai/chat': {
       post: {
         summary: 'AI 对话（SSE：delta / done / error）',
-        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['message'], properties: { message: { type: 'string' }, context: { type: 'object' }, history: { type: 'array' }, stream: { type: 'boolean' }, sessionId: { type: 'string' } } } } } },
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } },
         responses: { 200: { description: 'text/event-stream' }, 429: { description: '额度或频率限制' }, 503: { description: '模型不可用' } },
       },
     },
-    '/ai/feedback': { post: { summary: '👍/👎 反馈', responses: { 201: { description: '已记录' } } } },
-    '/ai/prompts': { get: { summary: 'Prompt 版本', responses: { 200: { description: '列表' } } } },
-    '/ai/prompts/{id}': { put: { summary: '编辑并升版本', responses: { 200: { description: '新版本号' } } } },
+    '/ai/feedback': {
+      get: { summary: '反馈列表（admin）', responses: { 200: { description: '列表' } } },
+      post: { summary: '👍/👎 反馈', responses: { 201: { description: '已记录' } } },
+    },
+    '/ai/feedback/{id}': { patch: { summary: '标记反馈已审阅', responses: { 200: { description: '反馈' } } } },
+    '/ai/prompts': { get: { summary: 'Prompt 版本' }, post: { summary: '新建 Prompt' } },
+    '/ai/prompts/{id}': { put: { summary: '编辑并升版本' }, delete: { summary: '删除 Prompt' } },
     '/ai/prompts/{id}/rollback': { post: { summary: '回滚上一版', responses: { 200: { description: '新版本号' } } } },
     '/ai/usage': { get: { summary: '真实用量（admin）', responses: { 200: { description: '按日 / 按模型' } } } },
+    '/ai/models': { get: { summary: '模型列表' }, post: { summary: '登记模型' } },
+    '/ai/models/{id}': { patch: { summary: '启停 / 设为默认' }, delete: { summary: '删除模型' } },
     '/ai/eval': { get: { summary: '评测报告', responses: { 200: { description: '报告 JSON' } } } },
     '/resume/parse': { post: { summary: '简历解析任务', responses: { 202: { description: 'job id' } } } },
     '/jobs/{id}': { get: { summary: '任务状态（失败进入 dead）', responses: { 200: { description: 'job' } } } },
     '/admin/backup': { get: { summary: '备份列表' }, post: { summary: '创建快照' } },
     '/admin/backup/{id}/restore': { post: { summary: '恢复快照', responses: { 200: { description: '已恢复' } } } },
     '/admin/metrics': { get: { summary: '运行指标', responses: { 200: { description: 'metrics' } } } },
+    '/admin/overview': { get: { summary: '后台总览', responses: { 200: { description: 'overview' } } } },
+    '/admin/password': { post: { summary: '修改密码', responses: { 200: { description: 'ok' }, 401: { description: '密码错误' } } } },
+    '/admin/security': { get: { summary: '安全信息', responses: { 200: { description: 'security' } } } },
+    '/admin/sessions': { get: { summary: '会话列表', responses: { 200: { description: 'sessions' } } } },
+    '/admin/sessions/{id}': { delete: { summary: '撤销会话', responses: { 200: { description: 'ok' }, 422: { description: '不能撤销当前会话' } } } },
+    '/admin/audit': { get: { summary: '审计日志', responses: { 200: { description: 'audit' } } } },
+    '/admin/report': { post: { summary: '生成周报（规则，非模型）', responses: { 200: { description: 'report' } } } },
+    '/admin/resume': { get: { summary: '简历模块与版本', responses: { 200: { description: 'resume' } } } },
+    '/admin/resume/modules': { put: { summary: '保存简历模块', responses: { 200: { description: 'modules' } } } },
+    '/admin/resume/versions': { post: { summary: '创建简历版本', responses: { 201: { description: 'version' } } } },
+    '/admin/resume/versions/{id}/restore': { post: { summary: '恢复简历版本', responses: { 200: { description: 'modules' } } } },
+    '/admin/resume/versions/{id}': { delete: { summary: '删除简历版本', responses: { 200: { description: 'ok' } } } },
+    '/admin/backup/{id}': { delete: { summary: '删除备份', responses: { 200: { description: 'ok' } } } },
     '/og/{file}.svg': { get: { summary: '文章专属 OG 图', responses: { 200: { description: 'image/svg+xml' } } } },
   },
 }
 
+}
 route('GET', '/api/openapi.json', async ({ res }) => {
   sendJson(res, 200, openapi, { 'Cache-Control': 'public, max-age=3600' })
 })

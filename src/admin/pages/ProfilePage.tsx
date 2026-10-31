@@ -4,6 +4,7 @@ import { profile } from '@/data/site'
 import { newId } from '@/lib/utils'
 import { serverConfig } from '@/services/config'
 import { getProfile, saveProfile } from '@/services/settings'
+import { changePassword, getAudit, getSessions, getSecurity, revokeSession, type AuditRow, type SecurityInfo, type SessionRow } from '@/services/admin'
 import {
   AButton,
   AdminModal,
@@ -62,6 +63,25 @@ export default function ProfilePage({
   const [pwd, setPwd] = useState({ old: '', next: '', confirm: '' })
   const [pwdErr, setPwdErr] = useState('')
   const [danger, setDanger] = useState<null | 'transfer' | 'delete'>(null)
+  const [sessions, setSessions] = useState<SessionRow[]>([])
+  const [security, setSecurity] = useState<SecurityInfo | null>(null)
+  const [audit, setAudit] = useState<AuditRow[]>([])
+  const [pwdBusy, setPwdBusy] = useState(false)
+
+  // 账号 / 安全两个 Tab：会话、安全状态、登录审计都读服务端
+  useEffect(() => {
+    if (!serverConfig.enabled) return
+    let alive = true
+    void Promise.all([getSessions(), getSecurity(), getAudit(30)]).then(([list, info, logs]) => {
+      if (!alive) return
+      setSessions(list)
+      setSecurity(info)
+      setAudit(logs.filter((l) => l.action.startsWith('auth.')))
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   // BE-14：有服务端时读真实资料；没有时保持本地展示，写操作明确提示未接入
   useEffect(() => {
@@ -106,11 +126,42 @@ export default function ProfilePage({
     show('API 令牌管理未接入服务端（不会签发）')
   }
 
-  const savePwd = () => {
+  const savePwd = async () => {
     if (pwd.next.length < 8) return setPwdErr('新密码至少 8 位')
     if (pwd.next !== pwd.confirm) return setPwdErr('两次输入的新密码不一致')
     setPwdErr('')
-    show('密码修改暂未接入服务端（不会保存）')
+    if (!serverConfig.enabled) return show('未接服务端：密码修改不可用')
+    setPwdBusy(true)
+    try {
+      await changePassword({ current: pwd.old, next: pwd.next })
+      setPwd({ old: '', next: '', confirm: '' })
+      setSessions(await getSessions())
+      show('密码已更新，其它设备会话已失效')
+    } catch (err) {
+      setPwdErr((err as Error).message)
+    } finally {
+      setPwdBusy(false)
+    }
+  }
+
+  const dropSession = async (id: string) => {
+    try {
+      await revokeSession(id)
+      setSessions((l) => l.filter((s) => s.id !== id))
+      show('已撤销该会话')
+    } catch (err) {
+      show(`撤销失败：${(err as Error).message}`)
+    }
+  }
+
+  const saveAccount = async () => {
+    if (!serverConfig.enabled) return show('未接服务端：账号信息只读')
+    try {
+      await saveProfile({ email: info.email, handle: info.name })
+      show('账号联系方式已保存（用户名/角色需改环境变量）')
+    } catch (err) {
+      show(`保存失败：${(err as Error).message}`)
+    }
   }
 
   return (
@@ -278,45 +329,48 @@ export default function ProfilePage({
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <Field label="用户名">
-                  <Input defaultValue={profile.handle} />
+                  <Input value={profile.handle} readOnly className="bg-paper text-ink/60" />
                 </Field>
                 <Field label="登录邮箱">
-                  <Input defaultValue={profile.email} />
+                  <Input value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} />
                 </Field>
                 <Field label="角色">
-                  <Input defaultValue="owner（全部权限）" readOnly className="bg-paper text-ink/60" />
+                  <Input value={security?.role ?? '—'} readOnly className="bg-paper text-ink/60" />
                 </Field>
-                <Field label="注册时间">
-                  <Input defaultValue="2025-03-18" readOnly className="bg-paper text-ink/60" />
+                <Field label="账号来源">
+                  <Input value="server/data/users.json" readOnly className="bg-paper text-ink/60" />
                 </Field>
               </div>
               <div className="mt-4 flex gap-2">
-                <AButton variant="primary" onClick={() => show('账号信息未接入服务端（不会保存）')}>保存</AButton>
-                <AButton onClick={() => show('邮件服务未接入（未发送）')}>验证邮箱</AButton>
+                <AButton variant="primary" onClick={() => void saveAccount()}>保存</AButton>
+                <AButton onClick={() => show('邮件服务未接入（需 SMTP/第三方），可先改 .env 账号')}>验证邮箱</AButton>
               </div>
             </Panel>
 
-            <Panel kicker="Sessions" title="登录设备" desc="发现陌生设备可立即下线">
+            <Panel kicker="Sessions" title="登录设备" desc={serverConfig.enabled ? `当前 ${sessions.length} 个会话，可直接撤销其它设备` : '未接服务端：仅展示本机演示数据'}>
               <div className="space-y-2">
-                {[
-                  { icon: Laptop, name: 'Chrome 130 · Windows 11', meta: '西安 · 当前设备 · 113.140.***.21', now: true },
-                  { icon: Smartphone, name: 'Safari · iPhone 15', meta: '西安 · 2 小时前', now: false },
-                  { icon: Laptop, name: 'Edge · macOS', meta: '北京 · 3 天前', now: false },
-                ].map((d, i) => (
-                  <div key={d.name} className="flex items-center gap-2.5 rounded-lg border border-ink/15 px-3 py-2">
-                    <d.icon size={14} className="text-ink/60" />
+                {(serverConfig.enabled ? sessions : []).map((s) => (
+                  <div key={s.id} className="flex items-center gap-2.5 rounded-lg border border-ink/15 px-3 py-2">
+                    <Laptop size={14} className="text-ink/60" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[11.5px] font-medium">{d.name}</p>
-                      <p className="font-mono text-[9.5px] text-ink/60">{d.meta}</p>
+                      <p className="truncate font-mono text-[11px] font-medium">{s.shortId}…</p>
+                      <p className="font-mono text-[9.5px] text-ink/60">创建 {new Date(s.createdAt).toLocaleString('zh-CN')} · 到期 {new Date(s.expiresAt).toLocaleDateString('zh-CN')}</p>
                     </div>
-                    {d.now ? <Badge tone="teal">在线</Badge> : (
-                      <AButton size="sm" variant="soft" onClick={() => show('设备管理未接入服务端（未下线）')}>
+                    {s.current ? (
+                      <Badge tone="teal">当前</Badge>
+                    ) : (
+                      <AButton size="sm" variant="soft" onClick={() => void dropSession(s.id)}>
                         下线
                       </AButton>
                     )}
-                    {i > 0 && <IconButton label="移除记录" onClick={() => show('登录记录未接入服务端（未移除）')}><Trash2 size={12} /></IconButton>}
                   </div>
                 ))}
+                {serverConfig.enabled && sessions.length === 0 && <p className="py-4 text-center text-[11px] text-admin-muted">暂无会话</p>}
+                {!serverConfig.enabled && (
+                  <p className="rounded-lg border border-dashed border-ink/20 px-3 py-4 text-center text-[11px] text-admin-muted">
+                    未接服务端：没有真实会话可展示
+                  </p>
+                )}
               </div>
             </Panel>
           </div>
@@ -373,62 +427,48 @@ export default function ProfilePage({
               </div>
               {pwdErr && <p className="mt-2 text-[10.5px] text-admin-danger">{pwdErr}</p>}
               <div className="mt-3 flex items-center gap-2">
-                <AButton variant="primary" icon={<Lock size={12} />} onClick={savePwd}>
-                  更新密码
+                <AButton variant="primary" icon={<Lock size={12} />} onClick={() => void savePwd()} disabled={pwdBusy}>
+                  {pwdBusy ? '更新中…' : '更新密码'}
                 </AButton>
                 <span className="text-[10px] text-ink/60">建议使用 12 位以上、含符号的密码</span>
               </div>
             </Panel>
 
             <Panel kicker="Tokens" title="API 访问令牌" desc="用于前台读取内容与评测中台同步"
-              right={<AButton size="sm" icon={<Plus size={11} />} onClick={() => setNewToken(true)}>生成</AButton>}
+              right={<AButton size="sm" icon={<Plus size={11} />} onClick={() => show('API 令牌需独立令牌表与权限模型，未接入；当前用 Cookie 会话')}>生成</AButton>}
             >
-              <div className="space-y-2">
-                {tokenList.map((t) => (
-                  <div key={t.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-ink/15 px-3 py-2">
-                    <KeyRound size={13} className="text-ink/60" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11.5px] font-medium">{t.name}</p>
-                      <p className="font-mono text-[9.5px] text-ink/60">{t.prefix}••• · 创建 {t.created} · 最后使用 {t.last}</p>
-                    </div>
-                    <IconButton label="复制令牌" onClick={() => { navigator.clipboard?.writeText(t.prefix); show('已复制本地演示前缀（非真实令牌）') }}>
-                      <Copy size={12} />
-                    </IconButton>
-                    <AButton size="sm" variant="danger" onClick={() => show('令牌管理未接入服务端（未撤销）')}>
-                      撤销
-                    </AButton>
-                  </div>
-                ))}
-              </div>
+              <p className="rounded-lg border border-dashed border-ink/20 px-3 py-4 text-center text-[11px] leading-relaxed text-admin-muted">
+                未接入令牌体系：现有鉴权为 HttpOnly Cookie + RBAC。替代方案：如需外部读取，先加只读 API Key 表与限流。
+              </p>
             </Panel>
 
-            <Panel kicker="Audit log" title="登录日志" flush>
+            <Panel kicker="Audit log" title="登录 / 安全日志" flush>
               <div className="divide-y divide-ink/10">
-                {logins.map((l) => (
-                  <div key={l.time} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-[11px]">
-                    <span className="font-mono text-[10px] text-ink/60">{l.time}</span>
-                    <span className="min-w-0 flex-1 truncate">{l.device}</span>
-                    <span className="text-ink/60">{l.place}</span>
-                    <span className="font-mono text-[9.5px] text-ink/60">{l.ip}</span>
-                    <Status>{l.ok ? '成功' : '已阻止'}</Status>
+                {(serverConfig.enabled ? audit : []).map((l) => (
+                  <div key={l.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-[11px]">
+                    <span className="font-mono text-[10px] text-ink/60">{new Date(l.ts).toLocaleString('zh-CN')}</span>
+                    <span className="min-w-0 flex-1 truncate">{l.actor} · {l.action}</span>
+                    <span className="font-mono text-[9.5px] text-ink/60">{l.target ?? '—'}</span>
                   </div>
                 ))}
+                {serverConfig.enabled && audit.length === 0 && <p className="px-4 py-6 text-center text-[11px] text-admin-muted">还没有安全日志（登录/改密后出现）</p>}
+                {!serverConfig.enabled && <p className="px-4 py-6 text-center text-[11px] text-admin-muted">未接服务端：没有可读审计日志</p>}
               </div>
             </Panel>
           </div>
 
           <div className="space-y-3">
-            <Panel kicker="2FA" title="两步验证">
+            <Panel kicker="2FA" title="两步验证" desc={security?.twoFactor.reason ?? '未接服务端'}>
               <div className="flex items-start justify-between gap-3 rounded-xl bg-paper p-3">
                 <div>
                   <p className="flex items-center gap-1.5 text-[11.5px] font-medium">
                     <ShieldCheck size={13} className="text-admin-teal" /> 验证器 App
                   </p>
-                  <p className="mt-1 text-[10px] leading-relaxed text-ink/60">已绑定 Authenticator，登录时需输入 6 位动态码。</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-ink/60">{security?.twoFactor.available ? '已可开启' : '当前不可开启'}</p>
                 </div>
-                <Toggle on={twoFa} onChange={(v) => { setTwoFa(v); show('仅改本页状态：两步验证未接入服务端') }} label="两步验证" />
+                <Badge tone="amber">未接入</Badge>
               </div>
-              <AButton className="mt-3 w-full" onClick={() => show('恢复码已重新生成')}>
+              <AButton className="mt-3 w-full" onClick={() => show('恢复码需 TOTP 密钥托管，未接入')}>
                 查看恢复码
               </AButton>
             </Panel>
@@ -440,7 +480,7 @@ export default function ProfilePage({
                     <p className="text-[11.5px] font-medium">后台 IP 白名单</p>
                     <p className="text-[9.5px] text-ink/60">仅允许指定网段登录</p>
                   </div>
-                  <Toggle on={ipGuard} onChange={(v) => { setIpGuard(v); show(v ? '白名单已启用' : '白名单已关闭') }} label="IP 白名单" />
+                  <Toggle on={ipGuard} onChange={() => show('IP 白名单需反代层配置（Nginx allow/deny），未接入应用层')} label="IP 白名单" />
                 </div>
                 <Field label="白名单网段">
                   <Input defaultValue="113.140.0.0/16" disabled={!ipGuard} className={ipGuard ? '' : 'opacity-60'} />

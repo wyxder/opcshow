@@ -19,7 +19,7 @@ const tmp = join(root, 'node_modules', '.gen-content')
 const entry = [
   `export { articles } from '${join(srcDir, 'articles.ts').replace(/\\/g, '/')}'`,
   `export { moments, playlist, trips } from '${join(srcDir, 'life.ts').replace(/\\/g, '/')}'`,
-  `export { friends, growthTimeline } from '${join(srcDir, 'me.ts').replace(/\\/g, '/')}'`,
+  `export { friends, growthTimeline, danmakuSeeds } from '${join(srcDir, 'me.ts').replace(/\\/g, '/')}'`,
   `export { projects } from '${join(srcDir, 'projects.ts').replace(/\\/g, '/')}'`,
   `export { awards, education, research, skillGroups, stats, profile, siteMeta } from '${join(srcDir, 'site.ts').replace(/\\/g, '/')}'`,
   `export { resourceFiles, toolboxGroups } from '${join(srcDir, 'work.ts').replace(/\\/g, '/')}'`,
@@ -61,6 +61,7 @@ const snapshot = {
   awards: normalize('awards', data.awards),
   skills: normalize('skills', data.skillGroups),
   resources: normalize('resources', data.resourceFiles),
+  danmaku: normalize('danmaku', data.danmakuSeeds),
   toolboxGroups: data.toolboxGroups ?? [],
   education: data.education ?? [],
   research: data.research ?? [],
@@ -76,6 +77,6 @@ const outFile = join(outDir, 'content.json')
 writeFileSync(outFile, JSON.stringify(snapshot, null, 2), 'utf8')
 
 console.log(`[gen-content] ${outFile}`)
-for (const key of ['articles', 'projects', 'moments', 'trips', 'tracks', 'friends', 'awards', 'skills', 'resources']) {
+for (const key of ['articles', 'projects', 'moments', 'trips', 'tracks', 'friends', 'awards', 'skills', 'resources', 'danmaku']) {
   console.log(`  · ${key}: ${snapshot[key].length}`)
 }

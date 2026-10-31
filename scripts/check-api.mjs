@@ -266,6 +266,75 @@ try {
     else pass('友链申请 → pending → 后台待审')
   }
 
+  /* ---------------------------- 新增：后台 23 Tab ---------------------------- */
+  const overview = await call('/api/admin/overview')
+  if (overview.status !== 200 || !Array.isArray(overview.body.analytics?.days)) fail(`总览接口失败：${overview.status}`)
+  else pass('后台总览 /api/admin/overview（真实计数 + 7 天趋势）')
+
+  const sessions = await call('/api/admin/sessions')
+  const current = sessions.body.find((s) => s.current)
+  if (sessions.status !== 200 || !current) fail('会话列表缺少当前会话')
+  else {
+    const revokeSelf = await call(`/api/admin/sessions/${current.id}`, { method: 'DELETE' })
+    if (revokeSelf.status !== 422) fail(`撤销当前会话应 422，实际 ${revokeSelf.status}`)
+    else pass('会话列表 + 禁止撤销当前会话')
+  }
+
+  const sec = await call('/api/admin/security')
+  if (sec.status !== 200 || sec.body.twoFactor?.available !== false) fail('安全信息缺少 2FA 降级说明')
+  else pass('安全信息（2FA 如实标注不可用）')
+
+  const danmakuList = await call('/api/content/danmaku?scope=admin')
+  const firstDanmaku = danmakuList.body.items?.[0] ?? danmakuList.body[0]
+  if (!firstDanmaku) fail('弹幕列表为空（先跑 npm run gen:content）')
+  else {
+    const approve = await call(`/api/content/danmaku/${firstDanmaku.id}/status`, { method: 'POST', body: JSON.stringify({ status: 'published' }) })
+    const hide = await call(`/api/content/danmaku/${firstDanmaku.id}/status`, { method: 'POST', body: JSON.stringify({ status: 'hidden' }) })
+    if (approve.status !== 200 || hide.status !== 200) fail(`弹幕状态机失败：${approve.status}/${hide.status}`)
+    else pass('弹幕审核走内容状态机（published → hidden）')
+  }
+
+  const modules = [{ id: 'm_test', title: '教育经历', summary: '契约测试模块', items: ['示例'], enabled: true }]
+  const saveModules = await call('/api/admin/resume/modules', { method: 'PUT', body: JSON.stringify({ modules }) })
+  if (saveModules.status !== 200 || saveModules.body.modules?.[0]?.title !== '教育经历') fail(`简历模块保存失败：${saveModules.status}`)
+  else pass('简历模块保存到 resume.json')
+
+  const rvVersion = await call('/api/admin/resume/versions', { method: 'POST', body: JSON.stringify({ name: '契约版本', note: 'check-api', modules }) })
+  if (rvVersion.status !== 201 || !rvVersion.body.id) fail(`简历版本创建失败：${rvVersion.status}`)
+  else {
+    const restore = await call(`/api/admin/resume/versions/${rvVersion.body.id}/restore`, { method: 'POST' })
+    const remove = await call(`/api/admin/resume/versions/${rvVersion.body.id}`, { method: 'DELETE' })
+    if (restore.status !== 200 || remove.status !== 200) fail(`版本恢复/删除失败：${restore.status}/${remove.status}`)
+    else pass('简历版本创建 → 恢复 → 删除')
+  }
+
+  const seoPut = await call('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ sitemap: false, structuredData: true }) })
+  const seoGet = await call('/api/admin/settings')
+  if (seoPut.status !== 200 || seoGet.body.site?.structuredData !== true || seoGet.body.site?.sitemap !== false) fail('SEO 开关未落库')
+  else pass('SEO 开关（sitemap / structuredData）真实落库')
+
+  const purgeSign = await call('/api/files/sign', { method: 'POST', body: JSON.stringify({ name: 'purge.txt', size: 4, type: 'text/plain' }) })
+  if (purgeSign.status !== 200) fail(`清理用签名失败：${purgeSign.status}`)
+  else {
+    const up = await fetch(`${base}${purgeSign.body.uploadUrl}?name=purge.txt`, {
+      method: 'PUT',
+      headers: { Cookie: cookie, 'Content-Type': 'application/octet-stream' },
+      body: Buffer.from('test'),
+    })
+    const uploaded = await up.json().catch(() => ({}))
+    const purge = await call(`/api/files/${uploaded.id}?permanent=1`, { method: 'DELETE' })
+    const after = await call('/api/files?scope=admin')
+    if (purge.status !== 200 || after.body.some((f) => f.id === uploaded.id)) fail('文件彻底删除未生效')
+    else pass('文件彻底删除（磁盘 + 元数据）')
+  }
+
+  // 权限边界：editor 不能改站点设置
+  const editorLogin = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: 'editor', password: EDITOR_PASS }) })
+  const editorCookie = (editorLogin.headers.get('set-cookie') ?? '').split(';')[0]
+  const denied = await fetch(`${base}/api/admin/settings`, { method: 'PUT', headers: { Cookie: editorCookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'x' }) })
+  if (editorLogin.status !== 200 || denied.status !== 403) fail(`editor 权限边界失败：login=${editorLogin.status} put=${denied.status}`)
+  else pass('RBAC：editor 可登录但不能改站点设置（403）')
+
   /* ------------------------------- 任务/备份 ------------------------------ */
   const resume = await call('/api/resume/parse', { method: 'POST', body: JSON.stringify({ fileName: 'resume.txt', text: '晓叶 wyxcode@qq.com 硕士在读 技能 RAG Agent React FastAPI 项目 7 个 指标 0.93' }) })
   if (resume.status !== 202 || resume.body.status !== 'running') fail(`简历解析应 202 running，实际 ${resume.status} ${JSON.stringify(resume.body)}`)
@@ -300,6 +369,18 @@ try {
   if (logout.status !== 200) fail('退出登录失败')
   else pass('退出登录')
 
+  // 改密：错误当前密码 → 401；正确修改后旧口令失效
+  const loginAgain = await call('/api/auth/login', { method: 'POST', body: JSON.stringify({ user: 'admin', password: ADMIN_PASS }) })
+  const wrongPwd = await call('/api/admin/password', { method: 'POST', body: JSON.stringify({ current: 'definitely-wrong', next: 'new-pass-2026' }) })
+  const okPwd = await call('/api/admin/password', { method: 'POST', body: JSON.stringify({ current: ADMIN_PASS, next: 'new-pass-2026' }) })
+  await call('/api/auth/logout', { method: 'POST' })
+  const oldLogin = await call('/api/auth/login', { method: 'POST', body: JSON.stringify({ user: 'admin', password: ADMIN_PASS }) })
+  const newLogin = await call('/api/auth/login', { method: 'POST', body: JSON.stringify({ user: 'admin', password: 'new-pass-2026' }) })
+  if (loginAgain.status !== 200 || wrongPwd.status !== 401 || okPwd.status !== 200 || oldLogin.status !== 401 || newLogin.status !== 200) {
+    fail(`改密流程异常：login=${loginAgain.status} wrong=${wrongPwd.status} ok=${okPwd.status} old=${oldLogin.status} new=${newLogin.status}`)
+  } else pass('修改密码（错误当前密码 401 / 新口令可登录 / 旧口令失效）')
+
+  await call('/api/auth/logout', { method: 'POST' })
   const after = await call('/api/auth/session')
   if (after.status !== 401) fail(`退出后会话仍可用：${after.status}`)
   else pass('退出后会话失效')
