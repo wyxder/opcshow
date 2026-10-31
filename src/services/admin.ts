@@ -40,7 +40,7 @@ const need = (feature: string) => {
 }
 
 export async function getOverview(): Promise<Overview | null> {
-  return serverConfig.enabled ? apiJsonSafe<Overview>('/api/admin/overview') : null
+  return serverConfig.enabled ? apiJsonSafe<Overview>('/api/admin/overview', { cache: 'no-store' }) : null
 }
 
 export async function changePassword(input: { current: string; next: string }): Promise<void> {
@@ -73,7 +73,8 @@ export async function generateReport(): Promise<Report> {
 }
 
 export async function getResumeState(): Promise<ResumeState | null> {
-  return serverConfig.enabled ? apiJsonSafe<ResumeState>('/api/admin/resume') : null
+  // 真实模式下让错误冒泡：页面需要区分「空列表」和「接口失败」
+  return serverConfig.enabled ? apiJson<ResumeState>('/api/admin/resume', { cache: 'no-store' }) : null
 }
 
 export async function saveResumeModules(modules: ResumeModule[]): Promise<ResumeModule[]> {

@@ -12,6 +12,13 @@ export default defineConfig({
   server: {
     port: 5273,
     host: true,
+    // 本地开发建议 VITE_API_BASE=/api：同源代理到后端，HttpOnly Cookie 才能稳定携带
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8787',
+        changeOrigin: false,
+      },
+    },
   },
   build: {
     rollupOptions: {

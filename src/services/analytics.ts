@@ -11,7 +11,7 @@
  */
 import { STORAGE_KEYS, arrayOf, readStored, writeStored } from '@/lib/storage'
 import { newId } from '@/lib/utils'
-import { serverConfig } from './config'
+import { apiUrl, serverConfig } from './config'
 import { apiJsonSafe } from './http'
 
 export type PageView = { path: string; ts: number; session: string; referrer: string }
@@ -55,7 +55,7 @@ let lastAt = 0
 
 function sendTrack(payload: Record<string, unknown>, keepalive = false) {
   if (!serverConfig.enabled) return
-  const url = `${serverConfig.baseUrl}${serverConfig.trackPath}`
+  const url = apiUrl(serverConfig.trackPath)
   const body = JSON.stringify(payload)
   try {
     if (keepalive && navigator.sendBeacon) {

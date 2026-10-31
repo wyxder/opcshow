@@ -7,7 +7,7 @@
  * resolveDownload() 是前台唯一的下载判断口，不要在各处硬写路径。
  */
 import type { ResourceFile } from '@/data/work'
-import { serverConfig } from './config'
+import { apiUrl, serverConfig } from './config'
 import { apiJson, NotSupportedError } from './http'
 
 export type DownloadState =
@@ -17,8 +17,8 @@ export type DownloadState =
 /** 有 url = 文件已放进 public/files 或服务端已签发；没有 = 还在等对象存储（B-05） */
 export function resolveDownload(file: Pick<ResourceFile, 'id' | 'name' | 'url'>): DownloadState {
   if (file.url) {
-    // 服务端返回的是相对路径，前面要补上 baseUrl，否则会打到前端静态站点
-    const href = file.url.startsWith('/api/') ? `${serverConfig.baseUrl}${file.url}` : file.url
+    // 服务端返回的是相对路径，前面要补上 baseUrl（支持 /api 同源前缀）
+    const href = file.url.startsWith('/api/') ? apiUrl(file.url) : file.url
     return { ok: true, href, origin: file.url.startsWith('/api/') ? 'signed' : 'static', label: '下载' }
   }
   return { ok: false, reason: '该文件尚未上传到对象存储（需要 B-05 直传签名），可先邮件索取' }
@@ -48,7 +48,7 @@ export async function requestUploadTicket(input: { name: string; size: number; t
 export async function uploadToTicket(ticket: UploadTicket, file: File, meta: { category: string }): Promise<UploadedFile> {
   if (!serverConfig.enabled) throw new NotSupportedError('文件上传')
   const query = new URLSearchParams({ name: file.name, category: meta.category })
-  const res = await fetch(`${serverConfig.baseUrl}${ticket.uploadUrl}?${query}`, {
+  const res = await fetch(`${apiUrl(ticket.uploadUrl)}?${query}`, {
     method: ticket.method,
     headers: ticket.headers,
     body: file,
@@ -81,11 +81,13 @@ export type ServerShare = {
   expiresAt: string | null
   visits: number
   createdAt: string
+  /** 服务端只返回是否设置密码，不返回哈希 */
+  hasPassword?: boolean
 }
 
 export async function listShares(): Promise<ServerShare[]> {
   if (!serverConfig.enabled) return []
-  return apiJson<ServerShare[]>('/api/files/shares')
+  return apiJson<ServerShare[]>('/api/files/shares', { cache: 'no-store' })
 }
 
 export async function deleteShare(token: string): Promise<void> {
@@ -95,7 +97,7 @@ export async function deleteShare(token: string): Promise<void> {
 
 /** 分享链接的完整地址：服务端给相对路径，这里补 baseUrl */
 export function shareHref(url: string) {
-  return url.startsWith('/api/') ? `${serverConfig.baseUrl}${url}` : url
+  return url.startsWith('/api/') ? apiUrl(url) : url
 }
 
 /* --------------------------------- 文件库 ---------------------------------- */
@@ -118,7 +120,7 @@ export type ServerFile = {
 export async function listFiles(scope: 'public' | 'admin' = 'public'): Promise<ServerFile[]> {
   if (!serverConfig.enabled) return []
   const query = scope === 'admin' ? '?scope=admin' : ''
-  return apiJson<ServerFile[]>(`/api/files${query}`)
+  return apiJson<ServerFile[]>(`/api/files${query}`, scope === 'admin' ? { cache: 'no-store' } : {})
 }
 
 export async function setVisibility(id: string, visibility: 'public' | 'private'): Promise<void> {
@@ -141,6 +143,6 @@ export const resumeAssets = {
   docx: { href: '/files/wyx-resume-2026.docx', name: 'AI全栈开发-晓叶-研2.docx', label: '下载附件（DOCX）' },
   print: { href: '/files/wyx-resume-print.html', name: '简历打印版', label: '下载打印版（HTML）' },
   markdown: { href: '/files/wyx-resume.md', name: '简历 Markdown', label: 'Markdown' },
-  /** 服务端 PDF 渲染的预留接入点：换成 `${serverConfig.baseUrl}/api/resume.pdf` 即可 */
-  pdf: serverConfig.enabled ? `${serverConfig.baseUrl}/api/resume.pdf` : null,
+  /** 服务端 PDF 渲染的预留接入点：换成 apiUrl('/api/resume.pdf') 即可 */
+  pdf: serverConfig.enabled ? apiUrl('/api/resume.pdf') : null,
 } as const

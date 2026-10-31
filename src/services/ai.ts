@@ -6,7 +6,7 @@
  *   请求失败 / 超时 / 未配置 → 自动落回「预置问答」（AI10），站点照常可用、不白屏
  * 每次回答都带 source，UI 用它区分「实时模型」与「预置问答」，不冒充模型能力。
  */
-import { serverConfig } from './config'
+import { apiUrl, serverConfig } from './config'
 import { apiJsonSafe } from './http'
 import { articleMeta } from '@/data/articles.index'
 
@@ -193,7 +193,7 @@ export const remoteProvider: AiChatProvider = {
     }
 
     const attempt = async () => {
-      const res = await fetch(`${serverConfig.baseUrl}${serverConfig.aiChatPath}`, {
+      const res = await fetch(apiUrl(serverConfig.aiChatPath), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { getSiteSettings } from '@/services/settings'
+import { getPublicSiteSettings } from '@/services/settings'
 import {
   DEFAULT_THEME,
   applyTheme,
@@ -40,7 +40,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isPersonalChoice) return
     let alive = true
-    getSiteSettings().then((site) => {
+    getPublicSiteSettings().then((site) => {
       if (!alive || !site?.defaultTheme || !isThemeId(site.defaultTheme)) return
       setThemeState((cur) => (cur === site.defaultTheme ? cur : (site.defaultTheme as ThemeId)))
     })

@@ -1878,12 +1878,11 @@
       "title": "RAG 技术",
       "color": "lime",
       "level": 92,
-      "summary": "文档切片、分块策略、Embedding 向量库、Top-K 召回重排，具备来源追溯与问题排查能力。",
-      "points": [
-        "切片/分块策略",
-        "双路召回 + RRF 融合",
-        "来源追溯与引用",
-        "RAGAS 四维评测"
+      "summary": "文档切片、双路召回与来源追溯，把知识库问答做到可评测、可排查。",
+      "proofs": [
+        { "value": "92%", "label": "客服系统检索命中率" },
+        { "value": "0.93", "label": "Recall@5（200 条评测集）" },
+        { "value": "250+", "label": "PDF 文档自动入库" }
       ],
       "id": "skills-1",
       "status": "published",
@@ -1894,12 +1893,11 @@
       "title": "Agent 开发",
       "color": "coral",
       "level": 94,
-      "summary": "Harness、Multi-Agent、RSI 自进化、MCP/Skills 模块化、Coze 智能体的完整实践。",
-      "points": [
-        "ReAct / Tool Calling",
-        "多智能体合议",
-        "Skills 模块化沉淀",
-        "自进化回归闭环"
+      "summary": "Multi-Agent 协作、RSI 自进化与 MCP / Skills 模块化，做过完整闭环。",
+      "proofs": [
+        { "value": "16", "label": "RSI 评测中台接口" },
+        { "value": "42", "label": "自进化回归用例" },
+        { "value": "5 类", "label": "多智能体专家评审" }
       ],
       "id": "skills-2",
       "status": "published",
@@ -1910,12 +1908,11 @@
       "title": "全栈开发",
       "color": "blue",
       "level": 88,
-      "summary": "Python、Java、Vue、uni-app，拥有 H5 / Android / Harmony / 小程序跨端落地经验。",
-      "points": [
-        "React / Vue 双栈",
-        "Spring Cloud + Dubbo3",
-        "FastAPI / LangGraph",
-        "多端适配"
+      "summary": "React / Vue 双栈与 Java 微服务，H5、Android、Harmony、小程序都落过地。",
+      "proofs": [
+        { "value": "4 个", "label": "微服务独立部署" },
+        { "value": "200→20ms", "label": "缓存优化后响应" },
+        { "value": "90%+", "label": "低代码生成生效率" }
       ],
       "id": "skills-3",
       "status": "published",
@@ -1926,12 +1923,11 @@
       "title": "评测迭代",
       "color": "grape",
       "level": 86,
-      "summary": "构建业务量化指标与数据集，用 badcase、人工校验和埋点反馈驱动产品迭代。",
-      "points": [
-        "指标体系设计",
-        "LLM-as-a-Judge",
-        "人工校准集",
-        "A/B 盲测"
+      "summary": "用指标体系、评测集与盲测驱动迭代，让「变好」这件事可以被验证。",
+      "proofs": [
+        { "value": "22", "label": "LLM-as-Judge 指标" },
+        { "value": "200 条", "label": "8 类场景评测集" },
+        { "value": "0.72→0.93", "label": "Recall@5 提升" }
       ],
       "id": "skills-4",
       "status": "published",
@@ -1942,12 +1938,11 @@
       "title": "大模型原理",
       "color": "rose",
       "level": 82,
-      "summary": "LLM、Transformer、MoE、GRPO、VLM、LoRA 微调与多模态，理解幻觉与能力边界。",
-      "points": [
-        "Transformer / MoE",
-        "LoRA 微调",
-        "VLM 多模态",
-        "上下文窗口管理"
+      "summary": "Transformer / MoE / VLM 与 LoRA 微调，理解幻觉与能力边界再做产品。",
+      "proofs": [
+        { "value": "90.25%", "label": "微表情 UF1（SOTA）" },
+        { "value": "89.45%", "label": "微表情识别 ACC" },
+        { "value": "1 篇", "label": "CCF-A 论文在投" }
       ],
       "id": "skills-5",
       "status": "published",
@@ -1958,12 +1953,11 @@
       "title": "AI 编程",
       "color": "sky",
       "level": 96,
-      "summary": "深度使用 Codex、WorkBuddy 等工具，快速部署 Demo 并上线，保持良好代码风格。",
-      "points": [
-        "快速原型到上线",
-        "7 款付费产品",
-        "开源 20+ 项目",
-        "Debug 与重构"
+      "summary": "用 Codex / WorkBuddy 把原型快速推到线上，同时守住代码风格与可维护性。",
+      "proofs": [
+        { "value": "7 款", "label": "AI 付费产品上线" },
+        { "value": "20+", "label": "开源项目" },
+        { "value": "355 条", "label": "AI 教程 / 开源内容" }
       ],
       "id": "skills-6",
       "status": "published",

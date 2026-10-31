@@ -26,6 +26,18 @@ route('GET', '/api/profile', async ({ res }) => {
   sendJson(res, 200, saved.profile ?? seed.profile ?? null, { 'Cache-Control': 'public, max-age=60' })
 })
 
+/**
+ * 公开站点设置：主题/SEO 等前台只读字段。
+ * 此前前台误用 /api/admin/settings，未登录会稳定 401，控制台报错。
+ */
+route('GET', '/api/settings', async ({ res }) => {
+  const { settings, content } = await getStores()
+  const [saved, seed] = await Promise.all([settings.read(), content.read()])
+  const site = saved.site ?? seed.siteMeta ?? null
+  const safe = site ? pick(site, SITE_FIELDS) : null
+  sendJson(res, 200, { site: safe }, { 'Cache-Control': 'public, max-age=60' })
+})
+
 route('PUT', '/api/admin/profile', async ({ req, res, reqId }) => {
   const session = requireRole(await getSession(req), ['admin'])
   const body = object(await readJson(req, 256 * 1024))

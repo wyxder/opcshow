@@ -1,4 +1,4 @@
-import { serverConfig } from './config'
+import { apiUrl, serverConfig } from './config'
 
 /** 统一的接口错误：UI 只需要区分「网络/服务不可用」和「业务失败」两类。 */
 export class ApiError extends Error {
@@ -34,7 +34,7 @@ export async function apiJson<T>(path: string, init: FetchInit = {}): Promise<T>
   const controller = new AbortController()
   const timer = window.setTimeout(() => controller.abort(), init.timeoutMs ?? serverConfig.requestTimeoutMs)
   try {
-    const res = await fetch(`${serverConfig.baseUrl}${path}`, {
+    const res = await fetch(apiUrl(path), {
       ...init,
       signal: controller.signal,
       credentials: 'include',

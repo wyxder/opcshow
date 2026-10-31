@@ -45,6 +45,8 @@ export interface ContentRepository {
   upsert: (domain: ContentDomain, id: string, payload: unknown, version?: number) => Promise<unknown>
   /** 状态机（B3）：草稿 → 待审 → 已发布 → 已隐藏 */
   setStatus: (domain: ContentDomain, id: string, status: PublishStatus) => Promise<unknown>
+  /** 删除（服务端为软删除：状态置为 hidden，仍可重新发布） */
+  remove: (domain: ContentDomain, id: string) => Promise<unknown>
 }
 
 export type DomainData = {
@@ -90,6 +92,9 @@ export const localContent: ContentRepository = {
   async setStatus() {
     throw new NotSupportedError('发布状态变更')
   },
+  async remove() {
+    throw new NotSupportedError('内容删除')
+  },
 }
 
 export const remoteContent: ContentRepository = {
@@ -100,8 +105,10 @@ export const remoteContent: ContentRepository = {
     return data ?? (localSnapshot[domain] as DomainData[K])
   },
   async listAdmin<K extends ContentDomain>(domain: K): Promise<DomainData[K]> {
-    const data = await apiJsonSafe<{ items: DomainData[K] }>(`/api/content/${domain}?scope=admin&limit=200`)
-    return data?.items ?? (localSnapshot[domain] as DomainData[K])
+    // 后台列表失败必须显式报错：静默回落到本地快照会让「删除/发布」看起来生效了但没有落库。
+    // no-store：写操作后立刻重新拉取，避免 30s HTTP 缓存把旧 version 带回来触发 409。
+    const data = await apiJson<{ items: DomainData[K] }>(`/api/content/${domain}?scope=admin&limit=200`, { cache: 'no-store' })
+    return data.items
   },
   create: (domain, id, payload) => apiJson<{ id: string; version: number; status: PublishStatus }>('/api/content', { method: 'POST', body: JSON.stringify({ domain, id, payload }) }),
   upsert: (domain, id, payload, version) =>
@@ -112,6 +119,7 @@ export const remoteContent: ContentRepository = {
     }),
   setStatus: (domain, id, status) =>
     apiJson(`/api/content/${domain}/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
+  remove: (domain, id) => apiJson(`/api/content/${domain}/${id}`, { method: 'DELETE' }),
 }
 
 /** 服务端未配置时直接用本地快照，页面永远拿得到数据 */

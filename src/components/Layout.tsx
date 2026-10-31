@@ -678,7 +678,8 @@ function Footer() {
               <FooterNavSection key={item.key} item={item} compact />
             ))}
           </div>
-          <div className="hidden grid-cols-4 gap-6 lg:grid lg:col-span-3">
+          {/* 桌面端 5 个分组各占一列，避免「05 我的」被挤到 04 生活右侧 / 换行错位 */}
+          <div className="hidden grid-cols-5 gap-5 lg:grid lg:col-span-3">
             {navItems.map((item) => (
               <FooterNavSection key={item.key} item={item} />
             ))}

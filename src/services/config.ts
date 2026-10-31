@@ -30,3 +30,13 @@ export const serverConfig = {
 } as const
 
 export type ServerConfig = typeof serverConfig
+
+/**
+ * 拼接接口地址。
+ * baseUrl 可以是绝对地址（http://host:8787），也可以是同源前缀（/api，配合 Vite 代理或反向代理），
+ * 后者不能重复拼成 /api/api/...，所以统一走这里判断。
+ */
+export function apiUrl(path: string) {
+  if (!serverConfig.baseUrl) return path
+  return path.startsWith(serverConfig.baseUrl) ? path : `${serverConfig.baseUrl}${path}`
+}

@@ -24,7 +24,7 @@ import {
   Trophy,
   Utensils,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ProjectModal } from '@/components/ProjectModal'
 import { SmartImage } from '@/components/SmartImage'
@@ -33,7 +33,7 @@ import { CountUp, Marquee, Plate, Reveal, SectionHead, Sticker, Tilt } from '@/c
 import { articleMeta } from '@/data/articles.index'
 import { moments, trips } from '@/data/life'
 import { lookupMedia } from '@/data/media'
-import { awards, education, figures, hobbies, profile, skillGroups, stats } from '@/data/site'
+import { awards, figures, hobbies, profile, skillGroups, stats } from '@/data/site'
 import { featuredProjects, projects } from '@/data/projects'
 import type { Project } from '@/data/projects'
 import { cn, usePrefersReducedMotion } from '@/lib/utils'
@@ -106,13 +106,16 @@ function Hero({ onOpenCard }: { onOpenCard: () => void }) {
               <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-lime/20 blur-3xl" />
               <Reveal delay={0.05}>
                 <div className="relative flex items-center gap-3">
-                  <p className="font-mono text-[9px] tracking-[0.2em] text-ink/45">OPEN TO WORK · AI FULLSTACK · AGENT</p>
+                  <p className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.2em] text-ink/45">
+                    <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime" />
+                    OPEN TO WORK · AI FULLSTACK · AGENT
+                  </p>
                   <span className="h-px flex-1 bg-ink/15" />
-                  <span className="hidden font-hand text-[17px] text-ink/40 sm:block">Hi, 我是晓叶</span>
+                  <span className="hidden font-hand text-[17px] text-ink/45 sm:block">Hi, 我是晓叶</span>
                 </div>
 
-                <div className="mt-5 flex items-end gap-4">
-                  <h1 className="font-display text-[clamp(38px,6.4vw,78px)] font-extrabold leading-[0.94] tracking-[-0.03em]">
+                <div className="mt-5 flex items-end justify-between gap-4">
+                  <h1 className="min-w-0 font-display text-[clamp(40px,6.8vw,80px)] font-extrabold leading-[0.94] tracking-[-0.03em]">
                     把想法
                     <br />
                     做成<span className="marker">能上线</span>
@@ -131,7 +134,12 @@ function Hero({ onOpenCard }: { onOpenCard: () => void }) {
                     <p className="text-[16px] font-extrabold leading-tight">
                       晓叶 <span className="font-mono text-[9.5px] font-normal tracking-[0.2em] text-ink/40">WEI YUNXIAO</span>
                     </p>
-                    <p className="mt-1 text-[12px] text-ink/55">AI 全栈开发 / 智能体开发 · 求职中</p>
+                    <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12px] text-ink/55">
+                      AI 全栈开发 / 智能体开发
+                      <span className="inline-flex items-center gap-1 rounded-full border border-lime/70 bg-lime/30 px-2 py-0.5 text-[10px] font-semibold">
+                        <span className="h-1 w-1 rounded-full bg-coral" /> 求职中
+                      </span>
+                    </p>
                   </div>
                   <div className="hidden h-9 w-px bg-ink/15 sm:block" />
                   <p className="max-w-md text-[13px] leading-relaxed text-ink-soft">
@@ -142,124 +150,161 @@ function Hero({ onOpenCard }: { onOpenCard: () => void }) {
 
               <Reveal delay={0.15}>
                 <div className="mt-6 flex flex-wrap items-center gap-2.5">
-                  <a href="#projects" className="btn-ink group">
+                  <a href="#projects" className="btn-ink group min-h-[42px]">
                     看我的作品
                     <ArrowDownRight size={15} className="transition group-hover:translate-y-0.5" />
                   </a>
-                  <Link to="/work/resume" className="btn group">
+                  <Link to="/work/resume" className="btn group min-h-[42px]">
                     <Download size={14} /> 简历 · 一页纸
                   </Link>
-                  <Link to="/me/guestbook" className="btn border-dashed">
+                  <Link to="/me/guestbook" className="btn min-h-[42px] border-dashed">
                     <MessageCircle size={14} /> 留句话
                   </Link>
                 </div>
+                <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9px] tracking-[0.12em] text-ink/40">
+                  <span>6 个月 · 5 天/周 · 随时到岗</span>
+                  <span className="hidden h-3 w-px bg-ink/15 sm:block" />
+                  <span className="hidden sm:inline">西安 · 可远程 / 出差</span>
+                </p>
               </Reveal>
             </div>
 
-            {/* 右：名片 */}
-            <div className="relative border-t border-ink/15 bg-sand/50 px-4 pb-5 pt-4 sm:px-5 lg:border-l lg:border-t-0">
-              <div className="pointer-events-none absolute inset-0 halftone opacity-[0.12]" />
-              <div className="relative flex items-center justify-between">
-                <span className="font-mono text-[9px] tracking-[0.18em] text-ink/45">ID CARD / 2026</span>
-                <span className="tag bg-lime">
-                  <Sparkles size={11} /> OPEN TO WORK
-                </span>
-              </div>
+            {/* 右：名片 + NOW */}
+            <div className="relative border-t border-ink/15 bg-sand/60 px-4 pb-5 pt-4 sm:px-5 lg:border-l lg:border-t-0">
+              <div className="pointer-events-none absolute inset-0 halftone opacity-[0.1]" />
+              <div className="relative grid gap-4 md:grid-cols-2 lg:grid-cols-1">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[9px] tracking-[0.18em] text-ink/45">ID CARD / 2026</span>
+                    <span className="tag bg-lime">
+                      <Sparkles size={11} /> OPEN TO WORK
+                    </span>
+                  </div>
 
-              <div className="relative mt-3">
-                <div className="absolute -left-1.5 -top-3 z-10">
-                  <Sticker rotate={-8} color="rgb(var(--c-lime))">2026 可实习</Sticker>
-                </div>
-                <Tilt strength={10}>
-                  <button
-                    onClick={onOpenCard}
-                    aria-label="打开晓叶的名片"
-                    className="group relative block w-full rotate-[1deg] overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream p-4 text-left shadow-hard transition-shadow hover:shadow-hard-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-1.5 border-ink bg-lime">
-                        <div className="absolute inset-0 halftone opacity-25" />
-                        <span className="relative font-display text-xl font-extrabold">魏</span>
-                        <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-ink bg-cream font-mono text-[7px] font-bold">
-                          AI
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[16px] font-extrabold leading-tight">晓叶</p>
-                        <p className="mt-0.5 font-mono text-[9px] tracking-[0.16em] text-ink/40">WYX · 2002 · 西安</p>
-                        <p className="mt-1 text-[11px] leading-snug text-ink/55">
-                          信息与通信工程 · 多模态 AI
-                          <br />
-                          AI 全栈 / 智能体开发
-                        </p>
-                      </div>
-                      <ArrowUpRight size={16} className="shrink-0 text-ink/30 transition group-hover:text-ink" />
+                  <div className="relative mt-3">
+                    <div className="absolute -left-1 -top-3 z-10">
+                      <Sticker rotate={-8} color="rgb(var(--c-lime))">2026 可实习</Sticker>
                     </div>
+                    <Tilt strength={8}>
+                      <button
+                        onClick={onOpenCard}
+                        aria-label="打开晓叶的名片"
+                        className="group relative block w-full rotate-[1deg] overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream p-4 text-left shadow-hard transition-shadow hover:shadow-hard-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-1.5 border-ink bg-lime">
+                            <div className="absolute inset-0 halftone opacity-25" />
+                            <span className="relative font-display text-xl font-extrabold">魏</span>
+                            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-ink bg-cream font-mono text-[7px] font-bold">
+                              AI
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[16px] font-extrabold leading-tight">晓叶</p>
+                            <p className="mt-0.5 font-mono text-[9px] tracking-[0.16em] text-ink/40">WYX · 2002 · 西安</p>
+                            <p className="mt-1 text-[11px] leading-snug text-ink/55">
+                              信息与通信工程 · 多模态 AI
+                              <br />
+                              AI 全栈 / 智能体开发
+                            </p>
+                          </div>
+                          <ArrowUpRight size={16} className="shrink-0 text-ink/30 transition group-hover:text-ink" />
+                        </div>
 
-                    <div className="my-2.5 border-t border-dashed border-ink/20" />
+                        <div className="my-2.5 border-t border-dashed border-ink/20" />
 
-                    <div className="space-y-1">
+                        <div className="space-y-1">
+                          {[
+                            ['坐标', '西安 / 重庆万州'],
+                            ['身份', '研二在读 · 2028 届'],
+                            ['方向', 'Agent 评测 · RAG · AIGC'],
+                          ].map(([k, v]) => (
+                            <div key={k} className="flex items-center justify-between gap-3 text-[11px]">
+                              <span className="font-mono text-[9px] tracking-widest text-ink/35">{k}</span>
+                              <span className="truncate font-medium text-ink/75">{v}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-2.5 flex items-end justify-between gap-3 rounded-xl bg-paper p-2">
+                          <div className="min-w-0">
+                            <p className="font-mono text-[9px] tracking-[0.16em] text-ink/35">CONTACT</p>
+                            <p className="mt-0.5 truncate text-[10.5px] font-medium">wyxcode@qq.com</p>
+                            <p className="truncate text-[10.5px] text-ink/55">微信 wyx200265</p>
+                          </div>
+                          <svg viewBox="0 0 96 96" className="h-12 w-12 shrink-0" aria-hidden>
+                            {Array.from({ length: 144 }).map((_, i) => {
+                              const x = i % 12
+                              const y = Math.floor(i / 12)
+                              const on = (x * 13 + y * 29 + ((x * y) % 7)) % 5 < 2
+                              return on ? <rect key={i} x={x * 8} y={y * 8} width="7" height="7" fill="rgb(var(--c-ink))" /> : null
+                            })}
+                            {[
+                              [0, 0],
+                              [64, 0],
+                              [0, 64],
+                            ].map(([x, y], i) => (
+                              <g key={i}>
+                                <rect x={x} y={y} width="24" height="24" fill="none" stroke="rgb(var(--c-ink))" strokeWidth="5" />
+                                <rect x={x + 10} y={y + 10} width="5" height="5" fill="rgb(var(--c-ink))" />
+                              </g>
+                            ))}
+                          </svg>
+                        </div>
+                        <p className="mt-2 text-center font-hand text-[14px] text-ink/45">点开看看我的名片 →</p>
+                      </button>
+                    </Tilt>
+                  </div>
+                </div>
+
+                <div className="relative flex flex-col">
+                  <div className="relative flex-1 -rotate-[1deg] rounded-2xl border-1.5 border-ink bg-cream p-3.5">
+                    <div className="flex items-center justify-between">
+                      <p className="font-mono text-[9.5px] tracking-[0.2em] text-ink/55">NOW · 2026.10</p>
+                      <span className="h-1.5 w-1.5 animate-blink rounded-full bg-coral" />
+                    </div>
+                    <div className="mt-2 space-y-1">
                       {[
-                        ['坐标', '西安 / 重庆万州'],
-                        ['身份', '研二在读 · 2028 届'],
-                        ['方向', 'Agent 评测 · RAG · AIGC'],
+                        ['在写', 'RSI 自进化闭环'],
+                        ['在读', 'Building LLM Apps'],
+                        ['在听', '橘色落日 · 房东的猫'],
                       ].map(([k, v]) => (
-                        <div key={k} className="flex items-center justify-between gap-3 text-[11px]">
-                          <span className="font-mono text-[9px] tracking-widest text-ink/35">{k}</span>
-                          <span className="truncate font-medium text-ink/75">{v}</span>
+                        <div key={k} className="flex items-baseline justify-between gap-3">
+                          <span className="shrink-0 font-mono text-[9.5px] tracking-widest text-ink/50">{k}</span>
+                          <span className="truncate text-[11px] font-medium text-ink/75">{v}</span>
                         </div>
                       ))}
                     </div>
-
-                    <div className="mt-2.5 flex items-end justify-between gap-3 rounded-xl bg-paper p-2">
-                      <div className="min-w-0">
-                        <p className="font-mono text-[9px] tracking-[0.16em] text-ink/35">CONTACT</p>
-                        <p className="mt-0.5 truncate text-[10.5px] font-medium">wyxcode@qq.com</p>
-                        <p className="truncate text-[10.5px] text-ink/55">微信 wyx200265</p>
-                      </div>
-                      <svg viewBox="0 0 96 96" className="h-12 w-12 shrink-0" aria-hidden>
-                        {Array.from({ length: 144 }).map((_, i) => {
-                          const x = i % 12
-                          const y = Math.floor(i / 12)
-                          const on = (x * 13 + y * 29 + ((x * y) % 7)) % 5 < 2
-                          return on ? <rect key={i} x={x * 8} y={y * 8} width="7" height="7" fill="rgb(var(--c-ink))" /> : null
-                        })}
-                        {[
-                          [0, 0],
-                          [64, 0],
-                          [0, 64],
-                        ].map(([x, y], i) => (
-                          <g key={i}>
-                            <rect x={x} y={y} width="24" height="24" fill="none" stroke="rgb(var(--c-ink))" strokeWidth="5" />
-                            <rect x={x + 10} y={y + 10} width="5" height="5" fill="rgb(var(--c-ink))" />
-                          </g>
-                        ))}
-                      </svg>
-                    </div>
-                    <p className="mt-2 text-center font-hand text-[14px] text-ink/45">点开看看我的名片 →</p>
-                  </button>
-                </Tilt>
-              </div>
-
-              <div className="relative mt-4 -rotate-[1deg] rounded-2xl border-1.5 border-ink bg-cream p-3.5">
-                <div className="flex items-center justify-between">
-                  <p className="font-mono text-[9.5px] tracking-[0.2em] text-ink/55">NOW · 2026.10</p>
-                  <span className="h-1.5 w-1.5 animate-blink rounded-full bg-coral" />
-                </div>
-                <div className="mt-2 space-y-1">
-                  {[
-                    ['在写', 'RSI 自进化闭环'],
-                    ['在读', 'Building LLM Apps'],
-                    ['在听', '橘色落日 · 房东的猫'],
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex items-baseline justify-between gap-3">
-                      <span className="shrink-0 font-mono text-[9.5px] tracking-widest text-ink/50">{k}</span>
-                      <span className="truncate text-[11px] font-medium text-ink/75">{v}</span>
-                    </div>
-                  ))}
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* 核心数据带 */}
+          <div className="relative grid grid-cols-2 border-t border-ink/15 bg-paper/50 sm:grid-cols-4">
+            {stats.map((s, i) => (
+              <div
+                key={s.label}
+                className={cn(
+                  'px-4 py-4 sm:px-5',
+                  i % 2 === 1 && 'border-l border-ink/10',
+                  i >= 2 && 'border-t border-ink/10 sm:border-t-0',
+                  i > 0 && 'sm:border-l sm:border-ink/10',
+                )}
+              >
+                <div className="flex items-baseline gap-0.5 font-display text-[clamp(26px,3.2vw,36px)] font-extrabold leading-none">
+                  <CountUp to={s.value} />
+                  <span className="text-[13px] font-semibold text-ink/60">{s.suffix}</span>
+                </div>
+                <span
+                  className="mt-2 block h-1 w-6 rounded-full"
+                  style={{ background: colorMap[['lime', 'coral', 'blue', 'grape'][i % 4]] }}
+                />
+                <p className="mt-2 text-[11.5px] font-medium text-ink/75">{s.label}</p>
+                <p className="mt-0.5 font-mono text-[9px] tracking-wide text-ink/40">{s.note}</p>
+              </div>
+            ))}
           </div>
 
           {/* 底部状态条 */}
@@ -275,33 +320,6 @@ function Hero({ onOpenCard }: { onOpenCard: () => void }) {
           </div>
         </div>
       </Reveal>
-    </section>
-  )
-}
-
-/* --------------------------------- stats ---------------------------------- */
-function StatsStrip() {
-  return (
-    <section className="relative z-10">
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        {stats.map((s, i) => (
-          <Reveal key={s.label} delay={i * 0.06}>
-            <div
-              className={cn(
-                'group h-full rounded-2xl border-1.5 border-ink p-4 transition-transform hover:-translate-y-1',
-                i === 0 ? 'bg-ink text-paper' : 'bg-cream',
-              )}
-            >
-              <div className="flex items-baseline gap-0.5 font-display text-[clamp(28px,3.4vw,38px)] font-extrabold leading-none">
-                <CountUp to={s.value} />
-                <span className={cn('text-[14px] font-semibold', i === 0 ? 'text-lime' : 'text-coral')}>{s.suffix}</span>
-              </div>
-              <p className={cn('mt-2 text-[11.5px] font-medium', i === 0 ? 'text-paper/85' : 'text-ink/70')}>{s.label}</p>
-              <p className={cn('mt-0.5 font-mono text-[9px] tracking-wide', i === 0 ? 'text-paper/35' : 'text-ink/35')}>{s.note}</p>
-            </div>
-          </Reveal>
-        ))}
-      </div>
     </section>
   )
 }
@@ -346,33 +364,33 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
 
   return (
     <section id="projects" className="scroll-mt-28">
-      <div className="relative overflow-hidden rounded-[28px] border-1.5 border-ink bg-ink text-paper shadow-hard">
-        <div className="pointer-events-none absolute inset-0 grid-paper opacity-[0.07]" />
-        <div className="pointer-events-none absolute inset-0 halftone opacity-[0.05]" />
+      <div className="relative overflow-hidden rounded-[28px] border-1.5 border-ink bg-sand shadow-hard">
+        <div className="pointer-events-none absolute inset-0 grid-paper opacity-[0.08]" />
+        <div className="pointer-events-none absolute inset-0 halftone opacity-[0.06]" />
 
         {/* 顶栏 */}
-        <div className="relative flex items-center justify-between gap-3 border-b border-paper/12 px-5 py-4 sm:px-7">
+        <div className="relative flex items-center justify-between gap-3 border-b border-ink/15 px-5 py-4 sm:px-7">
           <div className="flex items-center gap-2.5">
             <span className="h-2 w-2 shrink-0 animate-blink rounded-full bg-lime" />
             <span className="text-[15px] font-extrabold tracking-tight">精选项目</span>
-            <span className="hidden font-mono text-[9px] tracking-[0.22em] text-paper/40 sm:inline">FEATURED PROJECTS</span>
+            <span className="hidden font-mono text-[9px] tracking-[0.22em] text-ink/45 sm:inline">FEATURED PROJECTS</span>
           </div>
           {/* 桌面：PREV / 01 07 / NEXT 三段式；移动端简化为下方指示点 */}
           <div className="hidden items-center gap-2 sm:flex">
             <button
               onClick={() => go(index - 1)}
               aria-label="上一个项目"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-paper/25 text-paper transition hover:border-lime hover:bg-lime hover:text-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-ink/25 text-ink transition hover:border-ink hover:bg-lime hover:text-ink"
             >
               <ArrowLeft size={14} />
             </button>
-            <span className="min-w-[52px] text-center font-mono text-[10px] tracking-[0.14em] text-paper/55">
+            <span className="min-w-[52px] text-center font-mono text-[10px] tracking-[0.14em] text-ink/55">
               {pad2(index + 1)} / {pad2(n)}
             </span>
             <button
               onClick={() => go(index + 1)}
               aria-label="下一个项目"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-paper/25 text-paper transition hover:border-lime hover:bg-lime hover:text-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-ink/25 text-ink transition hover:border-ink hover:bg-lime hover:text-ink"
             >
               <ArrowRight size={14} />
             </button>
@@ -392,7 +410,8 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
           aria-roledescription="轮播"
           aria-label="精选项目，可用左右方向键切换"
         >
-          <div className="relative h-[452px] sm:h-[430px]">
+          {/* 窄屏卡片为单列堆叠、自然高度更高：按实测最大值留出空间，避免底部按钮/封面被裁切 */}
+          <div className="relative h-[560px] min-[480px]:h-[510px] sm:h-[430px]">
             {list.map((p, i) => {
               const rel = relOf(i)
               const ar = Math.abs(rel)
@@ -430,7 +449,7 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
                       isMain && 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime',
                     )}
                   >
-                    <div className="grid overflow-hidden rounded-[22px] border-1.5 border-ink bg-paper text-ink shadow-hard-lg sm:grid-cols-[1.06fr_0.94fr]">
+                    <div className="grid overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream text-ink shadow-hard-lg sm:grid-cols-[1.06fr_0.94fr]">
                       {/* 左：文案 */}
                       <div className="flex flex-col p-5 sm:p-6">
                         <div className="flex items-center justify-between gap-2">
@@ -438,7 +457,7 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
                             {pad2(i + 1)} / {pad2(n)}
                           </span>
                           {p.award && (
-                            <span className="inline-flex max-w-[62%] items-center gap-1 truncate rounded-full border border-lime/60 bg-lime/25 px-2 py-0.5 text-[9.5px] font-medium">
+                            <span className="inline-flex max-w-[62%] items-center gap-1 truncate rounded-full border border-lime/70 bg-paper px-2 py-0.5 text-[9.5px] font-medium text-ink">
                               <Award size={9} className="shrink-0" />
                               <span className="truncate">{p.award}</span>
                             </span>
@@ -451,7 +470,7 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
                         <div className="mt-4 grid grid-cols-3 gap-2">
                           {p.metrics.slice(0, 3).map((m) => (
                             <div key={m.label}>
-                              <p className="text-[clamp(15px,1.9vw,20px)] font-extrabold leading-none">{m.value}</p>
+                              <p className="break-words text-[clamp(14px,1.9vw,20px)] font-extrabold leading-tight">{m.value}</p>
                               <span className="mt-1 block h-[3px] w-6 rounded-full" style={{ background: p.accent }} />
                               <p className="mt-1 truncate font-mono text-[9px] tracking-wide text-ink/45">{m.label}</p>
                             </div>
@@ -460,7 +479,7 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
 
                         <div className="mt-4 flex flex-wrap gap-1.5">
                           {p.tags.slice(0, 3).map((t) => (
-                            <span key={t} className="rounded-full border border-ink/15 bg-cream px-2 py-0.5 font-mono text-[9.5px] text-ink/60">
+                            <span key={t} className="rounded-full border border-ink/15 bg-paper px-2 py-0.5 font-mono text-[9.5px] text-ink/60">
                               {t}
                             </span>
                           ))}
@@ -484,7 +503,7 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
                         <span className="pointer-events-none absolute bottom-2 right-3 font-display text-[46px] font-extrabold leading-none text-ink/10">
                           {pad2(i + 1)}
                         </span>
-                        <span className="absolute left-3 top-3 rounded-full border border-ink/25 bg-cream/90 px-2 py-0.5 font-mono text-[9px] tracking-wide text-ink/65">
+                        <span className="absolute left-3 top-3 rounded-full border border-ink/25 bg-paper/90 px-2 py-0.5 font-mono text-[9px] tracking-wide text-ink/65">
                           {p.category}
                         </span>
                       </div>
@@ -497,10 +516,10 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
         </div>
 
         {/* 移动端指示点 */}
-        <div className="relative flex items-center justify-center gap-1.5 border-t border-paper/12 py-3 sm:hidden">
+        <div className="relative flex items-center justify-center gap-1.5 border-t border-ink/15 py-3 sm:hidden">
           {list.map((item, i) => (
             <button key={item.id} onClick={() => go(i)} className="py-2" aria-label={`切换到 ${item.title}`}>
-              <span className={cn('block h-1.5 rounded-full transition-all duration-300', i === index ? 'w-6 bg-lime' : 'w-1.5 bg-paper/30')} />
+              <span className={cn('block h-1.5 rounded-full transition-all duration-300', i === index ? 'w-6 bg-lime' : 'w-1.5 bg-ink/25')} />
             </button>
           ))}
         </div>
@@ -510,235 +529,81 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
 }
 
 /* --------------------------------- skills --------------------------------- */
-/** 3D 技能图谱的节点落位：x/y 为百分比，z 为景深，size 为节点直径 */
-const skillNodeLayout = [
-  { x: 18, y: 21, z: 28, size: 112 },
-  { x: 70, y: 13, z: 46, size: 120 },
-  { x: 79, y: 57, z: 14, size: 114 },
-  { x: 64, y: 85, z: 34, size: 104 },
-  { x: 26, y: 85, z: 20, size: 104 },
-  { x: 13, y: 55, z: 48, size: 110 },
-] as const
-
-function SkillMap({ active, onChange }: { active: number; onChange: (i: number) => void }) {
-  const stage = useRef<HTMLDivElement>(null)
-
-  const move = (e: { clientX: number; clientY: number }) => {
-    const el = stage.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    const px = (e.clientX - r.left) / r.width - 0.5
-    const py = (e.clientY - r.top) / r.height - 0.5
-    el.style.transform = `rotateX(${-py * 5}deg) rotateY(${px * 7}deg)`
-  }
-
-  const reset = () => {
-    if (stage.current) stage.current.style.transform = 'rotateX(0deg) rotateY(0deg)'
-  }
-
+function SkillCard({ index, skill }: { index: number; skill: (typeof skillGroups)[number] }) {
+  const color = colorMap[skill.color]
   return (
-    <div
-      className="relative hidden h-[440px] overflow-hidden rounded-2xl border-1.5 border-ink bg-cream lg:block"
-      onMouseMove={move}
-      onMouseLeave={reset}
-      role="group"
-      aria-label="3D 技能关系图，选择节点查看详情"
-    >
-      <div className="pointer-events-none absolute inset-0 grid-paper opacity-60" />
-      <div className="pointer-events-none absolute left-4 top-3 font-mono text-[9px] tracking-[0.2em] text-ink/40">SKILL MAP / 3D</div>
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard sm:p-5">
+      <span className="absolute inset-x-0 top-0 h-1.5" style={{ background: color }} />
 
-      <div className="absolute inset-0" style={{ perspective: '1100px' }}>
-        <div
-          ref={stage}
-          className="relative h-full w-full will-change-transform"
-          style={{ transformStyle: 'preserve-3d', transition: 'transform 320ms ease-out' }}
-        >
-          <svg viewBox="0 0 100 100" className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
-            <g fill="none" stroke="rgb(var(--c-ink) / 0.12)">
-              <ellipse cx="50" cy="50" rx="38" ry="29" strokeDasharray="1.4 2.6" />
-              <ellipse cx="50" cy="50" rx="24" ry="38" strokeDasharray="1.4 2.6" />
-            </g>
-            {skillNodeLayout.map((n, i) => (
-              <g key={skillGroups[i].key}>
-                <line
-                  x1="50"
-                  y1="50"
-                  x2={n.x}
-                  y2={n.y}
-                  stroke={colorMap[skillGroups[i].color]}
-                  strokeOpacity={active === i ? 0.85 : 0.28}
-                  strokeWidth={active === i ? 0.44 : 0.28}
-                  strokeDasharray="1.4 1.8"
-                />
-                <circle
-                  cx={n.x}
-                  cy={n.y}
-                  r={active === i ? 1.5 : 0.9}
-                  fill={colorMap[skillGroups[i].color]}
-                  fillOpacity={active === i ? 1 : 0.5}
-                  stroke="none"
-                />
-              </g>
-            ))}
-          </svg>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-mono text-[9px] tracking-[0.18em] text-ink/35">
+            0{index + 1} / {skill.key.toUpperCase()}
+          </p>
+          <h3 className="mt-1.5 flex items-center gap-2 text-[17px] font-extrabold leading-none">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-sm border border-ink/25" style={{ background: color }} />
+            {skill.title}
+          </h3>
+        </div>
+        <span className="shrink-0 rounded-full border border-ink/15 bg-paper px-2 py-1 font-mono text-[9px] tracking-wide text-ink/50">
+          {skill.level}%
+        </span>
+      </div>
 
-          {/* 中心枢纽 */}
-          <div
-            className="absolute left-1/2 top-1/2 z-30 flex h-24 w-24 flex-col items-center justify-center rounded-full border-1.5 border-ink bg-ink text-paper shadow-hard"
-            style={{ transform: 'translate(-50%, -50%) translateZ(70px)' }}
-          >
-            <span className="font-display text-[19px] font-extrabold leading-none text-lime">WYX</span>
-            <span className="mt-1 font-mono text-[8px] tracking-[0.14em] text-paper/55">AI FULLSTACK</span>
+      <p className="mt-2.5 line-clamp-2 text-[11.5px] leading-relaxed text-ink/55">{skill.summary}</p>
+
+      <div className="mt-3 flex-1 space-y-2 border-t border-dashed border-ink/15 pt-3">
+        {skill.proofs.map((p) => (
+          <div key={p.label} className="flex items-baseline justify-between gap-3">
+            <span className="min-w-0 truncate text-[11px] text-ink/60">{p.label}</span>
+            <span className="shrink-0 font-display text-[14px] font-extrabold leading-none">{p.value}</span>
           </div>
+        ))}
+      </div>
 
-          {skillGroups.map((s, i) => {
-            const n = skillNodeLayout[i]
-            const color = colorMap[s.color]
-            const isActive = active === i
-            return (
-              <button
-                key={s.key}
-                type="button"
-                onMouseEnter={() => onChange(i)}
-                onFocus={() => onChange(i)}
-                onClick={() => onChange(i)}
-                aria-pressed={isActive}
-                aria-label={`${s.title}，熟练度 ${s.level}%`}
-                className={cn(
-                  'absolute z-20 flex flex-col items-center justify-center rounded-2xl border-1.5 border-ink p-1 text-center transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
-                  isActive ? 'shadow-hard-sm' : 'hover:shadow-hard-sm',
-                )}
-                style={{
-                  left: `${n.x}%`,
-                  top: `${n.y}%`,
-                  width: n.size,
-                  height: n.size,
-                  transform: `translate(-50%, -50%) translateZ(${n.z}px) scale(${isActive ? 1.06 : 1})`,
-                  background: isActive
-                    ? `color-mix(in srgb, ${color} 30%, rgb(var(--c-surface)))`
-                    : 'rgb(var(--c-surface) / 0.94)',
-                }}
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/25" style={{ background: color }}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-ink/60" />
-                </span>
-                <span className="mt-1 text-[11.5px] font-bold leading-none">{s.title}</span>
-                <span className="mt-1 font-mono text-[8.5px] tracking-wide text-ink/45">{s.level}%</span>
-              </button>
-            )
-          })}
+      <div className="mt-3.5 border-t border-ink/10 pt-2.5">
+        <div className="flex items-center justify-between font-mono text-[8.5px] tracking-[0.14em] text-ink/35">
+          <span>PROFICIENCY</span>
+          <span>{skill.level}%</span>
+        </div>
+        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full border border-ink/10 bg-paper">
+          <div className="h-full rounded-full" style={{ width: `${skill.level}%`, background: color }} />
         </div>
       </div>
-
-      <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-ink/15 bg-paper/80 px-3 py-1 font-mono text-[9px] tracking-wide text-ink/45">
-        移动鼠标改变视角 · 点击节点切换
-      </div>
-    </div>
+    </article>
   )
 }
 
 function SkillsBento() {
-  const [active, setActive] = useState(0)
-  const current = skillGroups[active]
+  const proofCount = skillGroups.reduce((n, s) => n + s.proofs.length, 0)
 
   return (
     <section id="skills" className="scroll-mt-28">
       <SectionHead index="02" title="技能图谱" en="WHAT I DO" desc="不是罗列关键词，是每个方向都有一两个能拿出来的结果。" />
-      <div className="grid gap-3 lg:grid-cols-12">
-        <div className="lg:col-span-7">
-          <SkillMap active={active} onChange={setActive} />
 
-          {/* 移动端：降级为可触摸的技能卡片 */}
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:hidden">
-            {skillGroups.map((s, i) => {
-              const color = colorMap[s.color]
-              return (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => setActive(i)}
-                  aria-pressed={active === i}
-                  className={cn(
-                    'group rounded-2xl border-1.5 border-ink p-3.5 text-left transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
-                    active === i ? 'bg-cream shadow-hard-sm' : 'bg-cream/70',
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 text-[13px] font-bold">
-                      <span className="h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
-                      {s.title}
-                    </span>
-                    <span className="font-mono text-[9.5px] text-ink/40">{s.level}%</span>
-                  </div>
-                  <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full border border-ink/15 bg-paper">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${s.level}%`, background: color }} />
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-[10.5px] leading-relaxed text-ink/50">{s.summary}</p>
-                </button>
-              )
-            })}
-          </div>
-        </div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 rounded-2xl border-1.5 border-ink bg-sand/70 px-4 py-3">
+        <p className="flex items-center gap-2 font-mono text-[9.5px] tracking-[0.16em] text-ink/55">
+          <Sparkles size={13} className="text-ink/60" />
+          SKILL LEDGER · {skillGroups.length} 个方向
+        </p>
+        <p className="font-mono text-[9px] tracking-[0.12em] text-ink/40">
+          {proofCount} 条可验证结果 · 来自上线项目 / 竞赛 / 论文
+        </p>
+      </div>
 
-        <div className="lg:col-span-5">
-          <div className="relative h-full overflow-hidden rounded-2xl border-1.5 border-ink bg-ink p-5 text-paper">
-            <div className="absolute inset-0 halftone opacity-[0.18]" />
-            <div className="relative flex h-full flex-col">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] tracking-[0.2em] text-lime">SKILL / DETAIL</span>
-                <span className="font-mono text-[9px] text-paper/35">0{active + 1} / 0{skillGroups.length}</span>
-              </div>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={current.key}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.25 }}
-                  className="mt-4 flex-1"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-sm" style={{ background: colorMap[current.color] }} />
-                    <h3 className="text-[24px] font-extrabold leading-none">{current.title}</h3>
-                  </div>
-                  <p className="mt-3 text-[12.5px] leading-relaxed text-paper/65">{current.summary}</p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {skillGroups.map((s, i) => (
+          <Reveal key={s.key} delay={i * 0.05} className="h-full">
+            <SkillCard index={i} skill={s} />
+          </Reveal>
+        ))}
+      </div>
 
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {current.points.map((pt, k) => (
-                      <span
-                        key={pt}
-                        className="rounded-full border-1.5 border-ink px-2.5 py-1 text-[10.5px] font-semibold text-ink"
-                        style={{
-                          background: `color-mix(in srgb, ${colorMap[current.color]} 32%, rgb(var(--c-surface)))`,
-                          transform: `rotate(${k % 2 ? 1.6 : -1.6}deg)`,
-                        }}
-                      >
-                        # {pt}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mt-5">
-                    <div className="flex items-center justify-between font-mono text-[9px] tracking-wide text-paper/45">
-                      <span>PROFICIENCY</span>
-                      <span>{current.level}%</span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full border border-paper/15 bg-paper/10">
-                      <motion.div
-                        className="h-full rounded-full"
-                        style={{ background: colorMap[current.color] }}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${current.level}%` }}
-                        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-              <p className="mt-4 font-hand text-[17px] text-paper/40">点节点 / 卡片，换一块技能看 →</p>
-            </div>
-          </div>
-        </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border-1.5 border-ink bg-cream px-4 py-3">
+        <p className="text-[11.5px] text-ink/55">每一条结果都能在下面的项目、简历或论文里找到出处。</p>
+        <a href="#projects" className="inline-flex min-h-[32px] items-center gap-1 rounded-full px-2 font-mono text-[10px] tracking-[0.14em] text-ink/50 transition hover:bg-lime/25 hover:text-ink">
+          看结果落在哪 <ArrowDownRight size={12} />
+        </a>
       </div>
     </section>
   )
@@ -781,7 +646,7 @@ function Honors() {
                 aria-selected={filter === f}
                 onClick={() => setFilter(f)}
                 className={cn(
-                  'rounded-full border px-3 py-1 text-[11.5px] font-medium transition-colors',
+                  'inline-flex min-h-[32px] items-center rounded-full border px-3 text-[11.5px] font-medium transition-colors',
                   filter === f ? 'border-ink bg-lime text-ink' : 'border-ink/15 bg-paper text-ink/55 hover:border-ink/40 hover:text-ink',
                 )}
               >
@@ -854,21 +719,6 @@ function Honors() {
               </p>
               <p className="mt-3 text-[11px] leading-relaxed text-ink/60">{figures.finals2026} 场决赛、5 次上台路演、3 个评委追问：你的付费模型怎么走通？</p>
               <div className="absolute -bottom-3 -right-2 font-display text-[64px] font-extrabold text-ink/10">2026</div>
-            </div>
-            <div className="rounded-2xl border-1.5 border-ink bg-cream p-4">
-              <p className="font-mono text-[9px] tracking-[0.18em] text-ink/35">EDUCATION</p>
-              {education.map((e) => (
-                <div key={e.school} className="mt-2.5 flex items-start gap-2.5 border-t border-dashed border-ink/12 pt-2.5 first:border-0 first:pt-0">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-ink/20 bg-paper">
-                    <GraduationCap size={12} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-[12px] font-semibold">{e.school}</p>
-                    <p className="mt-0.5 truncate text-[10.5px] text-ink/50">{e.degree}</p>
-                    <p className="font-mono text-[9px] text-ink/35">{e.period}</p>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -1035,7 +885,7 @@ function SceneWall() {
             <span className="flex items-center gap-1">
               <ArrowRight size={11} /> 旅拍
             </span>
-            <Link to="/life/moments" className="ml-1 text-ink/55 hover:text-ink">
+            <Link to="/life/moments" className="ml-1 inline-flex min-h-[32px] items-center rounded-full px-2 text-ink/55 transition hover:bg-lime/25 hover:text-ink">
               进入生活频道 →
             </Link>
           </div>
@@ -1059,7 +909,7 @@ function LifeTeaser() {
   ]
   return (
     <section>
-      <SectionHead index="04" title="生活切片" en="OFF SCREEN" desc="工作之外的那部分，才让这个网站像个人。" action={<Link to="/life/moments" className="font-mono text-[10px] tracking-widest text-ink/45 hover:text-ink">进入生活频道 →</Link>} />
+      <SectionHead index="04" title="生活切片" en="OFF SCREEN" desc="工作之外的那部分，才让这个网站像个人。" action={<Link to="/life/moments" className="inline-flex min-h-[32px] items-center rounded-full px-2 font-mono text-[10px] tracking-widest text-ink/45 transition hover:bg-lime/25 hover:text-ink">进入生活频道 →</Link>} />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {blocks.map((b, i) => {
           const Icon = b.icon
@@ -1220,7 +1070,6 @@ export default function Home() {
   return (
     <div className="shell">
       <Hero onOpenCard={() => setCardOpen(true)} />
-      <StatsStrip />
 
       <div className="relative my-10 overflow-hidden border-y-1.5 border-ink bg-lime py-2.5">
         <Marquee

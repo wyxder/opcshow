@@ -280,6 +280,12 @@ export default function AdminShell({
               <Link to="/" className="flex items-center justify-between rounded-lg px-2.5 py-2 text-[11.5px] text-ink/80">
                 回到前台 <ArrowUpRight size={13} />
               </Link>
+              <button
+                onClick={onLogout}
+                className="mt-1 flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[11.5px] text-ink/80 transition hover:bg-lime/25 hover:text-ink"
+              >
+                退出登录 <LogOut size={13} />
+              </button>
             </motion.div>
           </motion.div>
         )}

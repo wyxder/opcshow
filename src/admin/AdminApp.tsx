@@ -44,9 +44,12 @@ export default function AdminApp() {
   }, [reloadSession])
 
   // F-02 / F-07 / F-15：侧栏 badge 用真实待审数，不再写死
-  useEffect(() => {
+  const refreshPending = useCallback(() => {
     if (serverConfig.enabled) {
-      if (!session) return
+      if (!session) {
+        setPending(null)
+        return
+      }
       apiJsonSafe<{ count: number }>('/api/guestbook/pending/count').then((r) => setPending(r?.count ?? null))
       return
     }
@@ -54,10 +57,21 @@ export default function AdminApp() {
     listPending().then((l) => setPending(l.length))
   }, [session])
 
+  // 切页 / 审核完成后都刷新一次待审数，保证侧栏 badge 与列表同步
+  useEffect(() => {
+    refreshPending()
+  }, [refreshPending, location.pathname])
+
   const handleLogout = async () => {
+    if (!serverConfig.enabled) {
+      show('演示模式：没有真实会话可退出')
+      return
+    }
     await logout()
     setSession(null)
+    setPending(null)
     show('已退出登录')
+    navigate('/admin/overview/overview', { replace: true })
   }
 
   const parts = location.pathname.replace(/^\/admin\/?/, '').split('/').filter(Boolean)
@@ -81,7 +95,14 @@ export default function AdminApp() {
     return <div className="flex min-h-screen items-center justify-center bg-paper font-mono text-[11px] text-admin-muted">正在校验会话…</div>
   }
   if (serverConfig.enabled && !session) {
-    return <LoginPage onDone={reloadSession} />
+    return (
+      <LoginPage
+        onDone={() => {
+          reloadSession()
+          navigate('/admin/overview/overview', { replace: true })
+        }}
+      />
+    )
   }
 
   const page = (() => {
@@ -97,7 +118,14 @@ export default function AdminApp() {
       case 'files':
         return <FilesAdminPage tab={tab as 'upload' | 'share' | 'clean'} setTab={setTab} show={show} />
       case 'review':
-        return <ModerationPage tab={tab as 'danmaku' | 'guestbook' | 'friends'} setTab={setTab} show={show} />
+        return (
+          <ModerationPage
+            tab={tab as 'danmaku' | 'guestbook' | 'friends'}
+            setTab={setTab}
+            show={show}
+            onPendingChange={refreshPending}
+          />
+        )
       case 'ai':
         return <AiConfigPage tab={tab as 'models' | 'prompts' | 'usage'} setTab={setTab} show={show} />
       case 'settings':

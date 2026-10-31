@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, ChevronDown, X } from 'lucide-react'
+import { Check, ChevronDown, Loader2, LockKeyhole, RefreshCw, X } from 'lucide-react'
 import {
   useCallback,
   useEffect,
@@ -105,6 +105,7 @@ export function IconButton({
       title={label}
       className={cn(
         'flex h-7 w-7 items-center justify-center rounded-md border-1.5 border-ink/25 bg-cream text-ink/60 transition hover:border-ink hover:bg-lime hover:text-ink',
+        'disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ink/25 disabled:hover:bg-cream disabled:hover:text-ink/60',
         className,
       )}
     >
@@ -189,8 +190,9 @@ export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; 
 export function statusTone(status: string): Tone {
   if (['已发布', '已通过', '成功', '当前版本', '公开', '完成'].includes(status)) return 'teal'
   if (['待审核', '待审', '上传中', '等待中', '待发布'].includes(status)) return 'amber'
-  if (['已隐藏', '已拒绝', '失败', '私密'].includes(status)) return 'plum'
-  if (['草稿', '已过期', '仅自己'].includes(status)) return 'neutral'
+  if (['已拒绝', '失败'].includes(status)) return 'red'
+  if (['已隐藏', '私密'].includes(status)) return 'plum'
+  if (['草稿', '已下线', '已过期', '仅自己'].includes(status)) return 'neutral'
   return 'neutral'
 }
 
@@ -200,17 +202,30 @@ export function Status({ children }: { children: string }) {
 
 /* --------------------------------- toggle --------------------------------- */
 
-export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label?: string }) {
+export function Toggle({
+  on,
+  onChange,
+  label,
+  disabled,
+}: {
+  on: boolean
+  onChange: (v: boolean) => void
+  label?: string
+  disabled?: boolean
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
       aria-label={label}
-      onClick={() => onChange(!on)}
+      aria-disabled={disabled}
+      disabled={disabled}
+      onClick={() => !disabled && onChange(!on)}
       className={cn(
         'flex h-[22px] w-[38px] shrink-0 items-center rounded-full border-1.5 border-ink p-[2px] transition-colors',
         on ? 'justify-end bg-lime' : 'justify-start bg-sand',
+        disabled && 'cursor-not-allowed opacity-45',
       )}
     >
       <motion.span layout transition={{ type: 'spring', stiffness: 500, damping: 34 }} className="h-4 w-4 rounded-full border border-ink bg-ink" />
@@ -383,19 +398,19 @@ export function TrendChart({
               return <rect key={i} x={x(i) - barW / 2} y={pad.t + innerH - bh} width={barW} height={bh} rx={barW / 2} fill={bars.color} opacity={0.85} />
             })}
 
-          {series.map((s) => {
+          {series.map((s, si) => {
             const pts = s.values.map((v, i) => [x(i), y(v)] as [number, number])
             const d = smooth(pts)
             return (
-              <g key={s.name}>
+              <g key={`${s.name}-${si}`}>
                 <defs>
-                  <linearGradient id={`g-${uid}-${s.name}`} x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id={`g-${uid}-${si}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={s.color} stopOpacity="0.22" />
                     <stop offset="100%" stopColor={s.color} stopOpacity="0" />
                   </linearGradient>
                 </defs>
                 {s.area !== false && (
-                  <path d={`${d} L${x(labels.length - 1)},${pad.t + innerH} L${x(0)},${pad.t + innerH} Z`} fill={`url(#g-${uid}-${s.name})`} />
+                  <path d={`${d} L${x(labels.length - 1)},${pad.t + innerH} L${x(0)},${pad.t + innerH} Z`} fill={`url(#g-${uid}-${si})`} />
                 )}
                 <path d={d} fill="none" stroke={s.color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                 {pts.map((p, i) => (
@@ -408,7 +423,7 @@ export function TrendChart({
           {labels.map((l, i) =>
             i % labelStep === 0 || i === labels.length - 1 ? (
               <text
-                key={l}
+                key={`${l}-${i}`}
                 x={x(i)}
                 y={height - 4}
                 textAnchor="middle"
@@ -550,6 +565,59 @@ export function EmptyState({ title, desc }: { title: string; desc?: string }) {
     <div className="flex flex-col items-center justify-center gap-1 py-12 text-center">
       <p className="font-hand text-[21px] text-coral">{title}</p>
       {desc && <p className="mt-0.5 text-[11px] text-admin-muted">{desc}</p>}
+    </div>
+  )
+}
+
+/**
+ * 列表三态（加载 / 错误 / 内容）。
+ * 真实模式下列表失败不再静默回落演示数据，而是给出可重试的明确错误。
+ */
+export function LoadState({
+  loading,
+  error,
+  onRetry,
+  label = '正在加载…',
+  children,
+}: {
+  loading?: boolean
+  error?: string
+  onRetry?: () => void
+  label?: string
+  children: ReactNode
+}) {
+  if (loading) {
+    return (
+      <div role="status" aria-live="polite" className="flex items-center justify-center gap-2 px-4 py-12 text-[11.5px] text-admin-muted">
+        <Loader2 size={14} className="animate-spin" />
+        {label}
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div role="alert" className="flex flex-col items-center justify-center gap-2.5 px-4 py-10 text-center">
+        <p className="max-w-[420px] text-[11.5px] leading-relaxed text-admin-danger">{error}</p>
+        {onRetry && (
+          <AButton size="sm" icon={<RefreshCw size={12} />} onClick={onRetry}>
+            重试
+          </AButton>
+        )}
+      </div>
+    )
+  }
+  return <>{children}</>
+}
+
+/** 未接服务端时的统一只读说明：写操作禁用，且不伪装成功 */
+export function ReadOnlyNotice({ show, children }: { show: boolean; children: ReactNode }) {
+  if (!show) return null
+  return (
+    <div role="status" className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border-1.5 border-dashed border-warning/60 bg-warning/10 px-3 py-2 text-[11px] leading-relaxed text-ink">
+      <span className="flex items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-admin-warning">
+        <LockKeyhole size={12} /> READ ONLY
+      </span>
+      <span className="text-ink/75">{children}</span>
     </div>
   )
 }

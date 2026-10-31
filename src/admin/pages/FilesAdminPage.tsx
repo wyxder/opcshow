@@ -1,7 +1,28 @@
-import { Check, Copy, Download, Link2, Plus, RefreshCw, Share2, Trash2, UploadCloud } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { adminFiles, shares as shareSeed, storage, uploadQueue as queueSeed } from '@/admin/data'
-import { serverConfig } from '@/services/config'
+import { Copy, Download, Link2, Loader2, Plus, RefreshCw, Share2, Trash2, UploadCloud } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { adminFiles, shares as shareSeed, storage } from '@/admin/data'
+import {
+  AButton,
+  AdminModal,
+  Badge,
+  EmptyState,
+  Field,
+  IconButton,
+  Input,
+  LoadState,
+  Meter,
+  PageTitle,
+  Panel,
+  ReadOnlyNotice,
+  SearchBox,
+  Select,
+  Status,
+  TableHead,
+  Tabs,
+} from '@/admin/ui'
+import { cn, newId } from '@/lib/utils'
+import { purgeFile } from '@/services/admin'
+import { apiUrl, serverConfig } from '@/services/config'
 import {
   createShareLink,
   deleteShare,
@@ -15,36 +36,20 @@ import {
   uploadToTicket,
   type ServerFile,
 } from '@/services/files'
-import { purgeFile } from '@/services/admin'
-import {
-  AButton,
-  AdminModal,
-  Badge,
-  EmptyState,
-  Field,
-  IconButton,
-  Input,
-  Meter,
-  PageTitle,
-  Panel,
-  SearchBox,
-  Select,
-  Status,
-  TableHead,
-  Tabs,
-  Toggle,
-} from '@/admin/ui'
-import { cn, newId } from '@/lib/utils'
 
 type Tab = 'upload' | 'share' | 'clean'
 type FileRow = (typeof adminFiles)[number]
-/** 真实模式下多一个下载地址（服务端返回的相对路径） */
-type Row = FileRow & { url?: string }
+type Row = FileRow & { url?: string; status?: string }
+type ShareRow = { id: string; file: string; token: string; password: string; expires: string; visits: number; created: string }
+type TrashRow = { id: string; name: string; size: string; deleted: string }
+type QueueRow = { id: string; name: string; size: string; progress: number; state: string }
 
-/** 服务端 ext/category 是自由字符串，这里收敛到列表页支持的枚举值 */
+const real = serverConfig.enabled
+const DEMO_NOTE = '当前未配置服务端（VITE_API_BASE），上传、分享、可见性、删除与回收站操作均已禁用。'
+
 const KNOWN_EXT = ['md', 'pdf', 'zip', 'fig', 'py', 'pptx', 'xlsx', 'docx', 'csv'] as const
 const KNOWN_CATEGORY = ['简历与作品集', '课程与讲义', '数据集', '模板', '源码'] as const
-const pickExt = (v: string): FileRow['ext'] => (KNOWN_EXT as readonly string[]).includes(v) ? (v as FileRow['ext']) : 'pdf'
+const pickExt = (v: string): FileRow['ext'] => ((KNOWN_EXT as readonly string[]).includes(v) ? (v as FileRow['ext']) : 'pdf')
 const pickCategory = (v: string): FileRow['category'] =>
   (KNOWN_CATEGORY as readonly string[]).includes(v) ? (v as FileRow['category']) : '数据集'
 
@@ -59,7 +64,35 @@ const rowFromServer = (f: ServerFile): Row => ({
   visibility: f.visibility === 'public' ? '公开' : '私密',
   shared: false,
   url: f.url,
+  status: f.status,
 })
+
+const human = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(ta)
+      return ok
+    } catch {
+      return false
+    }
+  }
+}
 
 const extColor: Record<string, string> = {
   pdf: 'bg-coral/15 text-admin-danger',
@@ -72,114 +105,137 @@ const extColor: Record<string, string> = {
 }
 
 export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab: (t: Tab) => void; show: (m: string) => void }) {
-  const real = serverConfig.enabled
-  const [files, setFiles] = useState<Row[]>(adminFiles)
-  const [queue, setQueue] = useState(queueSeed)
-  const [query, setQuery] = useState('')
-  const [shares, setShares] = useState(shareSeed)
-  const [creating, setCreating] = useState(false)
-  const [shareDraft, setShareDraft] = useState({ file: adminFiles[0].name, password: '', expires: '永久' })
-  const [trash, setTrash] = useState<{ id: string; name: string; size: string; deleted: string }[]>([])
+  const [files, setFiles] = useState<Row[]>(real ? [] : adminFiles)
+  const [shares, setShares] = useState<ShareRow[]>(real ? [] : shareSeed)
+  const [trash, setTrash] = useState<TrashRow[]>(real ? [] : storage.trash)
   const [shareLinks, setShareLinks] = useState<Record<string, string>>({})
+  const [queue, setQueue] = useState<QueueRow[]>([])
+  const [query, setQuery] = useState('')
+  const [loading, setLoading] = useState(real)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [shareDraft, setShareDraft] = useState({ file: adminFiles[0]?.name ?? '', password: '', expires: '永久' })
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const filtered = files.filter((f) => (f.name + f.category).toLowerCase().includes(query.trim().toLowerCase()))
-  const usedPercent = Math.round((storage.used / storage.total) * 100)
-  const expiresDays = { 永久: 0, '7 天': 7, '30 天': 30, '90 天': 90 }[shareDraft.expires] ?? 0
-
-  // 真实模式：进页面拉一次服务端文件与分享列表
-  useEffect(() => {
-    if (!real) return
-    let alive = true
-    void (async () => {
-      try {
-        const [list, links] = await Promise.all([listFiles('admin'), listShares()])
-        if (!alive) return
-        setFiles(list.map(rowFromServer))
-        setTrash(list.filter((f) => f.status === 'trashed').map((f) => ({ id: f.id, name: f.name, size: f.size, deleted: f.date })))
-        setShares(
-          links.map((s) => ({
-            id: s.id,
-            file: s.name,
-            token: s.token,
-            password: '由服务端校验',
-            expires: s.expiresAt ? s.expiresAt.slice(0, 10) : '永久',
-            visits: s.visits,
-            created: s.createdAt.slice(0, 10),
-          })),
-        )
-        setShareLinks(Object.fromEntries(links.map((s) => [s.id, `/api/files/download/${s.token}`])))
-      } catch {
-        show('读取文件列表失败：服务端不可用，已保留演示数据')
-      }
-    })()
-    return () => {
-      alive = false
-    }
-  }, [real, show])
-
-  const onPick = async (list: FileList | null) => {
-    if (!list?.length) return
+  const load = useCallback(async (spinner = true) => {
     if (!real) {
-      const added = Array.from(list).map((f) => ({
-        id: newId('up'),
-        name: f.name,
-        size: `${(f.size / 1024 / 1024).toFixed(1)} MB`,
-        progress: 100,
-        state: '完成',
-      }))
-      setQueue((q) => [...added, ...q.map((x) => (x.state === '上传中' ? { ...x, progress: 100, state: '完成' } : x))])
-      show(`演示模式：${added.length} 个文件只进了队列，刷新后丢失`)
+      setFiles(adminFiles)
+      setShares(shareSeed)
+      setTrash(storage.trash)
+      setLoading(false)
+      setError('')
       return
     }
-    for (const file of Array.from(list)) {
+    if (spinner) setLoading(true)
+    setError('')
+    try {
+      const [list, links] = await Promise.all([listFiles('admin'), listShares()])
+      setFiles(list.filter((f) => f.status !== 'trashed').map(rowFromServer))
+      setTrash(list.filter((f) => f.status === 'trashed').map((f) => ({ id: f.id, name: f.name, size: f.size, deleted: f.date })))
+      setShares(
+        links.map((s) => ({
+          id: s.id,
+          file: s.name,
+          token: s.token,
+          password: s.hasPassword ? '需要密码' : '无',
+          expires: s.expiresAt ? s.expiresAt.slice(0, 10) : '永久',
+          visits: s.visits,
+          created: s.createdAt.slice(0, 10),
+        })),
+      )
+      setShareLinks(Object.fromEntries(links.map((s) => [s.id, `/api/files/download/${s.token}`])))
+    } catch (err) {
+      setError(`文件数据加载失败：${(err as Error).message}`)
+    } finally {
+      if (spinner) setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const filtered = files.filter((f) => `${f.name} ${f.category}`.toLowerCase().includes(query.trim().toLowerCase()))
+  const usedPercent = Math.round((storage.used / storage.total) * 100)
+  const expiresDays = ({ 永久: 0, '7 天': 7, '30 天': 30, '90 天': 90 } as Record<string, number>)[shareDraft.expires] ?? 0
+
+  const run = async (key: string, task: () => Promise<unknown>, ok: string, fail: string) => {
+    if (!real) return show('未配置服务端，写操作不可用')
+    if (busy) return
+    setBusy(key)
+    try {
+      await task()
+      await load(false)
+      show(ok)
+    } catch (err) {
+      show(`${fail}：${(err as Error).message}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const onPick = async (list: FileList | null) => {
+    if (!real) return show('未配置服务端，上传不可用')
+    if (!list?.length) return
+    const picked = Array.from(list)
+    if (picked.length > 10) return show('单次最多上传 10 个文件')
+    for (const file of picked) {
+      if (file.size > 50 * 1024 * 1024) {
+        show(`「${file.name}」超过 50 MB，已跳过`)
+        continue
+      }
+      const qid = newId('up')
+      setQueue((q) => [{ id: qid, name: file.name, size: human(file.size), progress: 5, state: '上传中' }, ...q])
       try {
         const ticket = await requestUploadTicket({ name: file.name, size: file.size, type: file.type })
+        setQueue((q) => q.map((x) => (x.id === qid ? { ...x, progress: 55 } : x)))
         const uploaded = await uploadToTicket(ticket, file, { category: '未分类' })
-        setQueue((q) => [{ id: uploaded.id, name: file.name, size: uploaded.size, progress: 100, state: '完成' }, ...q])
+        setQueue((q) => q.map((x) => (x.id === qid ? { ...x, progress: 100, state: '完成', size: uploaded.size } : x)))
+        show(`已上传 ${file.name}`)
       } catch (err) {
+        setQueue((q) => q.map((x) => (x.id === qid ? { ...x, state: '失败' } : x)))
         show(`上传失败：${(err as Error).message}`)
       }
     }
-    const refreshed = await listFiles('admin').catch(() => null)
-    if (refreshed) setFiles(refreshed.map(rowFromServer))
+    await load(false)
+  }
+
+  const toggleVisibility = (f: Row) => {
+    if (!real) return show('未配置服务端，不能修改可见性')
+    void run(
+      `visibility-${f.id}`,
+      () => setVisibility(f.id, f.visibility === '公开' ? 'private' : 'public'),
+      f.visibility === '公开' ? '已设为私密' : '已设为公开',
+      '设置失败',
+    )
+  }
+
+  const removeFile = (f: Row) => {
+    if (!real) return show('未配置服务端，删除不可用')
+    if (!window.confirm(`把「${f.name}」移入回收站？可以在「清理」中恢复。`)) return
+    void run(`trash-${f.id}`, () => trashFile(f.id), '已移入回收站', '删除失败')
   }
 
   const createShare = async () => {
+    if (!real) return setFormError(DEMO_NOTE)
+    if (saving) return
     const target = files.find((f) => f.name === shareDraft.file)
-    if (!real) {
-      const token = newId('wyx').slice(0, 12)
-      setShares((l) => [
-        { id: newId('s'), file: shareDraft.file, token, password: shareDraft.password || '无', expires: shareDraft.expires, visits: 0, created: '2026-10-30' },
-        ...l,
-      ])
-      setCreating(false)
-      show('演示模式：链接只在本次会话可见，未落库')
-      return
-    }
-    if (!target) {
-      show('分享失败：找不到这个文件的服务端记录')
-      return
-    }
+    if (!target) return setFormError('找不到该文件的服务端记录，请刷新文件库后重试')
+    if (shareDraft.password && shareDraft.password.length < 4) return setFormError('访问密码至少 4 位')
+    setSaving(true)
+    setFormError('')
     try {
-      const link = await createShareLink({ fileId: target.id, password: shareDraft.password || undefined, expiresDays })
-      setShares((l) => [
-        {
-          id: link.id ?? newId('s'),
-          file: shareDraft.file,
-          token: link.token,
-          password: shareDraft.password || '无',
-          expires: link.expiresAt ? link.expiresAt.slice(0, 10) : '永久',
-          visits: 0,
-          created: new Date().toISOString().slice(0, 10),
-        },
-        ...l,
-      ])
-      setShareLinks((m) => ({ ...m, [link.id ?? link.token]: link.url }))
+      await createShareLink({ fileId: target.id, password: shareDraft.password || undefined, expiresDays })
       setCreating(false)
+      await load(false)
       show('分享链接已生成')
     } catch (err) {
-      show(`分享失败：${(err as Error).message}`)
+      setFormError(`分享失败：${(err as Error).message}`)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -191,14 +247,24 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
         desc={
           real
             ? '统一管理简历附件、课程讲义与数据集；公开文件会出现在前台文件页。'
-            : '演示模式：上传、分享、可见性只改本页状态，不会保存；配置 VITE_API_BASE 后走真实接口。'
+            : '演示只读数据：上传、分享、可见性与回收站操作全部禁用，不会产生真实链接。'
         }
         right={
           <>
-            <AButton icon={<RefreshCw size={13} />} onClick={() => show('存储用量已刷新')}>
-              刷新用量
+            <AButton
+              icon={<RefreshCw size={13} className={loading ? 'animate-spin' : undefined} />}
+              onClick={() => void load()}
+              disabled={loading}
+            >
+              {loading ? '刷新中…' : '刷新'}
             </AButton>
-            <AButton variant="primary" icon={<UploadCloud size={13} />} onClick={() => inputRef.current?.click()}>
+            <AButton
+              variant="primary"
+              icon={<UploadCloud size={13} />}
+              onClick={() => inputRef.current?.click()}
+              disabled={!real}
+              title={real ? '' : '未配置服务端：不能上传'}
+            >
               上传文件
             </AButton>
             <input ref={inputRef} type="file" multiple hidden onChange={(e) => void onPick(e.target.files)} />
@@ -206,153 +272,170 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
         }
       />
 
+      <ReadOnlyNotice show={!real}>
+        {DEMO_NOTE} 配置 <span className="font-mono text-[9.5px]">VITE_API_BASE</span> 并登录后自动启用。
+      </ReadOnlyNotice>
+
       <Tabs
         value={tab}
         onChange={(v) => setTab(v as Tab)}
         items={[
           { key: 'upload', label: '上传', count: files.length },
           { key: 'share', label: '分享', count: shares.length },
-          { key: 'clean', label: '清理' },
+          { key: 'clean', label: '清理', count: trash.length },
         ]}
       />
 
       {tab === 'upload' && (
         <div className="grid gap-3 xl:grid-cols-[1.6fr_1fr]">
           <div className="space-y-3">
-            <Panel kicker="Drop zone" title="拖拽上传" desc="单个文件不超过 50 MB，支持 PDF / MD / ZIP / XLSX / FIG">
+            <Panel kicker="Drop zone" title="拖拽上传" desc={real ? '单个文件不超过 50 MB，单次最多 10 个' : '未配置服务端：拖拽与点击上传已禁用'}>
               <div
-                onClick={() => inputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
+                role="button"
+                tabIndex={0}
+                aria-disabled={!real}
+                onClick={() => real && inputRef.current?.click()}
+                onKeyDown={(e) => {
+                  if (real && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault()
+                    inputRef.current?.click()
+                  }
+                }}
+                onDragOver={(e) => real && e.preventDefault()}
                 onDrop={(e) => {
+                  if (!real) return
                   e.preventDefault()
                   void onPick(e.dataTransfer.files)
                 }}
-                className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-ink/25 bg-paper py-8 transition hover:border-ink hover:bg-lime/15"
+                className={cn(
+                  'flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-ink/25 bg-paper py-8 transition',
+                  real ? 'cursor-pointer hover:border-ink hover:bg-lime/15' : 'cursor-not-allowed opacity-55',
+                )}
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-cream text-admin-danger">
                   <UploadCloud size={18} />
                 </span>
-                <p className="text-[12px] font-medium">把文件拖到这里，或点击选择</p>
-                <p className="text-[10px] text-admin-muted">上传后自动按文件名匹配分类，可手动调整</p>
+                <p className="text-[12px] font-medium">{real ? '把文件拖到这里，或点击选择' : '上传需要服务端签名'}</p>
+                <p className="text-[10px] text-admin-muted">
+                  {real ? 'PDF / MD / ZIP / XLSX / FIG / PY 等；上传后可调整分类与可见性' : '配置 VITE_API_BASE 后自动启用'}
+                </p>
               </div>
 
               <div className="mt-4 space-y-2">
-                {queue.map((q) => (
-                  <div key={q.id} className="flex items-center gap-2.5 rounded-lg border border-ink/15 px-3 py-2">
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[11px]">{q.name}</span>
-                      <span className="font-mono text-[9px] text-admin-muted">{q.size}</span>
-                    </span>
-                    <div className="w-24">
-                      <Meter value={q.progress} color={q.state === '完成' ? 'rgb(var(--c-teal))' : 'rgb(var(--c-amber))'} />
+                {queue.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-ink/15 px-3 py-3 text-center text-[10.5px] text-admin-muted">
+                    本次会话还没有上传任务
+                  </p>
+                ) : (
+                  queue.map((q) => (
+                    <div key={q.id} className="flex items-center gap-2.5 rounded-lg border border-ink/15 px-3 py-2">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[11px]">{q.name}</span>
+                        <span className="font-mono text-[9px] text-admin-muted">{q.size}</span>
+                      </span>
+                      <div className="w-24">
+                        <Meter value={q.progress} color={q.state === '完成' ? 'rgb(var(--c-teal))' : q.state === '失败' ? 'rgb(var(--c-danger))' : 'rgb(var(--c-amber))'} />
+                      </div>
+                      <Status>{q.state}</Status>
+                      <IconButton label="移除" onClick={() => setQueue((l) => l.filter((x) => x.id !== q.id))}>
+                        <Trash2 size={11} />
+                      </IconButton>
                     </div>
-                    <Status>{q.state}</Status>
-                    <IconButton
-                      label="移除"
-                      onClick={() => {
-                        setQueue((l) => l.filter((x) => x.id !== q.id))
-                        show('已从队列移除')
-                      }}
-                    >
-                      <Trash2 size={11} />
-                    </IconButton>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </Panel>
 
             <Panel
               kicker="Library"
               title="文件库"
-              desc={`${files.length} 个文件 · 公开 ${files.filter((f) => f.visibility === '公开').length} 个`}
+              desc={`${files.length} 个文件 · 公开 ${files.filter((f) => f.visibility === '公开').length} 个${real ? '' : ' · 预置演示'}`}
               flush
               right={<SearchBox value={query} onChange={setQuery} placeholder="搜索文件" className="w-40" />}
             >
-              <div className="overflow-x-auto no-scrollbar">
-                <div className="admin-zebra min-w-[720px]">
-                  <TableHead cols={['文件', '分类', '大小', '下载', '可见性', '操作']} template="minmax(0,1fr) 96px 68px 58px 88px 84px" />
-                  {filtered.map((f) => (
-                    <div
-                      key={f.id}
-                      className="grid grid-cols-[minmax(0,1fr)_96px_68px_58px_88px_84px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
-                    >
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className={cn('rounded px-1 py-0.5 font-mono text-[8.5px] uppercase', extColor[f.ext] ?? 'bg-sand/55 text-ink/60')}>
-                          {f.ext}
-                        </span>
-                        <span className="truncate">{f.name}</span>
+              <LoadState loading={loading} error={error} onRetry={() => void load()} label="正在加载文件…">
+                <div className="overflow-x-auto no-scrollbar">
+                  <div className="admin-zebra min-w-[760px]">
+                    <TableHead cols={['文件', '分类', '大小', '下载', '可见性', '操作']} template="minmax(0,1fr) 96px 68px 58px 92px 96px" />
+                    {filtered.map((f) => {
+                      const visibilityKey = `visibility-${f.id}`
+                      const trashKey = `trash-${f.id}`
+                      return (
+                        <div
+                          key={f.id}
+                          className="grid grid-cols-[minmax(0,1fr)_96px_68px_58px_92px_96px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className={cn('rounded px-1 py-0.5 font-mono text-[8.5px] uppercase', extColor[f.ext] ?? 'bg-sand/55 text-ink/60')}>{f.ext}</span>
+                            <span className="truncate" title={f.name}>
+                              {f.name}
+                            </span>
+                          </div>
+                          <span className="truncate text-[10px] text-admin-muted">{f.category}</span>
+                          <span className="font-mono text-[10px] text-admin-muted">{f.size}</span>
+                          <span className="font-mono text-[10px] text-admin-muted">{f.downloads}</span>
+                          <button
+                            onClick={() => toggleVisibility(f)}
+                            disabled={!real || busy !== null}
+                            title={real ? '点击切换可见性' : '未配置服务端：不可修改'}
+                            className={cn(
+                              'w-fit rounded-full px-2 py-0.5 text-[9.5px] transition disabled:cursor-not-allowed disabled:opacity-50',
+                              f.visibility === '公开' ? 'bg-lime/50 text-admin-moss' : 'bg-sand/55 text-admin-muted',
+                            )}
+                          >
+                            {busy === visibilityKey ? '处理中…' : f.visibility}
+                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <IconButton
+                              label="下载"
+                              disabled={!f.url}
+                              onClick={() => {
+                                if (f.url) window.open(apiUrl(f.url), '_blank', 'noopener')
+                                else show('该文件没有服务端存储，无法下载')
+                              }}
+                            >
+                              <Download size={11} />
+                            </IconButton>
+                            <IconButton
+                              label="分享"
+                              disabled={!real}
+                              onClick={() => {
+                                setShareDraft({ file: f.name, password: '', expires: '永久' })
+                                setFormError('')
+                                setCreating(true)
+                              }}
+                            >
+                              <Share2 size={11} />
+                            </IconButton>
+                            <IconButton
+                              label="删除"
+                              disabled={!real || busy !== null}
+                              className="hover:border-coral/60 hover:text-admin-danger"
+                              onClick={() => removeFile(f)}
+                            >
+                              {busy === trashKey ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                            </IconButton>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {filtered.length === 0 && (
+                      <div className="px-4">
+                        <EmptyState title={files.length ? '没有匹配的文件' : '文件库还是空的'} desc={files.length ? '试试换个关键字' : '上传文件后会出现在这里'} />
                       </div>
-                      <span className="truncate text-[10px] text-admin-muted">{f.category}</span>
-                      <span className="font-mono text-[10px] text-admin-muted">{f.size}</span>
-                      <span className="font-mono text-[10px] text-admin-muted">{f.downloads}</span>
-                      <button
-                        onClick={() => {
-                          if (!real) {
-                            setFiles((l) => l.map((x) => (x.id === f.id ? { ...x, visibility: x.visibility === '公开' ? '私密' : '公开' } : x)))
-                            show('演示模式：可见性只改本页，刷新后恢复')
-                            return
-                          }
-                          void setVisibility(f.id, f.visibility === '公开' ? 'private' : 'public')
-                            .then(() => {
-                              setFiles((l) => l.map((x) => (x.id === f.id ? { ...x, visibility: x.visibility === '公开' ? '私密' : '公开' } : x)))
-                              show(f.visibility === '公开' ? '已设为私密' : '已设为公开')
-                            })
-                            .catch((err: Error) => show(`设置失败：${err.message}`))
-                        }}
-                        className={cn('w-fit rounded-full px-2 py-0.5 text-[9.5px]', f.visibility === '公开' ? 'bg-lime/50 text-admin-moss' : 'bg-sand/55 text-admin-muted')}
-                      >
-                        {f.visibility}
-                      </button>
-                      <div className="flex items-center justify-end gap-1">
-                        <IconButton
-                          label="下载"
-                          onClick={() => {
-                            if (f.url) window.open(`${serverConfig.baseUrl}${f.url}`, '_blank', 'noopener')
-                            else show('演示模式：该文件没有服务端存储，无法下载')
-                          }}
-                        >
-                          <Download size={11} />
-                        </IconButton>
-                        <IconButton
-                          label="分享"
-                          onClick={() => {
-                            setShareDraft({ file: f.name, password: '', expires: '永久' })
-                            setCreating(true)
-                          }}
-                        >
-                          <Share2 size={11} />
-                        </IconButton>
-                        <IconButton
-                          label="删除"
-                          className="hover:border-coral/60 hover:text-admin-danger"
-                          onClick={() => {
-                            if (!real) {
-                              setFiles((l) => l.filter((x) => x.id !== f.id))
-                              show('演示模式：仅从本页移除')
-                              return
-                            }
-                            void trashFile(f.id)
-                              .then(() => {
-                                setFiles((l) => l.filter((x) => x.id !== f.id))
-                                show('已移入回收站')
-                              })
-                              .catch((err: Error) => show(`删除失败：${err.message}`))
-                          }}
-                        >
-                          <Trash2 size={11} />
-                        </IconButton>
-                      </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
                 </div>
-              </div>
+              </LoadState>
             </Panel>
           </div>
 
           <div className="space-y-3">
             <Panel kicker="Storage" title="存储用量（静态示意）" desc="真实占用需存储驱动统计，当前仅版式示意">
               <div className="flex items-end justify-between">
-                <p className="font-display text-[28px] font-extrabold leading-none">{storage.used} <span className="text-[12px] font-medium text-admin-muted">/ {storage.total} GB</span></p>
+                <p className="font-display text-[28px] font-extrabold leading-none">
+                  {storage.used} <span className="text-[12px] font-medium text-admin-muted">/ {storage.total} GB</span>
+                </p>
                 <Badge tone={usedPercent > 80 ? 'red' : 'teal'}>{usedPercent}%</Badge>
               </div>
               <Meter value={usedPercent} className="mt-2.5 h-2" />
@@ -368,23 +451,21 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
               </div>
             </Panel>
 
-            <Panel kicker="Limits" title="上传限制（来自 .env）">
+            <Panel kicker="Limits" title="上传限制（服务端环境变量）">
               <div className="space-y-2.5 text-[11px]">
                 {[
                   ['单文件大小', '50 MB'],
                   ['单次最多', '10 个文件'],
                   ['允许类型', 'PDF / MD / ZIP / XLSX / FIG / PY'],
-                  ['存储位置', 'Supabase Storage'],
+                  ['存储位置', 'server/data/uploads（local 驱动）'],
                 ].map(([k, v]) => (
-                  <div key={k} className="flex items-center justify-between">
+                  <div key={k} className="flex items-center justify-between gap-3">
                     <span className="text-admin-muted">{k}</span>
-                    <span>{v}</span>
+                    <span className="text-right">{v}</span>
                   </div>
                 ))}
               </div>
-              <AButton className="mt-3 w-full" onClick={() => show('上传限制由服务端环境变量控制（UPLOAD_MAX_BYTES / UPLOAD_ALLOWED_EXT），后台不支持热改')}>
-                调整限制
-              </AButton>
+              <p className="mt-3 font-mono text-[9px] leading-relaxed text-admin-muted">由 UPLOAD_MAX_BYTES / UPLOAD_ALLOWED_EXT 控制，后台不支持热改</p>
             </Panel>
           </div>
         </div>
@@ -398,67 +479,76 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
             desc="带密码的链接适合发给面试官，过期后自动失效"
             flush
             right={
-              <AButton size="sm" variant="primary" icon={<Plus size={11} />} onClick={() => setCreating(true)}>
+              <AButton
+                size="sm"
+                variant="primary"
+                icon={<Plus size={11} />}
+                onClick={() => {
+                  setShareDraft({ file: files[0]?.name ?? '', password: '', expires: '永久' })
+                  setFormError('')
+                  setCreating(true)
+                }}
+                disabled={!real || files.length === 0}
+                title={real ? (files.length ? '' : '文件库为空，先上传文件') : '未配置服务端：不能创建分享'}
+              >
                 新建分享
               </AButton>
             }
           >
-            <div className="overflow-x-auto no-scrollbar">
-              <div className="admin-zebra min-w-[720px]">
-                <TableHead cols={['文件', '链接', '密码', '访问', '过期', '操作']} template="minmax(0,1fr) 128px 66px 52px 88px 96px" />
-                {shares.map((s) => (
-                  <div
-                    key={s.id}
-                    className="grid grid-cols-[minmax(0,1fr)_128px_66px_52px_88px_96px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
-                  >
-                    <span className="truncate">{s.file}</span>
-                    <span className="flex items-center gap-1 font-mono text-[10px] text-admin-muted">
-                      <Link2 size={10} /> /s/{s.token}
-                    </span>
-                    <span className="font-mono text-[10px] text-admin-muted">{s.password}</span>
-                    <span className="font-mono text-[10px]">{s.visits}</span>
-                    <span className="font-mono text-[9.5px] text-admin-muted">{s.expires}</span>
-                    <div className="flex items-center justify-end gap-1">
-                      <IconButton
-                        label="复制链接"
-                        onClick={() => {
-                          const href = shareLinks[s.id]
-                          if (!real || !href) {
-                            show('演示模式：没有真实分享地址可复制')
-                            return
-                          }
-                          void navigator.clipboard?.writeText(shareHref(href)).then(
-                            () => show('链接已复制'),
-                            () => show('浏览器不允许写入剪贴板，请手动复制'),
-                          )
-                        }}
+            <LoadState loading={loading} error={error} onRetry={() => void load()} label="正在加载分享链接…">
+              <div className="overflow-x-auto no-scrollbar">
+                <div className="admin-zebra min-w-[760px]">
+                  <TableHead cols={['文件', '链接', '密码', '访问', '过期', '操作']} template="minmax(0,1fr) 150px 72px 52px 96px 96px" />
+                  {shares.map((s) => {
+                    const removeKey = `share-${s.id}`
+                    return (
+                      <div
+                        key={s.id}
+                        className="grid grid-cols-[minmax(0,1fr)_150px_72px_52px_96px_96px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
                       >
-                        <Copy size={11} />
-                      </IconButton>
-                      <IconButton
-                        label="关闭分享"
-                        className="hover:border-coral/60 hover:text-admin-danger"
-                        onClick={() => {
-                          if (!real) {
-                            setShares((l) => l.filter((x) => x.id !== s.id))
-                            show('演示模式：仅从本页移除')
-                            return
-                          }
-                          void deleteShare(s.token)
-                            .then(() => {
-                              setShares((l) => l.filter((x) => x.id !== s.id))
-                              show('分享已关闭')
-                            })
-                            .catch((err: Error) => show(`关闭失败：${err.message}`))
-                        }}
-                      >
-                        <Trash2 size={11} />
-                      </IconButton>
+                        <span className="truncate" title={s.file}>
+                          {s.file}
+                        </span>
+                        <span className="flex items-center gap-1 truncate font-mono text-[10px] text-admin-muted" title={s.token}>
+                          <Link2 size={10} /> {s.token.slice(0, 12)}
+                        </span>
+                        <span className="truncate font-mono text-[10px] text-admin-muted">{s.password}</span>
+                        <span className="font-mono text-[10px]">{s.visits}</span>
+                        <span className="font-mono text-[9.5px] text-admin-muted">{s.expires}</span>
+                        <div className="flex items-center justify-end gap-1">
+                          <IconButton
+                            label="复制链接"
+                            disabled={!real}
+                            onClick={() => {
+                              const href = shareLinks[s.id] ?? `/api/files/download/${s.token}`
+                              void copyText(shareHref(href)).then((ok) => show(ok ? '链接已复制' : '浏览器不允许写入剪贴板，请手动复制'))
+                            }}
+                          >
+                            <Copy size={11} />
+                          </IconButton>
+                          <IconButton
+                            label="关闭分享"
+                            disabled={!real || busy !== null}
+                            className="hover:border-coral/60 hover:text-admin-danger"
+                            onClick={() => {
+                              if (!window.confirm('关闭这个分享链接？访客将无法再访问。')) return
+                              void run(removeKey, () => deleteShare(s.token), '分享已关闭', '关闭失败')
+                            }}
+                          >
+                            {busy === removeKey ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                          </IconButton>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {shares.length === 0 && (
+                    <div className="px-4">
+                      <EmptyState title="还没有分享链接" desc="从文件库选择文件生成分享，或在右上角新建" />
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
-            </div>
+            </LoadState>
           </Panel>
 
           <div className="space-y-3">
@@ -480,8 +570,9 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
             <Panel kicker="Rules" title="分享规则">
               <ul className="space-y-2 text-[10.5px] leading-relaxed text-admin-muted">
                 <li>· 私密文件也能分享，链接不进入 sitemap。</li>
-                <li>· 密码使用 6 位以上，访问时需二次验证。</li>
+                <li>· 密码至少 4 位，访问时需二次验证。</li>
                 <li>· 过期后链接返回 404，不暴露文件是否存在。</li>
+                <li>· 服务端只返回「是否设置密码」，不返回哈希。</li>
               </ul>
             </Panel>
           </div>
@@ -491,7 +582,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
       {tab === 'clean' && (
         <div className="grid gap-3 xl:grid-cols-[1.55fr_1fr]">
           <div className="space-y-3">
-            <Panel kicker="Storage" title="空间占用" desc={`${storage.total} GB 总额度 · 已用 ${storage.used} GB`}>
+            <Panel kicker="Storage" title="空间占用" desc={`${storage.total} GB 总额度 · 已用 ${storage.used} GB（静态示意）`}>
               <div className="flex h-3 w-full overflow-hidden rounded-full border border-ink/15 bg-paper">
                 {storage.buckets.map((b) => (
                   <div key={b.label} style={{ width: `${(b.value / storage.total) * 100}%`, background: b.color }} title={`${b.label} ${b.value} GB`} />
@@ -510,126 +601,111 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
             </Panel>
 
             <Panel kicker="Trash" title="回收站" desc="文件保留 30 天，到期自动清理" flush>
-              {trash.length === 0 ? (
-                <EmptyState title="回收站是空的" desc="删除的文件会先进入这里" />
-              ) : (
-                <div>
-                  {trash.map((t) => (
-                    <div key={t.id} className="flex items-center gap-3 border-b border-ink/10 px-4 py-2.5 last:border-0">
-                      <Trash2 size={12} className="text-admin-muted" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[11.5px]">{t.name}</p>
-                        <p className="font-mono text-[9px] text-admin-muted">{t.size} · 删除于 {t.deleted}</p>
-                      </div>
+              <LoadState loading={loading} error={error} onRetry={() => void load()} label="正在加载回收站…">
+                {trash.length === 0 ? (
+                  <EmptyState title="回收站是空的" desc="删除的文件会先进入这里" />
+                ) : (
+                  <div>
+                    {trash.map((t) => {
+                      const restoreKey = `restore-${t.id}`
+                      const purgeKey = `purge-${t.id}`
+                      return (
+                        <div key={t.id} className="flex items-center gap-3 border-b border-ink/10 px-4 py-2.5 last:border-0">
+                          <Trash2 size={12} className="shrink-0 text-admin-muted" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[11.5px]">{t.name}</p>
+                            <p className="font-mono text-[9px] text-admin-muted">
+                              {t.size} · 删除于 {t.deleted}
+                            </p>
+                          </div>
+                          <AButton
+                            size="sm"
+                            variant="soft"
+                            disabled={!real || busy !== null}
+                            title={real ? '' : '未配置服务端：不能恢复'}
+                            icon={busy === restoreKey ? <Loader2 size={11} className="animate-spin" /> : undefined}
+                            onClick={() => void run(restoreKey, () => restoreFile(t.id), '已恢复文件', '恢复失败')}
+                          >
+                            {busy === restoreKey ? '恢复中…' : '恢复'}
+                          </AButton>
+                          <IconButton
+                            label="彻底删除"
+                            disabled={!real || busy !== null}
+                            className="hover:border-coral/60 hover:text-admin-danger"
+                            onClick={() => {
+                              if (!window.confirm(`彻底删除「${t.name}」？不可恢复。`)) return
+                              void run(purgeKey, () => purgeFile(t.id), '已彻底删除', '删除失败')
+                            }}
+                          >
+                            {busy === purgeKey ? <Loader2 size={11} className="animate-spin" /> : <XIcon />}
+                          </IconButton>
+                        </div>
+                      )
+                    })}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink/10 bg-paper px-4 py-2.5">
+                      <span className="text-[10px] text-admin-muted">共 {trash.length} 个文件</span>
                       <AButton
                         size="sm"
-                        variant="soft"
-                        onClick={() => {
-                          if (!real) return show('未接服务端：不能恢复')
-                          void restoreFile(t.id)
-                            .then(async () => {
-                              const list = await listFiles('admin')
-                              setFiles(list.map(rowFromServer))
-                              setTrash(list.filter((x) => x.status === 'trashed').map((x) => ({ id: x.id, name: x.name, size: x.size, deleted: x.date })))
-                              show('已恢复文件')
-                            })
-                            .catch((err: Error) => show(`恢复失败：${err.message}`))
+                        variant="danger"
+                        disabled={!real || busy !== null}
+                        title={real ? '' : '未配置服务端：不能清空'}
+                        onClick={async () => {
+                          if (!real) return show('未配置服务端，不能清空')
+                          if (!window.confirm('清空回收站？所有文件将被永久删除。')) return
+                          if (busy) return
+                          setBusy('purge-all')
+                          try {
+                            for (const t of trash) await purgeFile(t.id)
+                            await load(false)
+                            show('回收站已清空')
+                          } catch (err) {
+                            show(`清空失败：${(err as Error).message}`)
+                          } finally {
+                            setBusy(null)
+                          }
                         }}
+                        icon={busy === 'purge-all' ? <Loader2 size={11} className="animate-spin" /> : undefined}
                       >
-                        恢复
+                        {busy === 'purge-all' ? '清理中…' : '清空回收站'}
                       </AButton>
-                      <IconButton
-                        label="彻底删除"
-                        className="hover:border-coral/60 hover:text-admin-danger"
-                        onClick={() => {
-                          if (!real) return show('未接服务端：不能彻底删除')
-                          if (!window.confirm(`彻底删除「${t.name}」？不可恢复。`)) return
-                          void purgeFile(t.id)
-                            .then(() => {
-                              setTrash((l) => l.filter((x) => x.id !== t.id))
-                              show('已彻底删除')
-                            })
-                            .catch((err: Error) => show(`删除失败：${err.message}`))
-                        }}
-                      >
-                        <XIcon />
-                      </IconButton>
                     </div>
-                  ))}
-                  <div className="flex items-center justify-between border-t border-ink/10 bg-paper px-4 py-2.5">
-                    <span className="text-[10px] text-admin-muted">共 {trash.length} 个文件</span>
-                    <AButton size="sm" variant="danger" onClick={async () => {
-                      if (!real) return show('未接服务端：不能清空')
-                      if (!window.confirm('清空回收站？所有文件将被永久删除。')) return
-                      try {
-                        for (const t of trash) await purgeFile(t.id)
-                        setTrash([])
-                        show('回收站已清空')
-                      } catch (err) {
-                        show(`清空失败：${(err as Error).message}`)
-                      }
-                    }}>
-                      清空回收站
-                    </AButton>
                   </div>
-                </div>
-              )}
-            </Panel>
-
-            <Panel kicker="Duplicates" title="重复文件（静态示意）" desc="当前未实现内容哈希去重；以下为版式示意">
-              <div className="space-y-2">
-                {storage.duplicates.map((d) => (
-                  <div key={d.name} className="flex items-center gap-3 rounded-lg border border-ink/15 px-3 py-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[11.5px]">{d.name}</p>
-                      <p className="font-mono text-[9px] text-admin-muted">{d.copies} 份副本 · 占用 {d.size}</p>
-                    </div>
-                    <AButton size="sm" variant="soft" onClick={() => show('重复文件检测未接入（需内容哈希）')}>
-                      合并
-                    </AButton>
-                  </div>
-                ))}
-              </div>
+                )}
+              </LoadState>
             </Panel>
           </div>
 
           <div className="space-y-3">
-            <Panel kicker="Suggestions" title="清理建议（静态示意）">
-              <div className="space-y-2">
+            <Panel kicker="Policy" title="清理策略">
+              <div className="space-y-2.5 text-[11px]">
                 {[
-                  ['回收站可释放', '3.4 GB', '立即清理'],
-                  ['重复文件可释放', '61.2 MB', '合并'],
-                  ['90 天未访问', '1.8 GB', '归档'],
-                ].map(([k, v, act]) => (
-                  <div key={k} className="flex items-center gap-2 rounded-lg border border-ink/15 px-3 py-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px]">{k}</p>
-                      <p className="font-mono text-[9.5px] text-admin-muted">{v}</p>
-                    </div>
-                    <AButton size="sm" onClick={() => show('批量任务未接入（需队列）')}>
-                      {act}
-                    </AButton>
+                  ['回收站保留 30 天', '到期后由服务端任务清理'],
+                  ['删除 = 移入回收站', '可在清理 Tab 恢复'],
+                  ['彻底删除不可恢复', '会同时移除分享链接'],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between gap-3 border-b border-ink/10 pb-1.5 last:border-0">
+                    <span>{k}</span>
+                    <span className="text-right text-[10px] text-admin-muted">{v}</span>
                   </div>
                 ))}
               </div>
-              <AButton variant="primary" className="mt-3 w-full" icon={<Check size={12} />} onClick={() => show('“一键安全清理”需策略引擎，未接入；请用上方回收站逐项处理')}>
-                一键安全清理
-              </AButton>
+              <p className="mt-3 font-mono text-[9px] leading-relaxed text-admin-muted">自动清理任务与重复文件检测尚未接入；回收站操作以服务端响应为准。</p>
             </Panel>
 
-            <Panel kicker="Policy" title="清理策略">
-              <div className="space-y-2.5">
+            <Panel kicker="Suggestions" title="清理建议（静态示意）">
+              <div className="space-y-2 text-[11px]">
                 {[
-                  ['回收站保留 30 天', true],
-                  ['自动清理空目录', true],
-                  ['定期合并重复文件', false],
-                ].map(([l, on]) => (
-                  <div key={l as string} className="flex items-center justify-between rounded-lg border border-ink/15 px-3 py-2">
-                    <span className="text-[11px]">{l}</span>
-                    <Toggle on={on as boolean} onChange={() => show('策略已更新（演示）')} label={l as string} />
+                  ['回收站可释放', '3.4 GB'],
+                  ['90 天未访问', '1.8 GB'],
+                  ['重复文件', '61.2 MB'],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between rounded-lg border border-ink/15 px-3 py-2">
+                    <span>{k}</span>
+                    <span className="font-mono text-[10px] text-admin-muted">{v}</span>
                   </div>
                 ))}
               </div>
+              <p className="mt-2 text-[9.5px] leading-relaxed text-admin-muted">仅版式示意；请在左侧回收站逐项恢复或彻底删除。</p>
             </Panel>
           </div>
         </div>
@@ -637,38 +713,64 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
 
       <AdminModal
         open={creating}
-        onClose={() => setCreating(false)}
+        onClose={() => {
+          if (saving) return
+          setCreating(false)
+        }}
         title="新建分享链接"
-        desc="链接格式：https://wyx.space/s/{token}"
+        desc={real ? '链接由服务端生成，可选密码与有效期' : DEMO_NOTE}
         footer={
           <>
-            <AButton onClick={() => setCreating(false)}>取消</AButton>
-            <AButton variant="primary" onClick={createShare}>
-              生成链接
+            <AButton disabled={saving} onClick={() => setCreating(false)}>
+              取消
+            </AButton>
+            <AButton
+              variant="primary"
+              disabled={saving || !real || files.length === 0}
+              title={real ? '' : '未配置服务端：不能生成链接'}
+              onClick={() => void createShare()}
+              icon={saving ? <Loader2 size={12} className="animate-spin" /> : undefined}
+            >
+              {saving ? '生成中…' : '生成链接'}
             </AButton>
           </>
         }
       >
         <div className="space-y-3">
           <Field label="文件">
-            <Select value={shareDraft.file} onChange={(e) => setShareDraft({ ...shareDraft, file: e.target.value })}>
+            <Select
+              value={shareDraft.file}
+              onChange={(e) => setShareDraft({ ...shareDraft, file: e.target.value })}
+              disabled={saving || files.length === 0}
+            >
+              {files.length === 0 ? <option value="">文件库为空</option> : null}
               {files.map((f) => (
                 <option key={f.id}>{f.name}</option>
               ))}
             </Select>
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="访问密码" hint="留空表示不需要密码">
-              <Input value={shareDraft.password} onChange={(e) => setShareDraft({ ...shareDraft, password: e.target.value })} placeholder="可选" />
+            <Field label="访问密码" hint="留空表示不需要密码，至少 4 位">
+              <Input
+                value={shareDraft.password}
+                disabled={saving}
+                onChange={(e) => setShareDraft({ ...shareDraft, password: e.target.value })}
+                placeholder="可选"
+              />
             </Field>
             <Field label="有效期">
-              <Select value={shareDraft.expires} onChange={(e) => setShareDraft({ ...shareDraft, expires: e.target.value })}>
+              <Select value={shareDraft.expires} disabled={saving} onChange={(e) => setShareDraft({ ...shareDraft, expires: e.target.value })}>
                 {['永久', '7 天', '30 天', '90 天'].map((x) => (
                   <option key={x}>{x}</option>
                 ))}
               </Select>
             </Field>
           </div>
+          {formError && (
+            <p role="alert" className="text-[11px] text-admin-danger">
+              {formError}
+            </p>
+          )}
         </div>
       </AdminModal>
     </div>

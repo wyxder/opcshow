@@ -54,6 +54,13 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
   return data?.site ?? null
 }
 
+/** 前台只读站点设置（主题默认值 / SEO），公开接口，不需要登录 */
+export async function getPublicSiteSettings(): Promise<SiteSettings | null> {
+  if (!serverConfig.enabled) return null
+  const data = await apiJsonSafe<{ site: SiteSettings | null }>('/api/settings')
+  return data?.site ?? null
+}
+
 export async function saveSiteSettings(patch: SiteSettings): Promise<SiteSettings> {
   if (!serverConfig.enabled) throw new NotSupportedError('站点设置保存')
   return apiJson<SiteSettings>('/api/admin/settings', { method: 'PUT', body: JSON.stringify(patch) })
@@ -68,7 +75,7 @@ export type FriendRequest = { id: string; name: string; url: string; desc?: stri
 
 export async function listFriendRequests(): Promise<FriendRequest[]> {
   if (!serverConfig.enabled) return []
-  return (await apiJsonSafe<FriendRequest[]>('/api/admin/friend-requests')) ?? []
+  return (await apiJsonSafe<FriendRequest[]>('/api/admin/friend-requests', { cache: 'no-store' })) ?? []
 }
 
 export async function reviewFriendRequest(id: string, status: 'published' | 'hidden'): Promise<void> {

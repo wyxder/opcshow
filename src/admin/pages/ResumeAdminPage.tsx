@@ -4,46 +4,47 @@ import {
   Check,
   Download,
   FileText,
-  FlaskConical,
-  GraduationCap,
-  Heart,
-  Layers,
-  Megaphone,
+  Loader2,
   Plus,
   RefreshCw,
   RotateCcw,
   Sparkles,
   Trash2,
-  Trophy,
-  UserRound,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { resumeModules, resumeParse, resumeVersions } from '@/admin/data'
-import { serverConfig } from '@/services/config'
-import { apiJson } from '@/services/http'
-import { createResumeVersion, deleteResumeVersion, getResumeState, restoreResumeVersion, saveResumeModules, type ResumeModule, type ResumeVersion } from '@/services/admin'
 import {
   AButton,
   AdminModal,
   Badge,
+  EmptyState,
   Field,
   IconButton,
   Input,
+  LoadState,
   Meter,
   PageTitle,
   Panel,
+  ReadOnlyNotice,
   Status,
   TableHead,
   Tabs,
   Toggle,
 } from '@/admin/ui'
 import { cn, newId } from '@/lib/utils'
+import {
+  createResumeVersion,
+  deleteResumeVersion,
+  getResumeState,
+  restoreResumeVersion,
+  saveResumeModules,
+  type ResumeModule,
+  type ResumeVersion,
+} from '@/services/admin'
+import { serverConfig } from '@/services/config'
+import { apiJson } from '@/services/http'
 
 type Tab = 'parse' | 'modules' | 'versions'
-
-const seedModules: ResumeModule[] = resumeModules.map((m, i) => ({ id: `seed_${i}`, title: m.title, summary: m.desc, items: Array.from({ length: m.count }, (_, k) => `示例条目 ${k + 1}`), enabled: m.enabled }))
-const seedVersions: ResumeVersion[] = resumeVersions.map((v, i) => ({ id: `seedv_${i}`, name: v.version, note: v.note, source: 'seed', createdAt: `${v.date}T00:00:00.000Z`, modules: [] }))
-
 type Job = {
   id: string
   status: string
@@ -51,49 +52,104 @@ type Job = {
   error?: string
 }
 
-export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTab: (t: Tab) => void; show: (m: string) => void }) {
-  const real = serverConfig.enabled
-  const [parsing, setParsing] = useState(false)
-  const [modules, setModules] = useState<ResumeModule[]>(seedModules)
-  const [versions, setVersions] = useState<ResumeVersion[]>(seedVersions)
-  const [rollback, setRollback] = useState<ResumeVersion | null>(null)
-  const [releasing, setReleasing] = useState(false)
-  const [release, setRelease] = useState({ name: '', note: '' })
+const real = serverConfig.enabled
+const DEMO_NOTE = '当前未配置服务端（VITE_API_BASE），解析、模块调整、版本创建 / 恢复 / 删除均已禁用。'
+
+const seedModules: ResumeModule[] = resumeModules.map((m, i) => ({
+  id: `seed_${i}`,
+  title: m.title,
+  summary: m.desc,
+  items: Array.from({ length: m.count }, (_, k) => `示例条目 ${k + 1}`),
+  enabled: m.enabled,
+}))
+const seedVersions: ResumeVersion[] = resumeVersions.map((v, i) => ({
+  id: `seedv_${i}`,
+  name: v.version,
+  note: v.note,
+  source: 'seed',
+  createdAt: `${v.date}T00:00:00.000Z`,
+  modules: [],
+}))
+
+const fmtDate = (iso?: string) => {
+  const d = new Date(iso ?? '')
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('zh-CN')
+}
+
+export default function ResumeAdminPage({
+  tab,
+  setTab,
+  show,
+}: {
+  tab: Tab
+  setTab: (t: Tab) => void
+  show: (m: string) => void
+}) {
+  const [modules, setModules] = useState<ResumeModule[]>(real ? [] : seedModules)
+  const [versions, setVersions] = useState<ResumeVersion[]>(real ? [] : seedVersions)
+  const [loading, setLoading] = useState(real)
+  const [error, setError] = useState('')
+  const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [addOpen, setAddOpen] = useState(false)
-  const [addDraft, setAddDraft] = useState({ title: '', summary: '' })
+  const [busy, setBusy] = useState<string | null>(null)
 
-  const loadState = async () => {
-    if (!real) return
-    const state = await getResumeState()
-    if (!state) return
-    setModules(state.modules)
-    setVersions(state.versions)
-  }
-
-  useEffect(() => {
-    void loadState()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [real])
-  /** 服务端解析结果覆盖预置字段；null 表示仍在用预置演示数据 */
+  const [parsing, setParsing] = useState(false)
   const [fields, setFields] = useState<{ key: string; value: string; confidence: number }[] | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
   const [jobNote, setJobNote] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const lastText = useRef('')
 
+  const [rollback, setRollback] = useState<ResumeVersion | null>(null)
+  const [releasing, setReleasing] = useState(false)
+  const [release, setRelease] = useState({ name: '', note: '' })
+  const [addOpen, setAddOpen] = useState(false)
+  const [addDraft, setAddDraft] = useState({ title: '', summary: '' })
+  const [formError, setFormError] = useState('')
+
+  const load = useCallback(async (spinner = true) => {
+    if (!real) {
+      setModules(seedModules)
+      setVersions(seedVersions)
+      setDirty(false)
+      setLoading(false)
+      setError('')
+      return
+    }
+    if (spinner) setLoading(true)
+    setError('')
+    try {
+      const state = await getResumeState()
+      if (state) {
+        setModules(state.modules)
+        setVersions(state.versions)
+        setDirty(false)
+      }
+    } catch (err) {
+      setError(`简历数据加载失败：${(err as Error).message}`)
+    } finally {
+      if (spinner) setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
   const enabledCount = modules.filter((m) => m.enabled).length
 
   const move = (index: number, dir: -1 | 1) => {
+    if (!real) return
     const next = [...modules]
     const target = index + dir
     if (target < 0 || target >= next.length) return
     ;[next[index], next[target]] = [next[target], next[index]]
     setModules(next)
+    setDirty(true)
   }
 
-  /** 提交文本 → 轮询 GET /api/jobs/:id，直到成功/失败 */
   const submitParse = async (text: string, name: string) => {
+    if (!real) return show('未配置服务端，解析不可用')
     if (text.trim().length < 10) return show('文本太短，至少 10 个字符')
     setParsing(true)
     setJobNote(null)
@@ -102,17 +158,17 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
         method: 'POST',
         body: JSON.stringify({ text, fileName: name }),
       })
-      for (let i = 0; i < 12; i += 1) {
+      for (let i = 0; i < 20; i += 1) {
         const cur = await apiJson<Job>(`/api/jobs/${job.id}`)
         if (cur.status === 'completed') {
           setFields(cur.result?.fields ?? null)
           setFileName(cur.result?.fileName ?? name)
           setJobNote(`服务端解析（${cur.result?.engine ?? 'local-rules'}）：${cur.result?.fields?.length ?? 0} 个字段`)
-          await loadState()
+          await load(false)
           show('解析完成，模块与版本已写入服务端')
           return
         }
-        if (cur.status === 'dead') {
+        if (cur.status === 'dead' || cur.status === 'failed') {
           setJobNote(`任务失败：${cur.error ?? '未知原因'}`)
           show(`解析失败：${cur.error ?? '未知原因'}`)
           return
@@ -122,7 +178,7 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
       setJobNote('任务仍在队列中，可稍后刷新查看')
       show('解析任务已提交，仍在处理')
     } catch (err) {
-      setJobNote(`提交失败：${(err as Error).message}`)
+      setJobNote(`解析失败：${(err as Error).message}`)
       show(`解析失败：${(err as Error).message}`)
     } finally {
       setParsing(false)
@@ -130,7 +186,7 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
   }
 
   const runParse = () => {
-    if (!real) return show('未接服务端：解析不可用（需 /api/resume/parse）')
+    if (!real) return show('未配置服务端，解析不可用')
     if (lastText.current) return void submitParse(lastText.current, fileName ?? 'resume.txt')
     fileRef.current?.click()
   }
@@ -139,7 +195,7 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
     if (!file) return
     const isText = /\.(txt|md|markdown)$/i.test(file.name)
     if (!isText) {
-      show('服务端目前只能解析纯文本（.txt / .md）；PDF/DOCX 需要 pdfjs/mammoth 解析库，尚未接入')
+      show('服务端目前只能解析纯文本（.txt / .md）；PDF / DOCX 需要 pdfjs / mammoth，尚未接入')
       return
     }
     const text = await file.text()
@@ -147,6 +203,93 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
     setFileName(file.name)
     await submitParse(text, file.name)
   }
+
+  const saveModules = async () => {
+    if (!real) return show('未配置服务端，无法保存')
+    if (!dirty) return show('没有需要保存的修改')
+    if (saving) return
+    setSaving(true)
+    try {
+      setModules(await saveResumeModules(modules))
+      setDirty(false)
+      show('模块顺序与开关已保存')
+    } catch (err) {
+      show(`保存失败：${(err as Error).message}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const syncFields = async () => {
+    if (!real) return show('未配置服务端，不能保存')
+    if (!fields?.length) return show('先上传一份简历并解析')
+    if (busy) return
+    setBusy('sync')
+    try {
+      const next: ResumeModule[] = fields.map((f) => ({ id: `f_${f.key}`, title: f.key, summary: f.value, items: [], enabled: true }))
+      setModules(await saveResumeModules(next))
+      setDirty(false)
+      show('字段已写入简历模块')
+    } catch (err) {
+      show(`保存失败：${(err as Error).message}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const createVersion = async () => {
+    if (!real) return setFormError(DEMO_NOTE)
+    if (!release.name.trim()) return setFormError('版本名不能为空')
+    if (busy) return
+    setBusy('version-create')
+    setFormError('')
+    try {
+      await createResumeVersion({ name: release.name.trim(), note: release.note.trim(), modules })
+      setReleasing(false)
+      await load(false)
+      show(`已创建版本 ${release.name.trim()}`)
+    } catch (err) {
+      setFormError(`创建失败：${(err as Error).message}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const confirmRollback = async () => {
+    if (!rollback) return
+    if (!real) return show('未配置服务端，不能恢复版本')
+    if (busy) return
+    setBusy('version-restore')
+    try {
+      await restoreResumeVersion(rollback.id)
+      setRollback(null)
+      await load(false)
+      show('已恢复该版本的模块')
+    } catch (err) {
+      show(`恢复失败：${(err as Error).message}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const removeVersion = async (v: ResumeVersion) => {
+    if (!real) return show('未配置服务端，不能删除版本')
+    if (!window.confirm(`删除版本「${v.name}」？不可恢复。`)) return
+    if (busy) return
+    setBusy(`version-delete-${v.id}`)
+    try {
+      await deleteResumeVersion(v.id)
+      await load(false)
+      show('版本已删除')
+    } catch (err) {
+      show(`删除失败：${(err as Error).message}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const currentFile = fileName ?? (real ? '尚未上传简历文件' : resumeParse.file)
+  const extracted = fields ?? (real ? [] : resumeParse.extracted)
 
   return (
     <div className="space-y-4">
@@ -156,19 +299,29 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
         desc={
           real
             ? '上传纯文本简历 → 服务端任务解析为结构化字段；模块开关决定前台简历的展示内容。'
-            : '未配置服务端：解析按钮只演示流程，字段与数字为预置数据，刷新即恢复。'
+            : '演示只读数据：解析、模块调整与版本操作全部禁用，刷新后不会保存任何内容。'
         }
         right={
           <>
             <AButton icon={<Download size={13} />} onClick={() => window.open('/files/wyx-resume-print.html', '_blank')}>
               打印版
             </AButton>
-            <AButton variant="primary" icon={<RefreshCw size={13} />} onClick={runParse}>
-              重新解析
+            <AButton
+              variant="primary"
+              icon={parsing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              onClick={runParse}
+              disabled={!real || parsing}
+              title={real ? '' : '未配置服务端：解析不可用'}
+            >
+              {parsing ? '解析中…' : '重新解析'}
             </AButton>
           </>
         }
       />
+
+      <ReadOnlyNotice show={!real}>
+        {DEMO_NOTE} 配置 <span className="font-mono text-[9.5px]">VITE_API_BASE</span> 并登录后自动启用。
+      </ReadOnlyNotice>
 
       <Tabs
         value={tab}
@@ -189,14 +342,14 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                   <FileText size={18} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] font-medium">{fileName ?? resumeParse.file}</p>
+                  <p className="truncate text-[12px] font-medium">{currentFile}</p>
                   <p className="mt-0.5 font-mono text-[9.5px] text-admin-muted">
-                    {resumeParse.size} · {resumeParse.pages} 页 · 更新于 {resumeParse.updated}
+                    {real ? '服务端仅解析 .txt / .md' : `${resumeParse.size} · ${resumeParse.pages} 页 · 预置演示`}
                   </p>
                 </div>
-                <Status>{parsing ? '解析中' : fields ? '已解析' : resumeParse.state}</Status>
+                <Status>{parsing ? '解析中' : fields ? '已解析' : real ? '未解析' : resumeParse.state}</Status>
               </div>
-              {jobNote && <p className="mt-2 font-mono text-[9.5px] text-admin-muted">{jobNote}</p>}
+              {jobNote && <p className="mt-2 font-mono text-[9.5px] leading-relaxed text-admin-muted">{jobNote}</p>}
               <input
                 ref={fileRef}
                 type="file"
@@ -211,15 +364,19 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
               <div className="mt-3 rounded-xl border-1.5 border-ink/20 p-3">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-admin-muted">解析进度</span>
-                  <span className="font-mono text-[10.5px]">{parsing ? '进行中…' : '100%'}</span>
+                  <span className="font-mono text-[10.5px]">{parsing ? '进行中…' : real ? (fields ? '100%' : '0%') : '预置'}</span>
                 </div>
-                <Meter value={parsing ? 62 : 100} color={parsing ? 'rgb(var(--c-amber))' : 'rgb(var(--c-teal))'} className="mt-2 h-2" />
+                <Meter
+                  value={parsing ? 62 : real ? (fields ? 100 : 0) : 100}
+                  color={parsing ? 'rgb(var(--c-amber))' : real && !fields ? 'rgb(var(--c-ink))' : 'rgb(var(--c-teal))'}
+                  className="mt-2 h-2"
+                />
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
-                    ['解析耗时', fields ? '见任务记录' : '4.2s'],
-                    ['识别准确率', fields ? '按字段置信度' : '96%'],
-                    ['结构化字段', fields ? String(fields.length) : '18'],
-                    ['使用引擎', fields ? 'local-rules' : '预置演示'],
+                    ['解析耗时', fields ? '见任务记录' : real ? '—' : '4.2s'],
+                    ['识别准确率', fields ? '按字段置信度' : real ? '—' : '96%'],
+                    ['结构化字段', fields ? String(fields.length) : real ? '0' : '18'],
+                    ['使用引擎', fields ? 'local-rules' : real ? '—' : '预置演示'],
                   ].map(([l, v]) => (
                     <div key={l} className="rounded-lg border border-ink/10 bg-paper px-2 py-1.5">
                       <p className="text-[9.5px] text-admin-muted">{l}</p>
@@ -230,10 +387,21 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <AButton icon={<Sparkles size={12} />} onClick={runParse} disabled={parsing}>
+                <AButton
+                  icon={parsing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                  onClick={runParse}
+                  disabled={!real || parsing}
+                  title={real ? '' : '未配置服务端：解析不可用'}
+                >
                   {parsing ? '解析中…' : '用 AI 重新解析'}
                 </AButton>
-                <AButton onClick={() => (real ? fileRef.current?.click() : show('上传新简历（演示：仅本页）'))}>上传新文件</AButton>
+                <AButton
+                  onClick={() => fileRef.current?.click()}
+                  disabled={!real || parsing}
+                  title={real ? '' : '未配置服务端：上传不可用'}
+                >
+                  上传新文件
+                </AButton>
                 <AButton variant="soft" onClick={() => window.open('/work/resume', '_blank')}>
                   预览前台简历
                 </AButton>
@@ -265,53 +433,57 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
             <Panel
               kicker="Extracted"
               title="抽取结果"
-              desc="置信度低于 90% 的字段建议人工核对"
-              right={<Badge tone={fields ? 'teal' : 'neutral'}>{fields ? '服务端结果' : '预置'} · {(fields ?? resumeParse.extracted).length} 个字段</Badge>}
+              desc={real ? '置信度低于 90% 的字段建议人工核对' : '以下为预置演示字段，不代表真实简历'}
+              right={
+                <Badge tone={fields ? 'teal' : 'neutral'}>
+                  {fields ? '服务端结果' : real ? '未解析' : '预置'} · {extracted.length} 个字段
+                </Badge>
+              }
             >
-              <div className="space-y-2.5">
-                {(fields ?? resumeParse.extracted).map((e) => (
-                  <div key={e.key} className="rounded-lg border border-ink/15 px-3 py-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] text-admin-muted">{e.key}</span>
-                      <span className={cn('font-mono text-[9.5px]', e.confidence >= 95 ? 'text-admin-teal' : 'text-admin-amber')}>
-                        {e.confidence}%
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11.5px] leading-snug">{e.value}</p>
-                    <Meter value={e.confidence} color={e.confidence >= 95 ? 'rgb(var(--c-teal))' : 'rgb(var(--c-amber))'} className="mt-1.5 h-1" />
+              <LoadState loading={loading} error={error} onRetry={() => void load()} label="正在加载简历数据…">
+                {extracted.length === 0 ? (
+                  <EmptyState title="还没有解析结果" desc="上传 .txt / .md 简历后，服务端会把字段解析到这里" />
+                ) : (
+                  <div className="space-y-2.5">
+                    {extracted.map((e) => (
+                      <div key={e.key} className="rounded-lg border border-ink/15 px-3 py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] text-admin-muted">{e.key}</span>
+                          <span className={cn('font-mono text-[9.5px]', e.confidence >= 95 ? 'text-admin-teal' : 'text-admin-amber')}>{e.confidence}%</span>
+                        </div>
+                        <p className="mt-1 text-[11.5px] leading-snug">{e.value}</p>
+                        <Meter value={e.confidence} color={e.confidence >= 95 ? 'rgb(var(--c-teal))' : 'rgb(var(--c-amber))'} className="mt-1.5 h-1" />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <AButton
-                variant="primary"
-                className="mt-3 w-full"
-                icon={<Check size={13} />}
-                onClick={async () => {
-                  if (!fields?.length) return show('先上传一份简历并解析')
-                  if (!real) return show('未接服务端：不能保存')
-                  try {
-                    const next: ResumeModule[] = fields.map((f) => ({ id: `f_${f.key}`, title: f.key, summary: f.value, items: [], enabled: true }))
-                    setModules(await saveResumeModules(next))
-                    show('字段已写入简历模块')
-                  } catch (err) {
-                    show(`保存失败：${(err as Error).message}`)
-                  }
-                }}
-              >
-                同步到简历数据
-              </AButton>
+                )}
+                <AButton
+                  variant="primary"
+                  className="mt-3 w-full"
+                  icon={busy === 'sync' ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                  onClick={() => void syncFields()}
+                  disabled={!real || !fields?.length || busy !== null}
+                  title={real ? '' : '未配置服务端：不能保存'}
+                >
+                  {busy === 'sync' ? '写入中…' : '同步到简历数据'}
+                </AButton>
+              </LoadState>
             </Panel>
 
-            <Panel kicker="Logs" title="最近版本（真实）">
-              <div className="space-y-1.5 text-[10.5px]">
-                {versions.slice(0, 4).map((v) => (
-                  <div key={v.id} className="flex items-center justify-between gap-2 border-b border-ink/10 pb-1.5 last:border-0">
-                    <span className="truncate font-mono text-admin-muted">{new Date(v.createdAt).toLocaleString('zh-CN')}</span>
-                    <span className="truncate">{v.name} · {v.modules.length} 模块</span>
-                  </div>
-                ))}
-                {versions.length === 0 && <p className="py-3 text-center text-admin-muted">还没有版本</p>}
-              </div>
+            <Panel kicker="Logs" title="最近版本" desc={real ? '来自服务端 resume.versions' : '预置演示版本（只读）'}>
+              <LoadState loading={loading} error={error} onRetry={() => void load()}>
+                <div className="space-y-1.5 text-[10.5px]">
+                  {versions.slice(0, 4).map((v) => (
+                    <div key={v.id} className="flex items-center justify-between gap-2 border-b border-ink/10 pb-1.5 last:border-0">
+                      <span className="truncate font-mono text-admin-muted">{fmtDate(v.createdAt)}</span>
+                      <span className="truncate">
+                        {v.name} · {v.modules.length} 模块
+                      </span>
+                    </div>
+                  ))}
+                  {versions.length === 0 && <p className="py-3 text-center text-admin-muted">还没有版本</p>}
+                </div>
+              </LoadState>
             </Panel>
           </div>
         </div>
@@ -322,23 +494,36 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
           <Panel
             kicker="Modules"
             title="简历模块"
-            desc="开关控制前台展示；顺序即阅读顺序，上移 / 下移即可调整"
+            desc="开关控制前台展示；顺序即阅读顺序，上移 / 下移后保存即可生效"
             right={
-              <div className="flex items-center gap-2">
-                <Badge tone="neutral">已启用 {enabledCount} / {modules.length}</Badge>
-                <AButton size="sm" icon={<Plus size={11} />} onClick={() => { setAddDraft({ title: '', summary: '' }); setAddOpen(true) }} disabled={!real}>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={dirty ? 'amber' : 'neutral'}>{real ? (dirty ? '有未保存修改' : '已同步') : '演示只读'}</Badge>
+                <Badge tone="neutral">
+                  已启用 {enabledCount} / {modules.length}
+                </Badge>
+                <AButton
+                  size="sm"
+                  icon={<Plus size={11} />}
+                  disabled={!real || saving}
+                  title={real ? '' : '未配置服务端：不能新增'}
+                  onClick={() => {
+                    setAddDraft({ title: '', summary: '' })
+                    setFormError('')
+                    setAddOpen(true)
+                  }}
+                >
                   新增
                 </AButton>
               </div>
             }
             flush
           >
-            <div className="divide-y divide-ink/10">
-              {modules.map((m, i) => {
-                return (
+            <LoadState loading={loading} error={error} onRetry={() => void load()} label="正在加载模块…">
+              <div className="divide-y divide-ink/10">
+                {modules.map((m, i) => (
                   <div key={m.id} className={cn('flex items-center gap-3 px-4 py-2.5', !m.enabled && 'opacity-55')}>
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sand/60 text-ink/60">
-                      <Layers size={14} />
+                      <Sparkles size={14} />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 text-[11.5px] font-medium">
@@ -348,43 +533,60 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                       <p className="mt-0.5 truncate text-[10px] text-admin-muted">{m.summary || '—'}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <IconButton label="上移" onClick={() => move(i, -1)}>
+                      <IconButton
+                        label="上移"
+                        disabled={!real || saving || i === 0}
+                        onClick={() => move(i, -1)}
+                      >
                         <ArrowUp size={11} />
                       </IconButton>
-                      <IconButton label="下移" onClick={() => move(i, 1)}>
+                      <IconButton
+                        label="下移"
+                        disabled={!real || saving || i === modules.length - 1}
+                        onClick={() => move(i, 1)}
+                      >
                         <ArrowDown size={11} />
                       </IconButton>
-                      <IconButton label="删除" className="hover:border-coral/60 hover:text-admin-danger" onClick={() => setModules((l) => l.filter((x) => x.id !== m.id))}>
+                      <IconButton
+                        label="删除"
+                        disabled={!real || saving}
+                        className="hover:border-coral/60 hover:text-admin-danger"
+                        onClick={() => {
+                          if (!real) return
+                          setModules((l) => l.filter((x) => x.id !== m.id))
+                          setDirty(true)
+                          show('已从列表移除，保存布局后生效')
+                        }}
+                      >
                         <Trash2 size={11} />
                       </IconButton>
                     </div>
                     <Toggle
                       on={m.enabled}
                       label={m.title}
-                      onChange={(v) => setModules((l) => l.map((x) => (x.id === m.id ? { ...x, enabled: v } : x)))}
+                      disabled={!real || saving}
+                      onChange={(v) => {
+                        if (!real) return
+                        setModules((l) => l.map((x) => (x.id === m.id ? { ...x, enabled: v } : x)))
+                        setDirty(true)
+                      }}
                     />
                   </div>
-                )
-              })}
-            </div>
-            <div className="flex items-center justify-between border-t border-ink/10 bg-paper px-4 py-2.5">
-              <span className="text-[10px] text-admin-muted">调整完成后记得保存</span>
+                ))}
+                {modules.length === 0 && <EmptyState title="还没有模块" desc="新增模块或解析简历后会出现在这里" />}
+              </div>
+            </LoadState>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink/10 bg-paper px-4 py-2.5">
+              <span className="text-[10px] text-admin-muted">
+                {real ? (dirty ? '调整完成后记得保存，否则刷新会丢失' : '顺序与开关与服务端一致') : '演示模式：调整按钮已禁用'}
+              </span>
               <AButton
                 size="sm"
                 variant="primary"
-                disabled={saving || !real}
-                onClick={async () => {
-                  if (!real) return show('未接服务端：无法保存')
-                  setSaving(true)
-                  try {
-                    setModules(await saveResumeModules(modules))
-                    show('模块顺序与开关已保存')
-                  } catch (err) {
-                    show(`保存失败：${(err as Error).message}`)
-                  } finally {
-                    setSaving(false)
-                  }
-                }}
+                disabled={!real || saving || !dirty}
+                title={real ? '' : '未配置服务端：无法保存'}
+                onClick={() => void saveModules()}
+                icon={saving ? <Loader2 size={11} className="animate-spin" /> : undefined}
               >
                 {saving ? '保存中…' : '保存布局'}
               </AButton>
@@ -403,6 +605,7 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
                       <span className="font-mono text-[9px] text-admin-muted">{m.items.length}</span>
                     </li>
                   ))}
+                {modules.filter((m) => m.enabled).length === 0 && <p className="py-3 text-center text-[10.5px] text-admin-muted">没有启用的模块</p>}
               </ol>
               <AButton className="mt-3 w-full" onClick={() => window.open('/work/resume', '_blank')}>
                 打开前台简历
@@ -425,75 +628,95 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
           <Panel
             kicker="Versions"
             title="版本历史"
-            desc="每次导出都会生成一个版本，回滚只影响前台展示内容"
+            desc="每次导出 / 解析都会生成版本；恢复只影响前台展示的模块内容"
             flush
             right={
-              <AButton size="sm" variant="primary" onClick={() => { setRelease({ name: `v${versions.length + 1}`, note: '' }); setReleasing(true) }} disabled={!real}>
+              <AButton
+                size="sm"
+                variant="primary"
+                disabled={!real}
+                title={real ? '' : '未配置服务端：不能创建版本'}
+                onClick={() => {
+                  setRelease({ name: `v${versions.length + 1}`, note: '' })
+                  setFormError('')
+                  setReleasing(true)
+                }}
+              >
                 发布新版本
               </AButton>
             }
           >
-            <div className="overflow-x-auto no-scrollbar">
-              <div className="admin-zebra min-w-[820px]">
-                <TableHead cols={['版本', '说明', '来源', '模块', '日期', '操作']} template="130px minmax(0,1fr) 76px 56px 120px 132px" />
-                {versions.map((v) => (
-                  <div
-                    key={v.id}
-                    className="grid grid-cols-[130px_minmax(0,1fr)_76px_56px_120px_132px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
-                  >
-                    <span className="truncate font-mono text-[11px] font-medium">{v.name}</span>
-                    <div className="min-w-0">
-                      <p className="truncate">{v.note || '—'}</p>
-                      <p className="font-mono text-[9px] text-admin-muted">{v.source}</p>
-                    </div>
-                    <Badge tone={v.source === 'parse' ? 'teal' : 'neutral'}>{v.source === 'parse' ? '解析' : '手动'}</Badge>
-                    <span className="font-mono text-[10px] text-admin-muted">{v.modules.length}</span>
-                    <span className="font-mono text-[9.5px] text-admin-muted">{new Date(v.createdAt).toLocaleString('zh-CN')}</span>
-                    <div className="flex items-center justify-end gap-1">
-                      <IconButton
-                        label="下载 JSON"
-                        onClick={() => {
-                          const url = URL.createObjectURL(new Blob([JSON.stringify(v, null, 2)], { type: 'application/json' }))
-                          const a = document.createElement('a')
-                          a.href = url
-                          a.download = `${v.name}.json`
-                          a.click()
-                          URL.revokeObjectURL(url)
-                        }}
+            <LoadState loading={loading} error={error} onRetry={() => void load()} label="正在加载版本…">
+              <div className="overflow-x-auto no-scrollbar">
+                <div className="admin-zebra min-w-[840px]">
+                  <TableHead cols={['版本', '说明', '来源', '模块', '日期', '操作']} template="130px minmax(0,1fr) 76px 56px 150px 132px" />
+                  {versions.map((v) => {
+                    const removeKey = `version-delete-${v.id}`
+                    const sourceLabel = v.source === 'parse' ? '解析' : v.source === 'manual' ? '手动' : '预置'
+                    return (
+                      <div
+                        key={v.id}
+                        className="grid grid-cols-[130px_minmax(0,1fr)_76px_56px_150px_132px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
                       >
-                        <Download size={11} />
-                      </IconButton>
-                      <AButton size="sm" variant="ghost" onClick={() => setRollback(v)}>
-                        恢复
-                      </AButton>
-                      <IconButton
-                        label="删除"
-                        className="hover:border-coral/60 hover:text-admin-danger"
-                        onClick={async () => {
-                          if (!window.confirm(`删除版本「${v.name}」？不可恢复。`)) return
-                          try {
-                            await deleteResumeVersion(v.id)
-                            await loadState()
-                            show('版本已删除')
-                          } catch (err) {
-                            show(`删除失败：${(err as Error).message}`)
-                          }
-                        }}
-                      >
-                        <Trash2 size={11} />
-                      </IconButton>
+                        <span className="truncate font-mono text-[11px] font-medium">{v.name}</span>
+                        <div className="min-w-0">
+                          <p className="truncate" title={v.note}>
+                            {v.note || '—'}
+                          </p>
+                          <p className="font-mono text-[9px] text-admin-muted">{v.source}</p>
+                        </div>
+                        <Badge tone={v.source === 'parse' ? 'teal' : 'neutral'}>{sourceLabel}</Badge>
+                        <span className="font-mono text-[10px] text-admin-muted">{v.modules.length}</span>
+                        <span className="font-mono text-[9.5px] text-admin-muted">{fmtDate(v.createdAt)}</span>
+                        <div className="flex items-center justify-end gap-1">
+                          <IconButton
+                            label="下载 JSON"
+                            onClick={() => {
+                              const url = URL.createObjectURL(new Blob([JSON.stringify(v, null, 2)], { type: 'application/json' }))
+                              const a = document.createElement('a')
+                              a.href = url
+                              a.download = `${v.name}.json`
+                              a.click()
+                              URL.revokeObjectURL(url)
+                            }}
+                          >
+                            <Download size={11} />
+                          </IconButton>
+                          <AButton
+                            size="sm"
+                            variant="ghost"
+                            disabled={!real}
+                            title={real ? '' : '未配置服务端：不能恢复'}
+                            onClick={() => setRollback(v)}
+                          >
+                            恢复
+                          </AButton>
+                          <IconButton
+                            label="删除"
+                            disabled={!real}
+                            className="hover:border-coral/60 hover:text-admin-danger"
+                            onClick={() => void removeVersion(v)}
+                          >
+                            {busy === removeKey ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                          </IconButton>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {versions.length === 0 && (
+                    <div className="px-4">
+                      <EmptyState title="还没有版本" desc="解析简历或发布新版本后会出现在这里" />
                     </div>
-                  </div>
-                ))}
-                {versions.length === 0 && <p className="px-4 py-8 text-center text-[11.5px] text-admin-muted">还没有版本：解析或手动发布后出现</p>}
+                  )}
+                </div>
               </div>
-            </div>
+            </LoadState>
           </Panel>
 
           <div className="grid gap-3 md:grid-cols-3">
             {[
-              ['最新版本', versions[0]?.name ?? '—', versions[0] ? new Date(versions[0].createdAt).toLocaleString('zh-CN') : '暂无'],
-              ['版本数', String(versions.length), '最多保留 50 个'],
+              ['最新版本', versions[0]?.name ?? '—', versions[0] ? fmtDate(versions[0].createdAt) : '暂无'],
+              ['版本数', String(versions.length), real ? '最多保留 50 个' : '演示只读'],
               ['当前模块数', String(modules.length), `已启用 ${enabledCount}`],
             ].map(([l, v, n]) => (
               <div key={l} className="rounded-xl border border-ink/15 bg-cream px-4 py-3">
@@ -508,71 +731,70 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
 
       <AdminModal
         open={rollback !== null}
-        onClose={() => setRollback(null)}
+        onClose={() => {
+          if (busy) return
+          setRollback(null)
+        }}
         title={`恢复版本 ${rollback?.name ?? ''}`}
         desc="恢复会把当前模块替换为该版本的模块快照"
         footer={
           <>
-            <AButton onClick={() => setRollback(null)}>取消</AButton>
+            <AButton disabled={busy !== null} onClick={() => setRollback(null)}>
+              取消
+            </AButton>
             <AButton
               variant="primary"
-              icon={<RotateCcw size={12} />}
-              onClick={async () => {
-                if (!rollback) return
-                try {
-                  await restoreResumeVersion(rollback.id)
-                  setRollback(null)
-                  await loadState()
-                  show('已恢复该版本的模块')
-                } catch (err) {
-                  show(`恢复失败：${(err as Error).message}`)
-                }
-              }}
+              icon={busy === 'version-restore' ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+              disabled={busy !== null}
+              onClick={() => void confirmRollback()}
             >
-              确认恢复
+              {busy === 'version-restore' ? '恢复中…' : '确认恢复'}
             </AButton>
           </>
         }
       >
         <p className="text-[12px] leading-relaxed text-admin-ink/80">
-          将把 `{rollback?.name}` 的模块顺序与字段内容写回当前简历。已下载的旧文件不受影响。
+          将把「{rollback?.name}」的模块顺序与字段内容写回当前简历。已下载的旧文件不受影响。
         </p>
       </AdminModal>
 
       <AdminModal
         open={releasing}
-        onClose={() => setReleasing(false)}
+        onClose={() => {
+          if (busy) return
+          setReleasing(false)
+        }}
         title="发布新版本"
         desc="基于当前模块快照创建一个版本（不生成 PDF）"
         footer={
           <>
-            <AButton onClick={() => setReleasing(false)}>取消</AButton>
+            <AButton disabled={busy !== null} onClick={() => setReleasing(false)}>
+              取消
+            </AButton>
             <AButton
               variant="primary"
-              onClick={async () => {
-                if (!release.name.trim()) return show('版本名不能为空')
-                try {
-                  await createResumeVersion({ name: release.name, note: release.note, modules })
-                  setReleasing(false)
-                  await loadState()
-                  show(`已创建版本 ${release.name}`)
-                } catch (err) {
-                  show(`创建失败：${(err as Error).message}`)
-                }
-              }}
+              disabled={busy !== null}
+              onClick={() => void createVersion()}
+              icon={busy === 'version-create' ? <Loader2 size={12} className="animate-spin" /> : undefined}
             >
-              创建
+              {busy === 'version-create' ? '创建中…' : '创建'}
             </AButton>
           </>
         }
       >
         <div className="space-y-3">
           <Field label="版本名">
-            <Input value={release.name} onChange={(e) => setRelease({ ...release, name: e.target.value })} />
+            <Input value={release.name} onChange={(e) => setRelease({ ...release, name: e.target.value })} disabled={busy !== null} />
           </Field>
           <Field label="变更说明">
-            <Input value={release.note} onChange={(e) => setRelease({ ...release, note: e.target.value })} placeholder="例如：补充 RSI 闭环与 42 个用例" />
+            <Input
+              value={release.note}
+              onChange={(e) => setRelease({ ...release, note: e.target.value })}
+              placeholder="例如：补充 RSI 闭环与 42 个用例"
+              disabled={busy !== null}
+            />
           </Field>
+          {formError && <p className="text-[11px] text-admin-danger">{formError}</p>}
         </div>
       </AdminModal>
 
@@ -586,8 +808,13 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
             <AButton
               variant="primary"
               onClick={() => {
-                if (!addDraft.title.trim()) return show('模块名不能为空')
-                setModules((l) => [...l, { id: newId('m'), title: addDraft.title.trim(), summary: addDraft.summary.trim(), items: [], enabled: true }])
+                if (!real) return setFormError(DEMO_NOTE)
+                if (!addDraft.title.trim()) return setFormError('模块名不能为空')
+                setModules((l) => [
+                  ...l,
+                  { id: newId('m'), title: addDraft.title.trim(), summary: addDraft.summary.trim(), items: [], enabled: true },
+                ])
+                setDirty(true)
                 setAddOpen(false)
                 show('已添加到列表，记得保存布局')
               }}
@@ -599,11 +826,21 @@ export default function ResumeAdminPage({ tab, setTab, show }: { tab: Tab; setTa
       >
         <div className="space-y-3">
           <Field label="模块名">
-            <Input autoFocus value={addDraft.title} onChange={(e) => setAddDraft({ ...addDraft, title: e.target.value })} placeholder="例如：开源项目" />
+            <Input
+              autoFocus
+              value={addDraft.title}
+              onChange={(e) => setAddDraft({ ...addDraft, title: e.target.value })}
+              placeholder="例如：开源项目"
+            />
           </Field>
           <Field label="摘要">
-            <Input value={addDraft.summary} onChange={(e) => setAddDraft({ ...addDraft, summary: e.target.value })} placeholder="一句话说明这个模块展示什么" />
+            <Input
+              value={addDraft.summary}
+              onChange={(e) => setAddDraft({ ...addDraft, summary: e.target.value })}
+              placeholder="一句话说明这个模块展示什么"
+            />
           </Field>
+          {formError && <p className="text-[11px] text-admin-danger">{formError}</p>}
         </div>
       </AdminModal>
     </div>

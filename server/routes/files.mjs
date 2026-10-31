@@ -232,7 +232,8 @@ route('GET', '/api/files/shares', async ({ req, res }) => {
   if (!session) return sendJson(res, 200, [])
   const { files } = await getStores()
   const data = await files.read()
-  sendJson(res, 200, data.shares.map(({ passwordHash, ...s }) => s))
+  // 只暴露「是否设置密码」，哈希永远不出服务端
+  sendJson(res, 200, data.shares.map(({ passwordHash, ...s }) => ({ ...s, hasPassword: Boolean(passwordHash) })))
 })
 
 route('DELETE', '/api/files/share/:token', async ({ req, res, params }) => {

@@ -6,7 +6,7 @@
  *   · 没配 → 只留一条 warn，不发任何请求，保证离线环境没有额外报错
  * 上报里绝不带用户输入内容，只带路由与错误摘要。
  */
-import { serverConfig } from './config'
+import { apiUrl, serverConfig } from './config'
 
 export type ErrorContext = { route?: string; boundary?: string; component?: string }
 
@@ -41,9 +41,9 @@ export function reportError(err: unknown, ctx: ErrorContext = {}) {
   // sendBeacon 在不阻塞渲染的前提下送出去；拿不到就退化成 fetch(fire-and-forget)
   try {
     const body = JSON.stringify(payload)
-    const beacon = navigator.sendBeacon?.(`${serverConfig.baseUrl}${serverConfig.errorReportPath}`, body)
+    const beacon = navigator.sendBeacon?.(apiUrl(serverConfig.errorReportPath), body)
     if (!beacon) {
-      void fetch(`${serverConfig.baseUrl}${serverConfig.errorReportPath}`, {
+      void fetch(apiUrl(serverConfig.errorReportPath), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,

@@ -96,6 +96,11 @@ export const localGuestbook: GuestbookRepository = {
 
 /* ------------------------------ 远端适配层（二期） --------------------------- */
 
+export type ModerationStatusRaw = 'pending' | 'published' | 'rejected' | 'deleted'
+
+/** 后台审核队列条目：保留服务端原始状态，UI 据此决定可用操作 */
+export type AdminMessage = GuestMessage & { rawStatus: ModerationStatusRaw; email?: string | null }
+
 type ServerMessage = {
   id: string
   user: string
@@ -103,8 +108,9 @@ type ServerMessage = {
   color: string
   createdAt: string
   likes?: number
-  status?: ModerationStatus
+  status?: ModerationStatusRaw
   flagged?: boolean
+  email?: string | null
 }
 
 const fmtTime = (iso?: string) => {
@@ -120,7 +126,7 @@ const toMessage = (m: ServerMessage): GuestMessage => ({
   color: m.color || 'lime',
   time: fmtTime(m.createdAt),
   source: 'remote',
-  status: m.status,
+  status: m.status === 'published' ? 'published' : 'pending',
   likes: m.likes ?? 0,
 })
 
@@ -153,7 +159,7 @@ export const remoteGuestbook: GuestbookRepository = {
 export async function listPending(): Promise<GuestMessage[]> {
   if (serverConfig.enabled) {
     try {
-      const data = await apiJson<{ items: ServerMessage[] }>(`${serverConfig.guestbookPath}?scope=admin&status=all&limit=100`)
+      const data = await apiJson<{ items: ServerMessage[] }>(`${serverConfig.guestbookPath}?scope=admin&status=all&limit=100`, { cache: 'no-store' })
       return data.items.filter((m) => m.status === 'pending').map(toMessage)
     } catch {
       return []
@@ -163,11 +169,28 @@ export async function listPending(): Promise<GuestMessage[]> {
   return mine.filter((m) => m.source === 'local')
 }
 
+/**
+ * 后台审核队列（含待审 / 已通过 / 已拒绝）：
+ * 通过 scope=admin 读全量，拒绝与删除需要能看见结果，不能只拉 pending。
+ */
+export async function listModerationQueue(): Promise<AdminMessage[]> {
+  if (!serverConfig.enabled) {
+    const mine = readStored<GuestMessage[]>(STORAGE_KEYS.guestbook, [], isMsgArray)
+    return mine
+      .filter((m) => m.source === 'local')
+      .map((m) => ({ ...m, rawStatus: m.status === 'published' ? 'published' : 'pending' }))
+  }
+  const data = await apiJson<{ items: ServerMessage[] }>(`${serverConfig.guestbookPath}?scope=admin&status=all&limit=100`, { cache: 'no-store' })
+  return data.items
+    .filter((m) => m.status !== 'deleted')
+    .map((m) => ({ ...toMessage(m), rawStatus: m.status ?? 'pending', email: m.email ?? null }))
+}
+
 /** 待审数量：后台 badge 用这个，不再写死 1 */
 export async function countPending(): Promise<number> {
   if (serverConfig.enabled) {
     try {
-      const data = await apiJson<{ count: number }>(`${serverConfig.guestbookPath}/pending/count`)
+      const data = await apiJson<{ count: number }>(`${serverConfig.guestbookPath}/pending/count`, { cache: 'no-store' })
       return data.count
     } catch {
       return 0
@@ -195,6 +218,15 @@ export async function rejectPending(id: string) {
   }
   const mine = readStored<GuestMessage[]>(STORAGE_KEYS.guestbook, [], isMsgArray)
   writeStored(STORAGE_KEYS.guestbook, mine.filter((m) => m.id !== id))
+}
+
+/** 后台删除留言（服务端软删除，返回后由页面重新拉取队列） */
+export async function deleteMessage(id: string) {
+  if (serverConfig.enabled) {
+    await apiJson(`${serverConfig.guestbookPath}/${id}`, { method: 'DELETE' })
+    return
+  }
+  await localGuestbook.remove(id)
 }
 
 /** 点赞按 message id 落库（服务端按 ipHash 去重）；未接服务端返回 null，由页面回落本机 */
