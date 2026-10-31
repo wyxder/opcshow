@@ -10,6 +10,7 @@ import { cn, newId, readableInk, useLocalStorage } from '@/lib/utils'
 import { STORAGE_KEYS, arrayOf, isRecordOf, isStringArray } from '@/lib/storage'
 import { useSeo } from '@/lib/seo'
 import { serverConfig } from '@/services/config'
+import { contents } from '@/services/content'
 
 const isMomentArray = arrayOf<Moment>((m) => typeof m.id === 'string' && typeof m.text === 'string')
 const isCommentRecord = isRecordOf<string[]>((v) => isStringArray(v))
@@ -38,12 +39,13 @@ export default function Moments() {
   /** 站内登记的真实图片数量（F1：图片没上传前一律走图形兜底） */
   const withPhoto = feed.filter((m) => m.media.some((x) => lookupMedia(x.label))).length
 
-  const post = () => {
+  const post = async () => {
     if (!draft.trim()) return
+    const text = draft.trim()
     const m: Moment = {
-      id: newId('local'),
+      id: newId(serverConfig.enabled ? 'moment' : 'local'),
       time: '刚刚',
-      text: draft.trim(),
+      text,
       place: '西安',
       likes: 0,
       accent: 'rgb(var(--c-lime))',
@@ -51,9 +53,20 @@ export default function Moments() {
       comments: [],
       tags: ['新动态'],
     }
+    // FE-03：接服务端时真实落库（pending），不再只写本机还报「已提交」
+    if (serverConfig.enabled) {
+      try {
+        await contents.create('moments', m.id, { ...m, status: 'pending' })
+        setDraft('')
+        show('已提交到服务端，审核通过后公开')
+      } catch (err) {
+        show(`提交失败：${(err as Error).message}`)
+      }
+      return
+    }
     setExtra((l) => [m, ...l])
     setDraft('')
-    show(serverConfig.enabled ? '已提交，等待审核后公开' : '已经发到朋友圈了（只存在你的浏览器里）')
+    show('已经发到朋友圈了（只存在你的浏览器里）')
   }
 
   const share = async () => {

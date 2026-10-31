@@ -11,7 +11,7 @@ import { env, hasModelKey } from '../lib/env.mjs'
 
 export const modelAvailable = hasModelKey
 
-export async function streamModel(messages, { onDelta, signal, model }) {
+export async function streamModel(messages, { onDelta, signal, model, onReset }) {
   if (!hasModelKey()) throw Object.assign(new Error('未配置模型密钥'), { status: 503, code: 'MODEL_UNAVAILABLE' })
 
   let attempt = 0
@@ -23,6 +23,14 @@ export async function streamModel(messages, { onDelta, signal, model }) {
     } catch (err) {
       lastError = err
       if (err?.name === 'AbortError' || signal?.aborted) throw err
+      // AI-11：重试前让上层把已发送的半截内容重置，避免截断/重复
+      if (attempt < 2) {
+        try {
+          onReset?.()
+        } catch {
+          /* 重置失败不影响重试 */
+        }
+      }
     }
   }
   throw Object.assign(new Error(`模型不可用：${lastError?.message ?? 'unknown'}`), { status: 503, code: 'MODEL_UNAVAILABLE' })

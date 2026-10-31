@@ -3,7 +3,7 @@
  * 用法：node scripts/check-budget.mjs   （npm run check:budget，需先 npm run build）
  *
  * 预算：
- *   · 入口 JS（dist/assets/index-*.js）gzip ≤ 50 kB
+ *   · 入口 JS（dist/assets/index-*.js）gzip ≤ 45 kB（fx2 FE-01 目标）
  *   · 首屏 CSS（dist/assets/index-*.css）gzip ≤ 20 kB
  *   · 单页 chunk（非 vendor）gzip ≤ 50 kB
  *
@@ -42,8 +42,8 @@ const css = files.find((n) => /^index-.*\.css$/.test(n))
 if (!entry) fail('dist/assets 里没有入口 index-*.js')
 else {
   const size = gz(entry)
-  if (size > 50 * 1000) fail(`入口 ${entry} gzip ${kb(size)} > 50 kB 预算`)
-  else pass(`入口 ${entry} gzip ${kb(size)} ≤ 50 kB`)
+  if (size > 45 * 1000) fail(`入口 ${entry} gzip ${kb(size)} > 45 kB 预算`)
+  else pass(`入口 ${entry} gzip ${kb(size)} ≤ 45 kB`)
 }
 
 if (css) {

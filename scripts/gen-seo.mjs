@@ -8,7 +8,7 @@
  * 与后台 SettingsPage 的 seo.sitemap / seo.structuredData 开关。
  */
 import esbuild from 'esbuild'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -35,6 +35,23 @@ try {
 } catch (err) {
   console.error('[gen-seo] 读取 src/data 失败：', err.message)
   process.exit(1)
+}
+
+// X-05：若存在运行时快照，优先用它（后台改过的标题/摘要/状态才能进 sitemap 与 RSS）
+try {
+  const runtime = join(root, 'server', 'data', 'content.json')
+  if (existsSync(runtime)) {
+    const snap = JSON.parse(readFileSync(runtime, 'utf8'))
+    if (Array.isArray(snap.articles) && snap.articles.length) {
+      articleMeta = snap.articles
+        .filter((a) => !a.status || a.status === 'published')
+        .map((a) => ({ id: a.id, title: a.title, category: a.category ?? '工程手记', date: a.date ?? new Date().toISOString().slice(0, 10), abstract: a.abstract ?? '', readMin: a.readMin ?? 0 }))
+    }
+    if (snap.siteMeta) siteMeta = { ...siteMeta, ...snap.siteMeta }
+    console.log('[gen-seo] 已使用 server/data/content.json 运行时快照')
+  }
+} catch (err) {
+  console.warn('[gen-seo] 读取运行时快照失败，回落 src/data：', err.message)
 }
 
 const BASE = siteMeta.url.replace(/\/$/, '')

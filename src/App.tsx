@@ -2,14 +2,14 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Suspense, lazy, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Layout from '@/components/Layout'
-import Home from '@/pages/Home'
 import { ErrorBoundary, NotFound, RouteErrorBoundary, RouteFallback } from '@/components/ErrorBoundary'
-import { trackPageview } from '@/services/analytics'
+import { flushStay, trackPageview } from '@/services/analytics'
 
 /* ---------------------------------------------------------------------------
- * 路由级懒加载（fx.md P1）：首屏只装首页 + 框架，其它页面与后台按需拉 chunk。
- * Home 保持静态引入，避免首屏多一次请求往返。
+ * 路由级懒加载（fx.md P1 / fx2 FE-01）：首屏只装框架，Home 也拆成独立 chunk。
+ * 预渲染 HTML 已包含首页正文，chunk 到达前不会白屏。
  * ------------------------------------------------------------------------- */
+const Home = lazy(() => import('@/pages/Home'))
 const Learn = lazy(() => import('@/pages/Learn'))
 const Reader = lazy(() => import('@/pages/Reader'))
 const Resume = lazy(() => import('@/pages/Resume'))
@@ -73,6 +73,20 @@ export default function App() {
   useEffect(() => {
     trackPageview(location.pathname)
   }, [location.pathname])
+
+  // BE-09：页面隐藏/关闭时补发真实停留时长，平均停留不再恒为 0
+  useEffect(() => {
+    const onHide = () => flushStay()
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushStay()
+    }
+    window.addEventListener('pagehide', onHide)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', onHide)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
 
   if (location.pathname.startsWith('/admin')) {
     return (

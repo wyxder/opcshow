@@ -1,10 +1,34 @@
 import { ArrowUpRight, HeartHandshake, Link2, Mail, Sparkles } from 'lucide-react'
+import { useState } from 'react'
 import { PageHead } from '@/components/ui/primitives'
+import { useToast } from '@/components/ui/Toast'
 import { friends } from '@/data/me'
 import { profile } from '@/data/site'
 import { useSeo } from '@/lib/seo'
+import { serverConfig } from '@/services/config'
+import { submitFriendLink } from '@/services/settings'
 
 export default function Friends() {
+  const { show, node } = useToast()
+  const [form, setForm] = useState({ name: '', url: '', desc: '' })
+  const [busy, setBusy] = useState(false)
+
+  const apply = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.name.trim() || !form.url.trim()) return show('站点名和地址都要填')
+    if (!serverConfig.enabled) return show('未接服务端：请用邮件申请')
+    setBusy(true)
+    try {
+      await submitFriendLink({ name: form.name.trim(), url: form.url.trim(), desc: form.desc.trim() })
+      setForm({ name: '', url: '', desc: '' })
+      show('已提交，审核通过后会出现在这里')
+    } catch (err) {
+      show(`提交失败：${(err as Error).message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   useSeo({
     title: '友链 · 晓叶',
     description: '一起打过比赛的、一起改过稿的、在我卡住时给我答案的人。',
@@ -13,6 +37,7 @@ export default function Friends() {
 
   return (
     <div className="shell">
+      {node}
       <PageHead
         kicker="05 / ME · FRIENDS"
         title="同频的人与他们的站"
@@ -80,6 +105,37 @@ export default function Friends() {
           <a href={`mailto:${profile.email}?subject=友链申请`} className="btn-lime mt-4 !py-2 !text-[12px]">
             <Mail size={13} /> 发邮件申请
           </a>
+
+          {/* BE-14：服务端在线时可直接提交，进 pending 等审核 */}
+          <form onSubmit={apply} className="mt-4 space-y-2 border-t border-paper/15 pt-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="站点名称"
+                className="rounded-lg border border-paper/20 bg-paper/5 px-2.5 py-2 text-[11px] text-paper placeholder:text-paper/30 outline-none focus:border-lime"
+              />
+              <input
+                value={form.url}
+                onChange={(e) => setForm({ ...form, url: e.target.value })}
+                placeholder="https://…"
+                className="rounded-lg border border-paper/20 bg-paper/5 px-2.5 py-2 text-[11px] text-paper placeholder:text-paper/30 outline-none focus:border-lime"
+              />
+            </div>
+            <input
+              value={form.desc}
+              onChange={(e) => setForm({ ...form, desc: e.target.value })}
+              placeholder="一句介绍（可选）"
+              className="w-full rounded-lg border border-paper/20 bg-paper/5 px-2.5 py-2 text-[11px] text-paper placeholder:text-paper/30 outline-none focus:border-lime"
+            />
+            <button
+              type="submit"
+              disabled={busy || !serverConfig.enabled}
+              className="w-full rounded-lg border border-lime/50 bg-lime/15 py-2 text-[11.5px] font-semibold text-lime transition hover:bg-lime/25 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {busy ? '提交中…' : serverConfig.enabled ? '提交友链申请（进审核队列）' : '未接服务端：请用上方邮件申请'}
+            </button>
+          </form>
         </div>
 
         <div className="rounded-2xl border-1.5 border-ink bg-cream p-5">

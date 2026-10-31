@@ -10,6 +10,8 @@
     />
     <meta name="theme-color" content="#F4F0E6" />
     <meta name="author" content="晓叶" />
+    <!-- 主题引导脚本同步执行，preload 减少一次往返（fx2 FE-15） -->
+    <link rel="preload" as="script" href="/theme-boot.js" />
 
     <!-- SEO / 分享卡片（fx.md S1–S3）：页面级 title/description/canonical 由 useSeo 覆盖 -->
     <meta property="og:type" content="website" />
@@ -45,7 +47,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- F-12：首屏只阻塞 2 个字族（Bricolage + Noto Sans SC），display=optional 避免字体回退抖动；
          装饰字族（Caveat / JetBrains Mono）异步加载，加载前回退到系统手写体/等宽体 -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+SC:wght@300;400;500;700;900&display=optional" />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+SC:wght@300;400;500;700;900&display=optional"
+    />
     <link
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+SC:wght@300;400;500;700;900&display=optional"
       rel="stylesheet"
@@ -54,7 +60,7 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap"
       media="print"
-      onload="this.media='all'"
+      onload="this.media = 'all'"
     />
     <noscript>
       <link
@@ -62,39 +68,9 @@
         href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap"
       />
     </noscript>
-    <script>
-      // 首屏防闪烁：在 CSS 与 React 之前就落好 data-theme。
-      // 读取顺序与 src/theme/theme.ts 的 readStoredTheme() 保持一致：
-      //   带版本的 key（wyx:theme@v1）→ 旧 key（wyx:theme，顺手迁移）→ 系统深色偏好 → paper。
-      // 这里必须内联（不能 import 模块），所以常量与 src/theme/theme.ts 的
-      // INLINE_BOOT_THEME / INLINE_STORAGE_KEY 成对维护。
-      (function () {
-        var IDS = ["paper", "lab", "swiss", "terminal", "pop"];
-        var t = "paper";
-        var dark = false;
-        try {
-          dark = !!(
-            window.matchMedia &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches
-          );
-          var v =
-            localStorage.getItem("wyx:theme@v1") ||
-            localStorage.getItem("wyx:theme");
-          if (v && IDS.indexOf(v) >= 0) {
-            localStorage.setItem("wyx:theme@v1", v);
-            try {
-              localStorage.removeItem("wyx:theme");
-            } catch (e) {}
-            t = v;
-          } else if (dark) {
-            t = "terminal";
-          }
-        } catch (e) {
-          t = dark ? "terminal" : "paper";
-        }
-        document.documentElement.setAttribute("data-theme", t);
-      })();
-    </script>
+    <!-- 首屏防闪烁：同源同步脚本在 CSS 之后、首次绘制之前落好 data-theme。
+         抽成外部文件是为了让静态托管能开启 `script-src 'self'`（fx2 FE-15）。 -->
+    <script src="/theme-boot.js"></script>
   </head>
   <body>
     <div id="root"></div>

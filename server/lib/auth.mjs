@@ -9,7 +9,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { env } from './env.mjs'
 import { getStores } from './store.mjs'
-import { clientIp, parseCookies, rateLimit } from './http.mjs'
+import { clientIp, parseCookies, rateLimit, sha256 } from './http.mjs'
 
 export const SESSION_COOKIE = 'wyx_session'
 
@@ -56,12 +56,25 @@ export async function audit(actor, action, target, before, after) {
 }
 
 function cookie(value, maxAgeMs) {
-  const parts = [`${SESSION_COOKIE}=${encodeURIComponent(value)}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${Math.floor(maxAgeMs / 1000)}`]
+  // BE-03：HTTPS 下用 __Host- 前缀（强制 Secure + Path=/ + 无 Domain）
+  const name = env.cookieSecure ? `__Host-${SESSION_COOKIE}` : SESSION_COOKIE
+  const parts = [`${name}=${encodeURIComponent(value)}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${Math.floor(maxAgeMs / 1000)}`]
   if (env.cookieSecure) parts.push('Secure')
   return parts.join('; ')
 }
 
-export const clearCookie = () => `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`
+/** 同时清掉两种命名（数组形式，避免多个 Set-Cookie 被合并成一个） */
+export const clearCookie = () => [
+  `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
+  `__Host-${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0`,
+]
+
+const sessionKey = (sid) => sha256(sid)
+
+async function readSid(req) {
+  const jar = parseCookies(req)
+  return jar[`__Host-${SESSION_COOKIE}`] ?? jar[SESSION_COOKIE] ?? ''
+}
 
 export async function login({ user, password }, req) {
   const ip = clientIp(req)
@@ -72,17 +85,18 @@ export async function login({ user, password }, req) {
   const data = await users.read()
   const account = data.users.find((u) => u.user === user)
   if (!account || !verifyPassword(password, account.passwordHash)) {
-    await audit(user || 'anonymous', 'auth.login.failed', 'session', null, { ip })
+    await audit(user || 'anonymous', 'auth.login.failed', 'session', null, { ip: sha256(ip).slice(0, 16) })
     throw Object.assign(new Error('账号或密码不正确'), { status: 401, code: 'INVALID_CREDENTIALS' })
   }
 
   const sid = randomBytes(32).toString('hex')
   const expiresAt = Date.now() + env.sessionTtlMs
   await sessions.update((d) => {
-    d.sessions = d.sessions.filter((s) => s.expiresAt > Date.now())
-    d.sessions.push({ id: sid, user: account.user, role: account.role, createdAt: Date.now(), expiresAt })
+    // BE-03：只存 sid 的哈希；过期会话在登录时清理，并限制总量
+    d.sessions = d.sessions.filter((s) => s.expiresAt > Date.now()).slice(-500)
+    d.sessions.push({ id: sessionKey(sid), user: account.user, role: account.role, createdAt: Date.now(), expiresAt })
   })
-  await audit(account.user, 'auth.login', 'session', null, { ip })
+  await audit(account.user, 'auth.login', 'session', null, { ip: sha256(ip).slice(0, 16) })
   return { sid, session: { mode: 'real', user: account.user, role: account.role, expiresAt: new Date(expiresAt).toISOString() } }
 }
 
@@ -91,22 +105,22 @@ export function sessionCookie(sid) {
 }
 
 export async function getSession(req) {
-  const sid = parseCookies(req)[SESSION_COOKIE]
+  const sid = await readSid(req)
   if (!sid) return null
   const { sessions } = await getStores()
   const data = await sessions.read()
-  const found = data.sessions.find((s) => s.id === sid)
+  const found = data.sessions.find((s) => s.id === sessionKey(sid))
   if (!found || found.expiresAt < Date.now()) return null
   return { mode: 'real', user: found.user, role: found.role, expiresAt: new Date(found.expiresAt).toISOString(), sid }
 }
 
 export async function logout(req) {
-  const sid = parseCookies(req)[SESSION_COOKIE]
+  const sid = await readSid(req)
   const session = await getSession(req)
   if (sid) {
     const { sessions } = await getStores()
     await sessions.update((d) => {
-      d.sessions = d.sessions.filter((s) => s.id !== sid)
+      d.sessions = d.sessions.filter((s) => s.id !== sessionKey(sid))
     })
   }
   if (session) await audit(session.user, 'auth.logout', 'session', null, null)

@@ -91,7 +91,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
     let alive = true
     void (async () => {
       try {
-        const [list, links] = await Promise.all([listFiles(), listShares()])
+        const [list, links] = await Promise.all([listFiles('admin'), listShares()])
         if (!alive) return
         setFiles(list.map(rowFromServer))
         setShares(
@@ -138,7 +138,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
         show(`上传失败：${(err as Error).message}`)
       }
     }
-    const refreshed = await listFiles().catch(() => null)
+    const refreshed = await listFiles('admin').catch(() => null)
     if (refreshed) setFiles(refreshed.map(rowFromServer))
   }
 

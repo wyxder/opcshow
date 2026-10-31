@@ -14,6 +14,7 @@ import { getStores } from '../lib/store.mjs'
 import { getSession, requireRole } from '../lib/auth.mjs'
 import { audit } from '../lib/auth.mjs'
 import { text, object, oneOf } from '../lib/validate.mjs'
+import { invalidate } from '../ai/indexer.mjs'
 
 const DOMAINS = ['articles', 'projects', 'moments', 'trips', 'tracks', 'friends', 'awards', 'skills', 'resources']
 const STATUSES = ['draft', 'pending', 'published', 'hidden']
@@ -34,7 +35,9 @@ route('GET', '/api/content/meta', async ({ req, res, reqId }) => {
   const { content } = await getStores()
   const data = await content.read()
   const session = await getSession(req)
-  const counts = Object.fromEntries(DOMAINS.map((d) => [d, (data[d] ?? []).length]))
+  // X-06：公开调用只应看到 published 的计数，避免泄露草稿规模
+  const visible = (name) => (data[name] ?? []).filter((x) => session || x.status === 'published')
+  const counts = Object.fromEntries(DOMAINS.map((d) => [d, visible(d).length]))
   const drafts = session
     ? Object.fromEntries(DOMAINS.map((d) => [d, (data[d] ?? []).filter((x) => x.status !== 'published').length]))
     : null
@@ -95,9 +98,11 @@ route('PUT', '/api/content/:domain/:id', async ({ req, res, reqId, params }) => 
       throw Object.assign(new Error(`版本冲突：当前 version=${currentVersion}`), { status: 409, code: 'VERSION_CONFLICT', details: { currentVersion } })
     }
     const payload = object(body.payload ?? body, 'payload')
+    // BE-04：状态只能走 /status 状态机；直接 PUT 里的 status 一律忽略
+    const { status: _ignoredStatus, ...editable } = payload
     const next = {
       ...(before ?? { id: params.id, status: 'draft' }),
-      ...payload,
+      ...editable,
       id: params.id,
       version: currentVersion + 1,
       updatedAt: new Date().toISOString(),
@@ -108,6 +113,8 @@ route('PUT', '/api/content/:domain/:id', async ({ req, res, reqId, params }) => 
     return { before, after: next }
   })
   await audit(session.user, 'content.upsert', `${params.domain}/${params.id}`, result.before, result.after)
+  // X-06 / AI-03：内容变了，问答索引必须失效，下次请求重建
+  invalidate()
   const out = { id: params.id, version: result.after.version, status: result.after.status }
   rememberIdempotency(req, body, out)
   sendJson(res, 200, out)
@@ -134,6 +141,7 @@ route('POST', '/api/content/:domain/:id/status', async ({ req, res, reqId, param
     return item
   })
   await audit(session.user, 'content.status', `${params.domain}/${params.id}`, null, { status: next })
+  invalidate()
   sendJson(res, 200, { id: result.id, status: result.status, version: result.version })
 })
 
@@ -149,6 +157,7 @@ route('DELETE', '/api/content/:domain/:id', async ({ req, res, reqId, params }) 
     item.version = (item.version ?? 0) + 1
   })
   await audit(session.user, 'content.delete', `${params.domain}/${params.id}`, null, null)
+  invalidate()
   sendJson(res, 200, { ok: true })
 })
 
@@ -158,14 +167,17 @@ route('POST', '/api/content', async ({ req, res, reqId }) => {
   const domain = oneOf(body.domain, DOMAINS, 'domain')
   const id = text(body.id, { field: 'id', min: 1, max: 80 })
   const payload = object(body.payload ?? {}, 'payload')
+  // BE-04：新建时校验状态枚举，避免写入 archived 这类永远不可见的非法值
+  const status = payload.status ? oneOf(payload.status, STATUSES, 'status') : 'draft'
   const { content } = await getStores()
   const created = await content.update((data) => {
     const list = data[domain] ?? (data[domain] = [])
     if (list.some((x) => x.id === id)) throw Object.assign(new Error('id 已存在'), { status: 409, code: 'DUPLICATE_ID' })
-    const item = { ...payload, id, status: payload.status ?? 'draft', version: 1, createdAt: new Date().toISOString() }
+    const item = { ...payload, id, status, version: 1, createdAt: new Date().toISOString() }
     list.unshift(item)
     return item
   })
   await audit(session.user, 'content.create', `${domain}/${id}`, null, created)
+  invalidate()
   sendJson(res, 201, { id, version: created.version, status: created.status })
 })

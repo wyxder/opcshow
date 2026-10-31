@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { useFocusTrap } from '@/lib/a11y'
 import { cn, newId, usePrefersReducedMotion } from '@/lib/utils'
 import { describeContext, getAssistantContextSnapshot, subscribeAssistantContext } from '@/lib/assistant'
-import { askSite, quickPrompts, type AnswerSource, type ChatReference } from '@/services/ai'
+import { askSite, clearSessionId, loadRemoteSession, probeAiMode, quickPrompts, type AiMode, type AnswerSource, type ChatReference } from '@/services/ai'
 import { serverConfig } from '@/services/config'
 
 /** 「正在阅读」上下文：由页面通过 setAssistantContext() 写入 */
@@ -20,6 +20,8 @@ type Msg = {
   source?: AnswerSource
   references?: ChatReference[]
   degraded?: boolean
+  /** FE-14：用户主动停止/关闭时保留已生成内容并标注 */
+  stopped?: boolean
 }
 
 const sourceLabel = (source: AnswerSource, degraded?: boolean) => {
@@ -28,13 +30,16 @@ const sourceLabel = (source: AnswerSource, degraded?: boolean) => {
   return '预置问答 · 作者手写'
 }
 
-const greeting = (live: boolean): Msg => ({
+const greeting = (mode: AiMode): Msg => ({
   id: newId('greet'),
   role: 'bot',
-  source: live ? 'model' : 'preset',
-  text: live
-    ? '你好，我是这个站的 AI 助手，回答来自服务端代理的模型（密钥不在浏览器里）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇。'
-    : '你好，我是这个站的 AI 助手。当前没有接入模型服务，回答来自作者手写的预置问答（离线可用）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇。',
+  source: mode === 'preset' ? 'preset' : mode === 'retrieval' ? 'retrieval' : 'model',
+  text:
+    mode === 'model'
+      ? '你好，我是这个站的 AI 助手，回答来自服务端代理的模型（密钥不在浏览器里）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇。'
+      : mode === 'retrieval'
+        ? '你好，我是这个站的 AI 助手。服务端当前没有配置模型，回答会从站内文章里检索摘录（带引用、不编造）。\n\n可以问我 RAG、Agent 评测、项目细节。'
+        : '你好，我是这个站的 AI 助手。当前没有接入模型服务，回答来自作者手写的预置问答（离线可用）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇。',
 })
 
 export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) {
@@ -42,10 +47,11 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
   const reduce = usePrefersReducedMotion()
   const context = useAssistantContext()
   const contextText = describeContext(context)
-  const [msgs, setMsgs] = useState<Msg[]>([greeting(serverConfig.enabled)])
+  const [mode, setMode] = useState<AiMode>(serverConfig.enabled ? 'retrieval' : 'preset')
+  const [msgs, setMsgs] = useState<Msg[]>([greeting(serverConfig.enabled ? 'retrieval' : 'preset')])
   const [draft, setDraft] = useState('')
   const [typing, setTyping] = useState(false)
-  const [lastSource, setLastSource] = useState<AnswerSource>(serverConfig.enabled ? 'model' : 'preset')
+  const [lastSource, setLastSource] = useState<AnswerSource>(serverConfig.enabled ? 'retrieval' : 'preset')
   const [degraded, setDegraded] = useState(false)
   const [lastAsk, setLastAsk] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
@@ -59,6 +65,40 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
     if (defaultOpen) setOpen(true)
   }, [defaultOpen])
 
+  // FE-08：打开面板时探测服务端真实能力（model / retrieval / preset）
+  useEffect(() => {
+    let alive = true
+    probeAiMode().then((m) => {
+      if (!alive) return
+      setMode(m)
+      setMsgs((list) => (list.length === 1 && list[0].role === 'bot' ? [greeting(m)] : list))
+    })
+    return () => {
+      alive = false
+    }
+  }, [open])
+
+  // FE-10：同会话刷新后恢复历史
+  useEffect(() => {
+    if (!open || !serverConfig.enabled) return
+    let alive = true
+    loadRemoteSession().then((history) => {
+      if (!alive || !history.length) return
+      const restored = history.map((m) => ({
+        id: newId(m.role === 'assistant' ? 'bot' : 'user'),
+        role: m.role === 'assistant' ? ('bot' as const) : ('user' as const),
+        text: m.text,
+        source: m.source,
+        references: m.references,
+      }))
+      // 只有「刚打开且还没聊」时才用服务端历史覆盖，避免冲掉正在进行的对话
+      setMsgs((list) => (list.length > 1 ? list : restored))
+    })
+    return () => {
+      alive = false
+    }
+  }, [open])
+
   useEffect(() => {
     const handler = () => setOpen(true)
     window.addEventListener('open-assistant', handler)
@@ -71,9 +111,21 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
 
   // F-03：关闭 / Esc / 卸载都终止进行中的流，避免残留 token 与定时器
   const stop = () => {
+    const wasTyping = typing
     cancelRef.current?.()
     cancelRef.current = null
     setTyping(false)
+    // FE-14：保留已生成内容，并明确标注「已停止」
+    if (wasTyping) setMsgs((list) => list.map((m, i) => (i === list.length - 1 && m.role === 'bot' ? { ...m, stopped: true } : m)))
+  }
+
+  const reset = () => {
+    stop()
+    clearSessionId()
+    setMsgs([greeting(mode)])
+    setLastSource(mode === 'preset' ? 'preset' : mode === 'retrieval' ? 'retrieval' : 'model')
+    setDegraded(false)
+    setFailed(false)
   }
 
   const close = () => {
@@ -87,7 +139,7 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  })
+  }, [open])
 
   useEffect(() => () => cancelRef.current?.(), [])
 
@@ -102,6 +154,7 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
       {
         input,
         context: contextText,
+        contextData: context,
         contextId: context.articleId,
         history: msgs.map((m) => ({ role: m.role === 'bot' ? ('assistant' as const) : ('user' as const), content: m.text })),
       },
@@ -182,11 +235,14 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
                 <div className="leading-tight">
                   <p className="text-[12px] font-semibold">晓叶的 AI 助手</p>
                   <p className="font-mono text-[9.5px] tracking-[0.14em] text-paper/40">
-                    {serverConfig.enabled ? 'LIVE MODEL' : 'PRESET ANSWERS'}
+                    {mode === 'model' ? 'LIVE MODEL' : mode === 'retrieval' ? 'SITE RETRIEVAL' : 'PRESET ANSWERS'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                <button onClick={reset} className="flex h-7 w-7 items-center justify-center rounded-full text-paper/60 hover:bg-paper/10 hover:text-paper" aria-label="新会话">
+                  <RotateCcw size={13} />
+                </button>
                 <button onClick={close} className="flex h-7 w-7 items-center justify-center rounded-full text-paper/60 hover:bg-paper/10 hover:text-paper" aria-label="最小化">
                   <Minus size={14} />
                 </button>
@@ -208,6 +264,7 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
               role="log"
               aria-live="polite"
               aria-relevant="additions text"
+              aria-busy={typing}
             >
               {msgs.map((m) => (
                 <div key={m.id} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
@@ -221,6 +278,9 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
                   >
                     {m.text}
                     {m.role === 'bot' && m.text === '' && <span className="animate-blink">▍</span>}
+                    {m.role === 'bot' && m.stopped && (
+                      <span className="ml-1 font-mono text-[9px] text-coral">已停止 · 可重试</span>
+                    )}
                     {m.role === 'bot' && m.text !== '' && m.source && (
                       <span className="mt-1.5 flex items-center gap-1 border-t border-dashed border-ink/10 pt-1 font-mono text-[9px] text-ink/35">
                         {sourceLabel(m.source, m.degraded)}

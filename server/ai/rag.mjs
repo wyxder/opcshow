@@ -127,19 +127,29 @@ export function search(index, query, topK = 5) {
     .map((x) => ({ ...index.chunks[x.i], score: Number(x.score.toFixed(3)), source: 'bm25' }))
 }
 
-/** 阅读位置优先：命中当前文章的块加权，保证「问这一节」时先引用当前小节 */
+/**
+ * 阅读位置优先 + 标题重排 + 去重（AI-12）：
+ * 1) 命中当前文章/小节的块加权；
+ * 2) 与问题在标题/小节名有词面重叠的块再提一档（轻量 rerank，不依赖向量库）；
+ * 3) 同一 path 只保留得分最高的一条，避免引用重复。
+ */
 export function retrieve(index, { message, context, topK = 5 }) {
-  const hits = search(index, message, topK + 4)
-  if (!context) return hits.slice(0, topK)
-  const articleId = typeof context === 'string' ? null : context.articleId
-  const sectionId = typeof context === 'string' ? null : context.sectionId
-  return hits
-    .map((h) => ({
-      ...h,
-      score: h.score + (articleId && h.articleId === articleId ? 2 : 0) + (sectionId && h.sectionId === sectionId ? 1.5 : 0),
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK)
+  const hits = search(index, message, topK + 6)
+  const q = new Set(tokenize(message))
+  const articleId = typeof context === 'string' ? null : context?.articleId
+  const sectionId = typeof context === 'string' ? null : context?.sectionId
+  const boosted = hits.map((h) => {
+    const titleTokens = new Set(tokenize(`${h.articleTitle} ${h.sectionTitle} ${h.subTitle}`))
+    let overlap = 0
+    for (const t of q) if (titleTokens.has(t)) overlap += 1
+    const positionBoost = (articleId && h.articleId === articleId ? 2 : 0) + (sectionId && h.sectionId === sectionId ? 1.5 : 0)
+    return { ...h, score: h.score + positionBoost + Math.min(overlap, 6) * 0.35 }
+  })
+  const deduped = new Map()
+  for (const h of boosted.sort((a, b) => b.score - a.score)) {
+    if (!deduped.has(h.path)) deduped.set(h.path, h)
+  }
+  return [...deduped.values()].slice(0, topK)
 }
 
 /** 引用校验（A-04）：模型给的 path 必须能对上真实 chunk，否则丢弃 */

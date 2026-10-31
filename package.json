@@ -16,7 +16,8 @@
     "check:data": "node scripts/check-data.mjs",
     "check:contrast": "node scripts/contrast-check.mjs",
     "check:budget": "node scripts/check-budget.mjs",
-    "check": "npm run check:data && npm run check:contrast && npm run check:budget"
+    "check": "npm run check:data && npm run check:contrast && npm run check:budget",
+    "verify": "npm run build && npm run check && node scripts/check-api.mjs && node scripts/eval-ai.mjs"
   },
   "dependencies": {
     "framer-motion": "^11.11.17",

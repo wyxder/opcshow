@@ -24,6 +24,18 @@ import { text, integer, oneOf } from '../lib/validate.mjs'
 
 const UPLOAD_DIR = resolve(env.dataDir, 'uploads')
 
+/**
+ * BE-05：签名不再只是「返回一个过期时间」，而是真的在服务端登记。
+ * 上传时必须能对上（key + 名称 + 体积 + 未过期），否则拒绝。
+ */
+const signatures = new Map()
+let signCount = 0
+function sweepSignatures(now) {
+  signCount += 1
+  if (signCount % 50 !== 0) return
+  for (const [key, sig] of signatures) if (sig.expiresAt < now) signatures.delete(key)
+}
+
 const humanSize = (bytes) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
@@ -51,13 +63,16 @@ route('POST', '/api/files/sign', async ({ req, res, reqId }) => {
   if (!env.upload.allowedExt.includes(ext)) return sendError(res, 422, 'MIME_NOT_ALLOWED', `不允许的类型 .${ext}`, reqId)
   const key = `${Date.now().toString(36)}-${randomBytes(6).toString('hex')}.${ext}`
   const ttl = 10 * 60 * 1000
+  const expiresAt = Date.now() + ttl
+  sweepSignatures(Date.now())
+  signatures.set(key, { expiresAt, name, size, ext, user: session.user })
   await audit(session.user, 'files.sign', key, null, { name, size })
   sendJson(res, 200, {
     driver: env.upload.driver,
     key,
     uploadUrl: `/api/files/upload/${key}`,
     method: 'PUT',
-    expiresAt: new Date(Date.now() + ttl).toISOString(),
+    expiresAt: new Date(expiresAt).toISOString(),
     maxBytes: env.upload.maxBytes,
     headers: { 'Content-Type': 'application/octet-stream' },
     meta: { name, size, ext },
@@ -67,11 +82,19 @@ route('POST', '/api/files/sign', async ({ req, res, reqId }) => {
 route('PUT', '/api/files/upload/:key', async ({ req, res, reqId, params, url }) => {
   const session = requireRole(await getSession(req))
   if (!params.key || !/^[a-z0-9-]+\.[a-z0-9]+$/i.test(params.key)) return sendError(res, 422, 'BAD_KEY', '上传 key 不合法', reqId)
+  const sig = signatures.get(params.key)
+  if (!sig) return sendError(res, 410, 'SIGNATURE_REQUIRED', '请先申请上传签名', reqId)
+  if (sig.expiresAt < Date.now()) {
+    signatures.delete(params.key)
+    return sendError(res, 410, 'SIGNATURE_EXPIRED', '上传签名已过期，请重新申请', reqId)
+  }
   const buf = await readBody(req, env.upload.maxBytes)
   if (!buf.length) return sendError(res, 422, 'EMPTY_FILE', '文件为空', reqId)
+  if (sig.size && buf.length > sig.size) return sendError(res, 422, 'SIZE_MISMATCH', '文件大小超过签名声明', reqId)
   await mkdir(UPLOAD_DIR, { recursive: true })
-  const name = text(url.searchParams.get('name') ?? params.key, { field: '文件名', max: 200 })
+  const name = text(url.searchParams.get('name') ?? sig.name ?? params.key, { field: '文件名', max: 200 })
   const category = text(url.searchParams.get('category') ?? '未分类', { field: '分类', max: 40 })
+  signatures.delete(params.key)
   await writeFile(join(UPLOAD_DIR, params.key), buf)
   const { files } = await getStores()
   const item = await files.update((data) => {
@@ -102,13 +125,16 @@ route('PUT', '/api/files/upload/:key', async ({ req, res, reqId, params, url }) 
   sendJson(res, 201, { id: item.id, key: params.key, size: item.size, url: `/api/files/download-by-id/${item.id}` })
 })
 
-route('GET', '/api/files', async ({ res }) => {
+route('GET', '/api/files', async ({ req, res, url }) => {
   const { files } = await getStores()
   const data = await files.read()
-  const publicFiles = data.files
-    .filter((f) => f.status !== 'deleted' && f.visibility === 'public')
-    .map((f) => ({ ...f, url: `/api/files/download-by-id/${f.id}` }))
-  sendJson(res, 200, publicFiles)
+  const session = await getSession(req)
+  // BE-05：后台要能看到 private / 回收站；公开只返回 published + public
+  const adminScope = Boolean(session) && url.searchParams.get('scope') === 'admin'
+  const list = data.files
+    .filter((f) => (adminScope ? f.status !== 'deleted' : f.status === 'published' && f.visibility === 'public'))
+    .map((f) => (f.status === 'trashed' ? { ...f } : { ...f, url: `/api/files/download-by-id/${f.id}` }))
+  sendJson(res, 200, list)
 })
 
 route('POST', '/api/files/:id/visibility', async ({ req, res, reqId, params }) => {
@@ -269,6 +295,8 @@ route('GET', '/api/files/download/:token', async ({ req, res, reqId, params, url
   // 过期或不存在的链接返回同一个 404，不暴露文件是否存在
   if (!share || (share.expiresAt && new Date(share.expiresAt).getTime() < Date.now())) return sendError(res, 404, 'NOT_FOUND', '链接不存在或已失效', reqId)
   if (share.passwordHash && !checkPassword(url.searchParams.get('password'), share.passwordHash)) {
+    // BE-05：密码错误单独限流，避免 30/分 的下载限流被用来爆破
+    if (!rateLimit(`share-pw:${clientIp(req)}`, 5, 10 * 60 * 1000).ok) return sendError(res, 429, 'RATE_LIMITED', '密码错误次数过多，请稍后再试', reqId)
     return sendError(res, 401, 'PASSWORD_REQUIRED', '需要访问密码', reqId)
   }
   const file = data.files.find((f) => f.id === share.fileId)

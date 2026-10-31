@@ -1,5 +1,5 @@
 import { Eye, FileText, Pencil, Pin, Plus, Star, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { adminArticles, adminPosts, adminProjects, contentStats } from '@/admin/data'
 import {
@@ -19,11 +19,11 @@ import {
   Textarea,
 } from '@/admin/ui'
 import { cn, newId } from '@/lib/utils'
-import { contents, toServerStatus } from '@/services/content'
+import { STATUS_LABELS, contents, toServerStatus } from '@/services/content'
 import { serverConfig } from '@/services/config'
 
 type Tab = 'articles' | 'projects' | 'moments'
-type ArticleRow = (typeof adminArticles)[number]
+type ArticleRow = (typeof adminArticles)[number] & { version?: number }
 type PostRow = (typeof adminPosts)[number]
 
 const statusFilters = ['全部', '已发布', '草稿', '待审核']
@@ -50,6 +50,33 @@ export default function ContentPage({
   const [postText, setPostText] = useState('')
   const [postVisibility, setPostVisibility] = useState('公开')
 
+  /** X-02：服务端模式下列表必须读真实数据（含草稿/状态/version），不再用演示种子 */
+  const loadArticles = useCallback(async () => {
+    if (!serverConfig.enabled) return
+    const list = await contents.listAdmin('articles')
+    setArticles(
+      list.map((a) => {
+        const row = a as typeof a & { status?: string; comments?: number; words?: number; version?: number }
+        const status = (STATUS_LABELS[row.status as keyof typeof STATUS_LABELS] ?? '已发布') as ArticleRow['status']
+        return {
+          id: a.id,
+          title: a.title,
+          category: a.category,
+          status,
+          views: a.views ?? 0,
+          comments: row.comments ?? 0,
+          date: a.date ?? '',
+          words: row.words ?? 0,
+          version: row.version,
+        }
+      }),
+    )
+  }, [])
+
+  useEffect(() => {
+    void loadArticles()
+  }, [loadArticles])
+
   const filteredArticles = useMemo(
     () =>
       articles.filter(
@@ -72,12 +99,8 @@ export default function ContentPage({
 
   const saveEdit = async () => {
     if (!draft.title.trim()) return show('标题不能为空')
-    const payload = {
-      title: draft.title,
-      category: draft.category,
-      abstract: draft.abstract,
-      status: toServerStatus(draft.status),
-    }
+    // BE-04：正文/元数据走 upsert，状态单独走状态机，不再用 PUT 直改 status
+    const payload = { title: draft.title, category: draft.category, abstract: draft.abstract }
     if (!serverConfig.enabled) {
       if (editing) {
         setArticles((l) => l.map((a) => (a.id === editing.id ? { ...a, title: draft.title, category: draft.category, status: draft.status as ArticleRow['status'] } : a)))
@@ -93,40 +116,40 @@ export default function ContentPage({
     }
     try {
       const id = editing?.id ?? newId('article')
-      await contents.upsert('articles', id, payload)
       if (editing) {
-        setArticles((l) => l.map((a) => (a.id === editing.id ? { ...a, title: draft.title, category: draft.category, status: draft.status as ArticleRow['status'] } : a)))
+        await contents.upsert('articles', id, payload, editing.version)
+        const nextStatus = toServerStatus(draft.status)
+        if (nextStatus !== toServerStatus(editing.status)) await contents.setStatus('articles', id, nextStatus)
       } else {
-        setArticles((l) => [
-          { id, title: draft.title, category: draft.category, status: draft.status as ArticleRow['status'], views: 0, comments: 0, date: '2026-10-30', words: 0 },
-          ...l,
-        ])
+        await contents.create('articles', id, { ...payload, status: toServerStatus(draft.status) })
       }
       setEditing(null)
       setCreating(false)
+      await loadArticles()
       show('已保存到服务端')
     } catch (err) {
       show(`保存失败：${(err as Error).message}`)
     }
   }
 
-  const publishPost = () => {
+  const publishPost = async () => {
     if (!postText.trim()) return show('先说点什么吧')
-    setPosts((l) => [
-      {
-        id: newId('post'),
-        date: '2026-10-30',
-        text: postText.trim(),
-        tag: '生活',
-        visibility: postVisibility,
-        likes: 0,
-        comments: 0,
-        pinned: false,
-      },
-      ...l,
-    ])
+    const text = postText.trim()
+    const id = newId('post')
+    const row: PostRow = { id, date: new Date().toISOString().slice(0, 10), text, tag: '生活', visibility: postVisibility, likes: 0, comments: 0, pinned: false }
+    if (serverConfig.enabled) {
+      try {
+        await contents.create('moments', id, { text, place: '西安', visibility: postVisibility, status: 'pending' })
+        setPostText('')
+        show('已提交到服务端，待审核后公开')
+      } catch (err) {
+        show(`发布失败：${(err as Error).message}`)
+      }
+      return
+    }
+    setPosts((l) => [row, ...l])
     setPostText('')
-    show('动态已发布')
+    show(`动态已发布 · ${demoNote}`)
   }
 
   return (
@@ -134,7 +157,7 @@ export default function ContentPage({
       <PageTitle
         kicker="Content"
         title="内容管理"
-        desc={serverConfig.enabled ? '发布后会即时出现在前台对应栏目。' : '当前未接服务端：列表为演示数据，写操作只改本次会话。'}
+        desc={serverConfig.enabled ? '列表与状态来自服务端；保存走乐观锁，发布走状态机（前台仍读 src/data，见 fx2 X-05）。' : '当前未接服务端：列表为演示数据，写操作只改本次会话。'}
         right={
           <>
             <Link to="/learn" className="text-[11.5px] text-admin-muted transition hover:text-admin-ink">

@@ -130,6 +130,8 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
         recent: usage.recent,
       }
     : DEMO_USAGE
+  /** AI-06：只有真的拿到 /api/ai/usage 才标「服务端记账」，否则如实标预置 */
+  const usageLive = Boolean(usage) && real
   const tokenPercent = Math.round((view.usedTokens / Number(limit || 1)) * 100)
 
   /** 真实模式下写操作必须等服务端返回成功再提示 */
@@ -197,7 +199,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
             {[
               ['默认模型', defaultModel?.name ?? '—', defaultModel?.provider ?? ''],
               ['启用模型', `${enabled.length} / ${models.length}`, '可随时切换'],
-              ['本月调用', view.calls ? view.calls.toLocaleString() : '—', real ? '来自服务端记账' : '预置演示值'],
+              ['本月调用', view.calls ? view.calls.toLocaleString() : '—', usageLive ? '来自服务端记账' : '预置演示值'],
               ['平均延迟', view.avgLatency, real ? '月度均值' : 'P95 1.6s'],
             ].map(([l, v, n]) => (
               <div key={l} className="rounded-[18px] border-1.5 border-ink bg-cream px-3.5 py-3 shadow-hard-sm">
@@ -413,10 +415,10 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              ['本月 Token', view.monthTokens, real ? '服务端记账' : '预置演示值'],
-              ['本月费用', view.monthCost, real ? '按服务端单价折算' : '预置演示值'],
-              ['平均延迟', view.avgLatency, real ? '月度均值' : 'P95 1.6s'],
-              ['成功率', view.successRate, real ? '本月成功率' : '预置演示值'],
+              ['本月 Token', view.monthTokens, usageLive ? '服务端记账' : '预置演示值'],
+              ['本月费用', view.monthCost, usageLive ? '按服务端单价折算（估算）' : '预置演示值'],
+              ['平均延迟', view.avgLatency, usageLive ? '月度均值' : 'P95 1.6s'],
+              ['成功率', view.successRate, usageLive ? '本月成功率' : '预置演示值'],
             ].map(([l, v, n]) => (
               <div key={l} className="rounded-[18px] border-1.5 border-ink bg-cream px-3.5 py-3 shadow-hard-sm">
                 <p className="text-[10.5px] text-admin-muted">{l}</p>
@@ -427,7 +429,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
           </div>
 
           <div className="grid gap-3 xl:grid-cols-[1.6fr_1fr]">
-            <Panel kicker="Daily" title={`近 ${view.daily.length} 天 Token 消耗`} desc="柱高为 token">
+            <Panel kicker="Daily" title={`近 ${view.daily.length} 天 Token 消耗`} desc={usageLive ? '服务端记账（估算）' : '预置演示值'}>{/* AI-06 */}
               <MiniBars data={view.daily.map((d) => d.tokens)} height={110} color="rgb(var(--c-coral))" />
               <div className="mt-2 flex justify-between font-mono text-[9px] text-admin-muted">
                 {view.daily.map((d) => (

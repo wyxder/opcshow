@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils'
 import { approvePending, listPending, rejectPending, type GuestMessage } from '@/services/guestbook'
 import { serverConfig } from '@/services/config'
+import { listFriendRequests, reviewFriendRequest } from '@/services/settings'
 
 type Tab = 'danmaku' | 'guestbook' | 'friends'
 
@@ -44,6 +45,44 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
     }
   }, [])
 
+  // BE-14：友链申请读服务端待审队列，不再用演示种子
+  const loadRequests = () => {
+    if (!serverConfig.enabled) return
+    listFriendRequests().then((list) =>
+      setRequests(
+        list.map((f) => ({
+          id: f.id,
+          name: f.name,
+          url: f.url,
+          desc: f.desc ?? '',
+          email: '—',
+          time: f.createdAt ? new Date(f.createdAt).toLocaleDateString('zh-CN') : '—',
+          status: '待审' as const,
+        })),
+      ),
+    )
+  }
+
+  useEffect(() => {
+    loadRequests()
+  }, [])
+
+  const reviewFriend = async (id: string, status: 'published' | 'hidden') => {
+    if (!serverConfig.enabled) return show('未接服务端：友链审核不会保存')
+    try {
+      await reviewFriendRequest(id, status)
+      setRequests((l) => l.filter((x) => x.id !== id))
+      show(status === 'published' ? '友链已通过' : '友链已拒绝')
+    } catch (err) {
+      show(`友链审核失败：${(err as Error).message}`)
+    }
+  }
+
+  const setGuestDemo = (id: string, status: string) => {
+    setGuest((l) => l.map((x) => (x.id === id ? { ...x, status } : x)))
+    show('仅本页演示：留言审核不会保存（真实队列见下方）')
+  }
+
   const pendingDanmaku = danmaku.filter((d) => d.status === '待审').length
   const pendingGuest = guest.filter((g) => g.status === '待审').length
   const pendingFriends = requests.filter((f) => f.status === '待审').length
@@ -51,16 +90,6 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
   const match = (status: string, text: string) => {
     const okFilter = filter === 'all' || (filter === 'pending' ? status === '待审' : status !== '待审')
     return okFilter && text.toLowerCase().includes(query.trim().toLowerCase())
-  }
-
-  const setStatus = <T extends { id: string; status: string }>(
-    setter: React.Dispatch<React.SetStateAction<T[]>>,
-    id: string,
-    status: string,
-    msg: string,
-  ) => {
-    setter((l) => l.map((x) => (x.id === id ? { ...x, status } : x)))
-    show(msg)
   }
 
   return (
@@ -127,23 +156,20 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
                     <IconButton
                       label="通过"
                       className={cn('hover:border-admin-teal/40 hover:text-admin-teal')}
-                      onClick={() => setStatus(setDanmaku, d.id, '已通过', '弹幕已通过')}
+                      onClick={() => show('弹幕审核未接入服务端（不会保存）')}
                     >
                       <Check size={11} />
                     </IconButton>
                     <IconButton
                       label="拒绝"
                       className="hover:border-coral/60 hover:text-admin-danger"
-                      onClick={() => setStatus(setDanmaku, d.id, '已拒绝', '弹幕已拒绝')}
+                      onClick={() => show('弹幕审核未接入服务端（不会保存）')}
                     >
                       <X size={11} />
                     </IconButton>
                     <IconButton
                       label="删除"
-                      onClick={() => {
-                        setDanmaku((l) => l.filter((x) => x.id !== d.id))
-                        show('弹幕已删除')
-                      }}
+                      onClick={() => show('弹幕删除未接入服务端（不会保存）')}
                     >
                       <Trash2 size={11} />
                     </IconButton>
@@ -153,13 +179,10 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
               {danmaku.filter((d) => match(d.status, d.user + d.text)).length === 0 && <EmptyState title="没有匹配的弹幕" />}
             </div>
             <div className="flex items-center justify-between border-t border-ink/10 bg-paper px-4 py-2.5">
-              <span className="text-[10px] text-admin-muted">通过后立即出现在弹幕墙</span>
+              <span className="text-[10px] text-admin-muted">弹幕审核未接入服务端（演示数据，不会保存）</span>
               <AButton
                 size="sm"
-                onClick={() => {
-                  setDanmaku((l) => l.map((x) => (x.status === '待审' ? { ...x, status: '已通过' } : x)))
-                  show('已全部通过')
-                }}
+                onClick={() => show('批量审核未接入服务端（不会保存）')}
               >
                 全部通过
               </AButton>
@@ -256,7 +279,7 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
 
       {tab === 'guestbook' && (
         <div className="space-y-3">
-          <Panel kicker="Guestbook" title="留言审核" desc={`共 ${guest.length} 条 · 待审 ${pendingGuest} 条`} flush>
+          <Panel kicker="Guestbook" title="留言审核（预置演示）" desc={`共 ${guest.length} 条 · 待审 ${pendingGuest} 条 · 真实队列见下方`} flush>
             <div className="divide-y divide-ink/10">
               {guest.map((g) => (
                 <div key={g.id} className="flex flex-wrap items-start gap-3 px-4 py-3 sm:px-5">
@@ -278,13 +301,13 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
                     <AButton size="sm" variant="soft" icon={<MessageSquare size={11} />} onClick={() => { setReply(g); setReplyText('') }}>
                       回复
                     </AButton>
-                    <IconButton label="通过" onClick={() => setStatus(setGuest, g.id, '已通过', '留言已通过')}>
+                    <IconButton label="通过" onClick={() => setGuestDemo(g.id, '已通过')}>
                       <Check size={11} />
                     </IconButton>
                     <IconButton
                       label="隐藏"
                       className="hover:border-coral/60 hover:text-admin-danger"
-                      onClick={() => setStatus(setGuest, g.id, '已隐藏', '留言已隐藏')}
+                      onClick={() => setGuestDemo(g.id, '已隐藏')}
                     >
                       <X size={11} />
                     </IconButton>
@@ -292,7 +315,7 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
                       label="删除"
                       onClick={() => {
                         setGuest((l) => l.filter((x) => x.id !== g.id))
-                        show('留言已删除')
+                        show('仅本页演示：删除不会保存')
                       }}
                     >
                       <Trash2 size={11} />
@@ -332,7 +355,7 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
               title="友链申请"
               desc={`${requests.length} 条 · 待审 ${pendingFriends} 条`}
               flush
-              right={<AButton size="sm" onClick={() => show('友链规则已打开（演示）')}>申请规则</AButton>}
+              right={<AButton size="sm" onClick={() => show('友链规则文档未接入')}>申请规则</AButton>}
             >
               <div className="overflow-x-auto no-scrollbar">
                 <div className="admin-zebra min-w-[700px]">
@@ -354,14 +377,14 @@ export default function ModerationPage({ tab, setTab, show }: { tab: Tab; setTab
                         <AButton
                           size="sm"
                           variant="soft"
-                          onClick={() => setStatus(setRequests, f.id, '已通过', '友链已通过，前台已更新')}
+                          onClick={() => void reviewFriend(f.id, 'published')}
                         >
                           通过
                         </AButton>
                         <IconButton
                           label="拒绝"
                           className="hover:border-coral/60 hover:text-admin-danger"
-                          onClick={() => setStatus(setRequests, f.id, '已拒绝', '友链已拒绝')}
+                          onClick={() => void reviewFriend(f.id, 'hidden')}
                         >
                           <X size={11} />
                         </IconButton>

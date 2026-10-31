@@ -37,6 +37,8 @@ export function applyCors(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,If-Match,Idempotency-Key,X-CSRF-Token')
+    // BE-11：让跨域前端能读到版本与缓存头，便于做乐观锁与 304 判定
+    res.setHeader('Access-Control-Expose-Headers', 'ETag,X-Content-Version,X-Request-Id')
     res.setHeader('Access-Control-Max-Age', '600')
   }
 }
@@ -100,9 +102,17 @@ export function sha256(value) {
 /* -------------------------------- rate limit ------------------------------- */
 
 const buckets = new Map()
+let rateChecks = 0
+/** BE-07：每 500 次检查清一次过期桶，避免长跑内存只增不减 */
+function sweepBuckets(now) {
+  rateChecks += 1
+  if (rateChecks % 500 !== 0) return
+  for (const [key, b] of buckets) if (b.reset < now) buckets.delete(key)
+}
 
 export function rateLimit(key, limit, windowMs) {
   const now = Date.now()
+  sweepBuckets(now)
   let b = buckets.get(key)
   if (!b || b.reset < now) {
     b = { count: 0, reset: now + windowMs }
@@ -113,9 +123,18 @@ export function rateLimit(key, limit, windowMs) {
   return { ok: true, remaining: limit - b.count }
 }
 
+/**
+ * BE-02：默认只信 socket 地址。
+ * 只有环境变量 TRUST_PROXY=1（确认在 Nginx / 网关后面）时，才读代理写入的 X-Real-IP。
+ * 不再无条件信任 X-Forwarded-For，避免直连伪造头绕过登录限流与 AI 配额。
+ */
 export function clientIp(req) {
-  const fwd = req.headers['x-forwarded-for']
-  if (typeof fwd === 'string') return fwd.split(',')[0].trim()
+  if (env.trustProxy) {
+    const real = req.headers['x-real-ip']
+    if (typeof real === 'string' && real.trim()) return real.trim()
+    const fwd = req.headers['x-forwarded-for']
+    if (typeof fwd === 'string' && fwd.trim()) return fwd.split(',')[0].trim()
+  }
   return req.socket.remoteAddress ?? 'unknown'
 }
 
@@ -130,7 +149,11 @@ export function checkOrigin(req) {
   return env.corsOrigins.includes(origin) || env.corsOrigins.includes('*')
 }
 
+const LEVELS = { debug: 10, info: 20, warn: 30, error: 40 }
 export function logEvent(level, event, data = {}) {
+  // BE-10：LOG_LEVEL 真正生效（默认 info，测试环境可设 error 降噪）
+  const min = LEVELS[String(process.env.LOG_LEVEL || 'info').toLowerCase()] ?? LEVELS.info
+  if ((LEVELS[level] ?? LEVELS.info) < min) return
   const line = JSON.stringify({ ts: new Date().toISOString(), level, event, ...data })
   if (level === 'error') console.error(line)
   else console.log(line)
@@ -156,6 +179,12 @@ export function paginate(items, cursor, limit = 20) {
 
 /** 幂等键：写接口带 Idempotency-Key 时，5 分钟内重复请求返回第一次结果 */
 const idem = new Map()
+let idemWrites = 0
+function sweepIdem(now) {
+  idemWrites += 1
+  if (idemWrites % 200 !== 0) return
+  for (const [key, hit] of idem) if (hit.expires <= now) idem.delete(key)
+}
 export function idempotency(req, payload) {
   const key = req.headers['idempotency-key']
   if (!key) return null
@@ -167,5 +196,6 @@ export function idempotency(req, payload) {
 export function rememberIdempotency(req, payload, result) {
   const key = req.headers['idempotency-key']
   if (!key) return
+  sweepIdem(Date.now())
   idem.set(sha256(key + '|' + JSON.stringify(payload)), { result, expires: Date.now() + 5 * 60 * 1000 })
 }

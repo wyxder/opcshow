@@ -7,6 +7,7 @@
  * 每次回答都带 source，UI 用它区分「实时模型」与「预置问答」，不冒充模型能力。
  */
 import { serverConfig } from './config'
+import { apiJsonSafe } from './http'
 import { articleMeta } from '@/data/articles.index'
 
 export type ChatRole = 'user' | 'assistant'
@@ -18,8 +19,10 @@ export type ChatReference = { docId: string; section: string; path: string; snip
 
 export type ChatRequest = {
   input: string
-  /** AI4：当前阅读位置（Reader 传小节标题），进 system prompt */
+  /** AI4：当前阅读位置的文本描述（进 system prompt） */
   context?: string
+  /** AI-02：结构化上下文，服务端据此做文章/小节加权 */
+  contextData?: { articleId?: string; articleTitle?: string; sectionId?: string; sectionTitle?: string }
   /** 当前文章 id：服务端检索时给同一篇的块加权 */
   contextId?: string
   history: { role: ChatRole; content: string }[]
@@ -122,11 +125,55 @@ export const presetProvider: AiChatProvider = {
  * A-02：首 token 8s 超时、断流重试 1 次、error 事件、AbortController 贯穿停止/关闭。
  */
 const FIRST_TOKEN_MS = 8000
+const SESSION_KEY = 'wyx:ai-session'
+
+/** AI-07 / FE-10：会话 id 由前端保存，刷新后可拉回历史 */
+export function readSessionId(): string | null {
+  try {
+    return sessionStorage.getItem(SESSION_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function saveSessionId(id: string) {
+  try {
+    sessionStorage.setItem(SESSION_KEY, id)
+  } catch {
+    /* 隐私模式忽略 */
+  }
+}
+
+export function clearSessionId() {
+  try {
+    sessionStorage.removeItem(SESSION_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 服务端返回的历史会话（只取展示需要的字段） */
+export async function loadRemoteSession(): Promise<{ role: ChatRole; text: string; source?: AnswerSource; references?: ChatReference[] }[]> {
+  const id = readSessionId()
+  if (!id || !serverConfig.enabled) return []
+  const data = await apiJsonSafe<{ messages?: { role: string; text: string; source?: AnswerSource; references?: ChatReference[] }[] }>(`/api/ai/sessions/${encodeURIComponent(id)}`)
+  if (!data?.messages?.length) return []
+  return data.messages.map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', text: m.text, source: m.source, references: m.references }))
+}
+
+/** FE-08：三态能力探测：model / retrieval / preset */
+export type AiMode = 'model' | 'retrieval' | 'preset'
+
+export async function probeAiMode(): Promise<AiMode> {
+  if (!serverConfig.enabled) return 'preset'
+  const health = await apiJsonSafe<{ mode?: string }>('/api/ai/health')
+  return health?.mode === 'model' ? 'model' : 'retrieval'
+}
 
 export const remoteProvider: AiChatProvider = {
   id: 'remote',
   label: '实时模型',
-  chat({ input, context, contextId, history }, { onDelta, onDone, onError }) {
+  chat({ input, context, contextData, contextId, history }, { onDelta, onDone, onError }) {
     const ac = new AbortController()
     let cancelled = false
     let finished = false
@@ -151,7 +198,15 @@ export const remoteProvider: AiChatProvider = {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         signal: ac.signal,
-        body: JSON.stringify({ message: input, context: context ?? null, articleId: contextId ?? null, history: history.slice(-8), stream: true }),
+        body: JSON.stringify({
+          message: input,
+          // AI-02：结构化上下文优先，服务端可据此给当前小节加权
+          context: contextData ?? context ?? null,
+          articleId: contextId ?? null,
+          sessionId: readSessionId(),
+          history: history.slice(-8),
+          stream: true,
+        }),
       })
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
 
@@ -180,18 +235,24 @@ export const remoteProvider: AiChatProvider = {
           if (!line.startsWith('data:')) continue
           const payload = line.slice(5).trim()
           if (!payload || payload === '[DONE]') continue
-          let obj: { delta?: string; done?: boolean; error?: string; source?: AnswerSource; references?: ChatReference[]; degraded?: boolean }
+          let obj: { delta?: string; done?: boolean; error?: string; reset?: boolean; source?: AnswerSource; references?: ChatReference[]; degraded?: boolean; sessionId?: string }
           try {
             obj = JSON.parse(payload)
           } catch {
             continue // 半包：等下一个 chunk
           }
           if (obj.error) throw new Error(obj.error)
+          // AI-11：服务端重试时先清空已渲染内容
+          if (obj.reset) {
+            text = ''
+            onDelta('', { source: 'model' })
+          }
           if (obj.delta) {
             clearFirstToken()
             text += obj.delta
             onDelta(text, { source: obj.source ?? 'model' })
           }
+          if (obj.sessionId) saveSessionId(obj.sessionId)
           if (obj.references?.length) references = obj.references
           if (obj.source) source = obj.source
           if (typeof obj.degraded === 'boolean') degraded = obj.degraded

@@ -1,0 +1,40 @@
+name: verify
+
+# fx2 G-08：build + 三个门禁 + API 契约 + AI 评测一起跑
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build (tsc + gen:seo + vite + prerender)
+        run: npm run build
+
+      - name: Gates (data / contrast / budget)
+        run: npm run check
+
+      - name: API contract & smoke
+        run: node scripts/check-api.mjs
+
+      - name: AI eval
+        run: node scripts/eval-ai.mjs
+
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-eval-report
+          path: server/eval-report.json
+          if-no-files-found: ignore

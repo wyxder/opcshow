@@ -15,17 +15,18 @@
  * GET  /api/ai/health        网关健康
  */
 import { route } from '../lib/router.mjs'
-import { sendJson, sendError, readJson, rateLimit, clientIp, logEvent } from '../lib/http.mjs'
+import { sendJson, sendError, readJson, rateLimit, ipHash, logEvent } from '../lib/http.mjs'
 import { getStores } from '../lib/store.mjs'
 import { getSession, requireRole, audit, ROLE_ADMIN } from '../lib/auth.mjs'
-import { text, object, integer, oneOf, arrayOf } from '../lib/validate.mjs'
+import { text, oneOf, arrayOf } from '../lib/validate.mjs'
 import { env, hasModelKey } from '../lib/env.mjs'
 import { getIndex, invalidate, stats } from '../ai/indexer.mjs'
 import { retrieve, verifyReferences, extractiveAnswer, estimateTokens, trim } from '../ai/rag.mjs'
-import { DEFAULT_PROMPTS, GUARDRAILS, activePrompt, buildMessages } from '../ai/prompts.mjs'
+import { DEFAULT_PROMPTS, GUARDRAILS, activePrompt, buildMessages, buildSiteFacts } from '../ai/prompts.mjs'
 import { detectInjection, filterOutput, INJECTION_REFUSAL } from '../ai/safety.mjs'
 import { modelAvailable, streamModel } from '../ai/gateway.mjs'
-import { cacheKey, checkQuota, recordUsage, getUsageSummary, priceOf } from '../ai/usage.mjs'
+import { cacheKey, checkQuota, checkBudget, consumeQuota, recordUsage, getUsageSummary, costOf } from '../ai/usage.mjs'
+import { pushHit } from '../lib/hits.mjs'
 
 async function ensureAiSeed() {
   const { ai } = await getStores()
@@ -60,14 +61,53 @@ function extractPaths(textValue) {
   return [...new Set((textValue.match(/\/learn\/[a-z0-9-]+#?[a-z0-9-]*/gi) ?? []))]
 }
 
+async function pickModel(aiData) {
+  // AI-04：后台设为默认且启用的自定义模型优先，否则回落环境变量模型
+  const custom = (aiData.models ?? []).find((m) => m.isDefault && m.enabled && m.source !== 'env')
+  return custom?.model || env.ai.model
+}
+
+/** AI-01：缓存写入 + 最多 500 条的 LRU-ish 淘汰（之前只有读、没有写） */
+async function rememberAnswer(key, payload) {
+  const { ai } = await getStores()
+  await ai.update((data) => {
+    data.cache = data.cache ?? {}
+    data.cache[key] = { ...payload, at: Date.now() }
+    const entries = Object.entries(data.cache)
+    if (entries.length > 500) {
+      entries.sort((a, b) => (a[1].at ?? 0) - (b[1].at ?? 0))
+      for (const [k] of entries.slice(0, entries.length - 500)) delete data.cache[k]
+    }
+  })
+}
+
+/** AI-08：站点事实从运行时内容统计，不再写死 6 篇 / 7 个项目 */
+async function siteFactsNow() {
+  const { content } = await getStores()
+  const data = await content.read()
+  const articleCount = (data.articles ?? []).filter((a) => a.status === 'published').length
+  const projectCount = (data.projects ?? []).filter((p) => p.status === 'published').length
+  return buildSiteFacts({ articleCount, projectCount })
+}
+
+async function recordChatUsage(req, { model, promptText, answer, latency, source, ok, upstream }) {
+  const promptTokens = upstream?.promptTokens || estimateTokens(promptText)
+  const completionTokens = upstream?.completionTokens || estimateTokens(answer)
+  await recordUsage({ ip: ipHash(req), model, tokens: promptTokens + completionTokens, cost: costOf(promptTokens, completionTokens), latency, source, ok })
+}
+
 route('POST', '/api/ai/chat', async ({ req, res, reqId }) => {
-  if (!rateLimit(`ai:${clientIp(req)}`, 20, 60 * 1000).ok) return sendError(res, 429, 'RATE_LIMITED', '问得太快，稍等一下', reqId)
-  const quota = await checkQuota(clientIp(req))
+  // AI-05 / BE-02：限流与配额统一用 IP 哈希，且不再被伪造 XFF 绕过
+  const ip = ipHash(req)
+  if (!rateLimit(`ai:${ip}`, 20, 60 * 1000).ok) return sendError(res, 429, 'RATE_LIMITED', '问得太快，稍等一下', reqId)
+  const quota = await checkQuota(ip)
   if (!quota.ok) return sendError(res, 429, 'QUOTA_EXCEEDED', `今日额度已用完（${quota.limit} 次），明天再来`, reqId)
 
   const body = await readJson(req, 128 * 1024)
   const message = text(body.message ?? body.input, { field: '问题', min: 1, max: 800 })
-  const context = parseContext(body.context)
+  // AI-02：兼容字符串与结构化上下文（articleId / sectionId 参与检索加权）
+  const ctxRaw = body.context ?? (body.articleId ? { articleId: body.articleId, sectionId: body.sectionId, articleTitle: body.articleTitle, sectionTitle: body.sectionTitle } : null)
+  const context = parseContext(ctxRaw)
   const history = arrayOf(body.history ?? [], { field: 'history', max: 20 }).slice(-8)
   const stream = body.stream !== false
   const sessionId = body.sessionId ? text(body.sessionId, { field: 'sessionId', max: 64 }) : `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -76,9 +116,15 @@ route('POST', '/api/ai/chat', async ({ req, res, reqId }) => {
   const aiData = await ai.read()
   const prompt = activePrompt(aiData.prompts, '全站对话')
   const index = await getIndex()
+  const modelName = await pickModel(aiData)
+  const budget = await checkBudget()
+  const facts = await siteFactsNow()
+  // 一条 AI 轮次写进埋点，数据看板的「AI 会话」不再恒为 0（BE-09）
+  void pushHit({ path: '/ai', kind: 'ai', ipHash: ip })
 
   const injection = detectInjection(message)
   if (injection.flagged) {
+    logEvent('warn', 'ai.injection.blocked', { reqId, ip, hits: injection.count })
     if (stream) return sendSse(res, [{ delta: INJECTION_REFUSAL }, { done: true, source: 'retrieval', references: [], degraded: false, sessionId, flagged: true }])
     return sendJson(res, 200, { answer: INJECTION_REFUSAL, source: 'retrieval', references: [], degraded: false, sessionId, flagged: true })
   }
@@ -86,12 +132,17 @@ route('POST', '/api/ai/chat', async ({ req, res, reqId }) => {
   const key = cacheKey(message, context, prompt.version)
   const cached = aiData.cache?.[key]
   if (cached && Date.now() - cached.at < 6 * 3600 * 1000) {
+    await consumeQuota(ip)
     if (stream) return sendSse(res, [{ delta: cached.answer }, { done: true, source: cached.source, references: cached.references, degraded: false, sessionId, cached: true }])
     return sendJson(res, 200, { answer: cached.answer, source: cached.source, references: cached.references, degraded: false, sessionId, cached: true })
   }
 
   const hits = retrieve(index, { message, context, topK: 5 })
-  const messages = buildMessages({ prompt, guardrails: GUARDRAILS, context, hits, history, message })
+  const messages = buildMessages({ prompt, guardrails: GUARDRAILS, context, hits, history, message, facts })
+  const promptText = messages.map((m) => m.content).join(' ')
+  const degradedSources = []
+  if (!budget.ok) degradedSources.push('MONTHLY_BUDGET_EXCEEDED')
+  const canModel = modelAvailable() && budget.ok
 
   const started = Date.now()
   const ac = new AbortController()
@@ -112,19 +163,27 @@ route('POST', '/api/ai/chat', async ({ req, res, reqId }) => {
     try {
       let answer = ''
       let source = 'retrieval'
-      if (modelAvailable()) {
+      let upstreamUsage = null
+      if (canModel) {
         source = 'model'
         try {
           let sent = ''
           const result = await streamModel(messages, {
+            model: modelName,
             signal: ac.signal,
             onDelta: (_, full) => {
               const next = full.slice(sent.length)
               sent = full
               if (next) write({ delta: next })
             },
+            // AI-11：重试前通知前端清空已收到的半截内容，避免截断/重复
+            onReset: () => {
+              sent = ''
+              write({ reset: true })
+            },
           })
           answer = result.text
+          upstreamUsage = result.usage
         } catch (err) {
           logEvent('warn', 'ai.model.failed', { reqId, error: err.message })
           source = 'retrieval'
@@ -132,17 +191,21 @@ route('POST', '/api/ai/chat', async ({ req, res, reqId }) => {
           answer = filterOutput(fallback.text)
           write({ delta: answer })
           write({ done: true, source, references: fallback.references, degraded: true, sessionId, reason: 'MODEL_UNAVAILABLE' })
-          await recordUsage({ ip: clientIp(req), model: 'fallback', tokens: estimateTokens(message + answer), cost: 0, latency: Date.now() - started, source: 'retrieval', ok: false })
-          await saveSession(sessionId, message, answer, source, fallback.references)
+          await consumeQuota(ip)
+          await recordChatUsage(req, { model: 'fallback', promptText, answer, latency: Date.now() - started, source: 'retrieval', ok: false })
+          await rememberAnswer(key, { answer, source, references: fallback.references, degraded: true })
+          await saveSession(sessionId, message, answer, source, fallback.references, ip)
           return res.end()
         }
       } else {
         const fallback = extractiveAnswer(hits)
         answer = filterOutput(fallback.text)
         write({ delta: answer })
-        write({ done: true, source, references: fallback.references, degraded: false, sessionId })
-        await recordUsage({ ip: clientIp(req), model: 'retrieval', tokens: estimateTokens(message + answer), cost: 0, latency: Date.now() - started, source, ok: true })
-        await saveSession(sessionId, message, answer, source, fallback.references)
+        write({ done: true, source, references: fallback.references, degraded: !budget.ok, sessionId, budgetExceeded: !budget.ok })
+        await consumeQuota(ip)
+        await recordChatUsage(req, { model: 'retrieval', promptText, answer, latency: Date.now() - started, source, ok: true })
+        await rememberAnswer(key, { answer, source, references: fallback.references, degraded: !budget.ok })
+        await saveSession(sessionId, message, answer, source, fallback.references, ip)
         return res.end()
       }
 
@@ -151,17 +214,12 @@ route('POST', '/api/ai/chat', async ({ req, res, reqId }) => {
       const claimed = extractPaths(answer).map((path) => ({ path }))
       const verified = verifyReferences(index, claimed, 0.5)
       const references = verified.passed && verified.references.length ? verified.references : hits.slice(0, 3).map((h) => ({ docId: h.docId, section: h.subTitle, path: h.path, snippet: trim(h.text, 80) }))
-      write({ done: true, source, references, degraded: !verified.passed, sessionId })
-      await recordUsage({
-        ip: clientIp(req),
-        model: env.ai.model,
-        tokens: estimateTokens(messages.map((m) => m.content).join(' ') + answer),
-        cost: priceOf(estimateTokens(answer)),
-        latency: Date.now() - started,
-        source,
-        ok: true,
-      })
-      await saveSession(sessionId, message, answer, source, references)
+      const degraded = !verified.passed
+      write({ done: true, source, references, degraded, sessionId })
+      await consumeQuota(ip)
+      await recordChatUsage(req, { model: modelName, promptText, answer, latency: Date.now() - started, source, ok: true, upstream: upstreamUsage })
+      await rememberAnswer(key, { answer, source, references, degraded })
+      await saveSession(sessionId, message, answer, source, references, ip)
       return res.end()
     } catch (err) {
       logEvent('error', 'ai.stream.failed', { reqId, error: err.message })
@@ -175,32 +233,30 @@ route('POST', '/api/ai/chat', async ({ req, res, reqId }) => {
     let answer = ''
     let source = 'retrieval'
     let degraded = false
-    if (modelAvailable()) {
+    let upstreamUsage = null
+    if (canModel) {
       source = 'model'
-      const result = await streamModel(messages, { signal: ac.signal, onDelta: () => {} })
+      const result = await streamModel(messages, { model: modelName, signal: ac.signal, onDelta: () => {} })
       answer = filterOutput(result.text)
+      upstreamUsage = result.usage
     } else {
       const fallback = extractiveAnswer(hits)
       answer = filterOutput(fallback.text)
       const refs = fallback.references
-      await recordUsage({ ip: clientIp(req), model: 'retrieval', tokens: estimateTokens(message + answer), cost: 0, latency: Date.now() - started, source, ok: true })
-      await saveSession(sessionId, message, answer, source, refs)
-      return sendJson(res, 200, { answer, source, references: refs, degraded: false, sessionId })
+      await consumeQuota(ip)
+      await recordChatUsage(req, { model: 'retrieval', promptText, answer, latency: Date.now() - started, source, ok: true })
+      await rememberAnswer(key, { answer, source, references: refs, degraded: !budget.ok })
+      await saveSession(sessionId, message, answer, source, refs, ip)
+      return sendJson(res, 200, { answer, source, references: refs, degraded: !budget.ok, sessionId, budgetExceeded: !budget.ok })
     }
     const claimed = extractPaths(answer).map((path) => ({ path }))
     const verified = verifyReferences(index, claimed, 0.5)
     const references = verified.passed && verified.references.length ? verified.references : hits.slice(0, 3).map((h) => ({ docId: h.docId, section: h.subTitle, path: h.path, snippet: trim(h.text, 80) }))
     degraded = !verified.passed
-    await recordUsage({
-      ip: clientIp(req),
-      model: env.ai.model,
-      tokens: estimateTokens(answer),
-      cost: priceOf(estimateTokens(answer)),
-      latency: Date.now() - started,
-      source,
-      ok: true,
-    })
-    await saveSession(sessionId, message, answer, source, references)
+    await consumeQuota(ip)
+    await recordChatUsage(req, { model: modelName, promptText, answer, latency: Date.now() - started, source, ok: true, upstream: upstreamUsage })
+    await rememberAnswer(key, { answer, source, references, degraded })
+    await saveSession(sessionId, message, answer, source, references, ip)
     sendJson(res, 200, { answer, source, references, degraded, sessionId })
   } catch (err) {
     logEvent('error', 'ai.json.failed', { reqId, error: err.message })
@@ -209,21 +265,24 @@ route('POST', '/api/ai/chat', async ({ req, res, reqId }) => {
 })
 
 function sendSse(res, events) {
-  res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive' })
+  // BE-11：缓存/注入分支也要带 X-Accel-Buffering，Nginx 后才不会整包缓冲
+  res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' })
   for (const e of events) res.write(`data: ${JSON.stringify(e)}\n\n`)
   res.end()
 }
 
-async function saveSession(sessionId, userText, answer, source, references) {
+async function saveSession(sessionId, userText, answer, source, references, ip) {
   const { ai } = await getStores()
   await ai.update((data) => {
     let s = data.sessions.find((x) => x.id === sessionId)
     if (!s) {
-      s = { id: sessionId, createdAt: new Date().toISOString(), messages: [] }
+      s = { id: sessionId, createdAt: new Date().toISOString(), messages: [], ipHash: ip ?? null }
       data.sessions.unshift(s)
     }
     s.messages.push({ role: 'user', text: userText, ts: new Date().toISOString() })
     s.messages.push({ role: 'assistant', text: answer, source, references, ts: new Date().toISOString() })
+    // AI-07：会话只保留最近 40 条，避免 ai.json 无上限增长
+    s.messages = s.messages.slice(-40)
     s.updatedAt = new Date().toISOString()
     data.sessions = data.sessions.slice(0, 200)
   })
@@ -244,11 +303,20 @@ route('POST', '/api/ai/feedback', async ({ req, res, reqId }) => {
   sendJson(res, 201, { ok: true })
 })
 
+/** AI-07：后台可审阅反馈，并按 👎 回流到评测集 */
+route('GET', '/api/ai/feedback', async ({ req, res }) => {
+  requireRole(await getSession(req), ROLE_ADMIN)
+  const { ai } = await getStores()
+  const data = await ai.read()
+  sendJson(res, 200, data.feedback.slice(0, 100))
+})
+
 route('GET', '/api/ai/sessions/:id', async ({ req, res, reqId, params }) => {
   const { ai } = await getStores()
   const data = await ai.read()
   const session = data.sessions.find((s) => s.id === params.id)
-  if (!session) return sendError(res, 404, 'NOT_FOUND', '会话不存在', reqId)
+  // BE-10：会话按发起 IP 的哈希绑定，知道 id 也拿不到别人的对话
+  if (!session || (session.ipHash && session.ipHash !== ipHash(req))) return sendError(res, 404, 'NOT_FOUND', '会话不存在', reqId)
   sendJson(res, 200, session)
 })
 

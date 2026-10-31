@@ -1,7 +1,9 @@
 import { Check, Copy, KeyRound, Laptop, Lock, LogIn, Plus, ShieldCheck, Smartphone, Trash2, UserRound } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { profile } from '@/data/site'
 import { newId } from '@/lib/utils'
+import { serverConfig } from '@/services/config'
+import { getProfile, saveProfile } from '@/services/settings'
 import {
   AButton,
   AdminModal,
@@ -61,20 +63,54 @@ export default function ProfilePage({
   const [pwdErr, setPwdErr] = useState('')
   const [danger, setDanger] = useState<null | 'transfer' | 'delete'>(null)
 
+  // BE-14：有服务端时读真实资料；没有时保持本地展示，写操作明确提示未接入
+  useEffect(() => {
+    if (!serverConfig.enabled) return
+    let alive = true
+    getProfile().then((saved) => {
+      if (!alive || !saved) return
+      setInfo((cur) => ({
+        ...cur,
+        ...saved,
+        bio: Array.isArray(saved.bio) ? saved.bio.join('\n\n') : cur.bio,
+      }))
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const saveInfo = async () => {
+    if (!serverConfig.enabled) return show('未接服务端：资料只改本页，刷新丢失')
+    try {
+      await saveProfile({
+        name: info.name,
+        latin: info.latin,
+        role: info.role,
+        location: info.location,
+        email: info.email,
+        wechat: info.wechat,
+        phone: info.phone,
+        tagline: info.tagline,
+        bio: info.bio.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean),
+      })
+      show('资料已保存到服务端')
+    } catch (err) {
+      show(`保存失败：${(err as Error).message}`)
+    }
+  }
+
   const issue = () => {
     if (!tokenName.trim()) return
-    const value = `wyx_live_${newId().slice(0, 12)}`
-    setIssued(value)
-    setTokenList((l) => [{ id: newId('k'), name: tokenName.trim(), prefix: value.slice(0, 14), created: new Date().toISOString().slice(0, 10), last: '从未使用' }, ...l])
-    setTokenName('')
+    // 未接入服务端时不生成假令牌
+    show('API 令牌管理未接入服务端（不会签发）')
   }
 
   const savePwd = () => {
     if (pwd.next.length < 8) return setPwdErr('新密码至少 8 位')
     if (pwd.next !== pwd.confirm) return setPwdErr('两次输入的新密码不一致')
     setPwdErr('')
-    setPwd({ old: '', next: '', confirm: '' })
-    show('密码已更新')
+    show('密码修改暂未接入服务端（不会保存）')
   }
 
   return (
@@ -82,8 +118,8 @@ export default function ProfilePage({
       <PageTitle
         kicker="Profile"
         title="个人中心"
-        desc="这里的信息会同步到前台「关于我」、简历页脚与 AI 助手的自我介绍。"
-        right={<Badge tone="teal">已同步至前台</Badge>}
+        desc="服务端模式下资料会写入 settings.json；未接服务端时仅修改本页。"
+        right={<Badge tone={serverConfig.enabled ? 'teal' : 'amber'}>{serverConfig.enabled ? '已接服务端' : '本机演示'}</Badge>}
       />
 
       <Tabs
@@ -106,8 +142,8 @@ export default function ProfilePage({
                   <p className="text-[13px] font-semibold">{info.name} · {info.latin}</p>
                   <p className="mt-0.5 text-[11px] text-ink/60">{info.role}</p>
                   <div className="mt-2 flex gap-2">
-                    <AButton size="sm" onClick={() => show('头像上传面板（演示）')}>更换头像</AButton>
-                    <AButton size="sm" variant="soft" onClick={() => show('已恢复默认头像')}>恢复默认</AButton>
+                    <AButton size="sm" onClick={() => show('头像上传未接入对象存储（不会保存）')}>更换头像</AButton>
+                    <AButton size="sm" variant="soft" onClick={() => show('头像未接入对象存储（未做修改）')}>恢复默认</AButton>
                   </div>
                 </div>
               </div>
@@ -143,7 +179,7 @@ export default function ProfilePage({
               </div>
 
               <div className="mt-4 flex gap-2">
-                <AButton variant="primary" icon={<Check size={13} />} onClick={() => show('资料已保存')}>
+                <AButton variant="primary" icon={<Check size={13} />} onClick={saveInfo}>
                   保存资料
                 </AButton>
                 <AButton onClick={() => setInfo({ ...info })}>重置</AButton>
@@ -160,13 +196,13 @@ export default function ProfilePage({
                       className="min-w-0 flex-1 bg-transparent font-mono text-[10.5px] text-ink/60 outline-none"
                     />
                     <Badge tone="neutral">公开</Badge>
-                    <IconButton label="删除链接" onClick={() => show('链接已移除（演示）')}>
+                    <IconButton label="删除链接" onClick={() => show('链接编辑未接入服务端（未改动）')}>
                       <Trash2 size={12} />
                     </IconButton>
                   </div>
                 ))}
               </div>
-              <AButton className="mt-3" icon={<Plus size={12} />} onClick={() => show('添加链接（演示）')}>
+              <AButton className="mt-3" icon={<Plus size={12} />} onClick={() => show('链接编辑未接入服务端（未改动）')}>
                 添加链接
               </AButton>
             </Panel>
@@ -202,7 +238,7 @@ export default function ProfilePage({
                 ))}
               </div>
               <Field label="新增关键词" className="mt-3">
-                <Input placeholder="回车添加，例如：MCP" onKeyDown={(e) => e.key === 'Enter' && show('关键词已添加（演示）')} />
+                <Input placeholder="回车添加，例如：MCP" onKeyDown={(e) => e.key === 'Enter' && show('关键词编辑未接入服务端（未改动）')} />
               </Field>
             </Panel>
 
@@ -255,8 +291,8 @@ export default function ProfilePage({
                 </Field>
               </div>
               <div className="mt-4 flex gap-2">
-                <AButton variant="primary" onClick={() => show('账号信息已保存')}>保存</AButton>
-                <AButton onClick={() => show('验证邮件已发送')}>验证邮箱</AButton>
+                <AButton variant="primary" onClick={() => show('账号信息未接入服务端（不会保存）')}>保存</AButton>
+                <AButton onClick={() => show('邮件服务未接入（未发送）')}>验证邮箱</AButton>
               </div>
             </Panel>
 
@@ -274,11 +310,11 @@ export default function ProfilePage({
                       <p className="font-mono text-[9.5px] text-ink/60">{d.meta}</p>
                     </div>
                     {d.now ? <Badge tone="teal">在线</Badge> : (
-                      <AButton size="sm" variant="soft" onClick={() => show('设备已下线（演示）')}>
+                      <AButton size="sm" variant="soft" onClick={() => show('设备管理未接入服务端（未下线）')}>
                         下线
                       </AButton>
                     )}
-                    {i > 0 && <IconButton label="移除记录" onClick={() => show('记录已移除')}><Trash2 size={12} /></IconButton>}
+                    {i > 0 && <IconButton label="移除记录" onClick={() => show('登录记录未接入服务端（未移除）')}><Trash2 size={12} /></IconButton>}
                   </div>
                 ))}
               </div>
@@ -298,7 +334,7 @@ export default function ProfilePage({
                       <p className="text-[11.5px] font-medium">{name}</p>
                       <p className="font-mono text-[9.5px] text-ink/60">{handle}</p>
                     </div>
-                    <AButton size="sm" variant={on ? 'soft' : 'ghost'} onClick={() => show(on ? '已解除绑定（演示）' : '跳转授权（演示）')}>
+                    <AButton size="sm" variant={on ? 'soft' : 'ghost'} onClick={() => show('第三方绑定未接入服务端')}>
                       {on ? '解除' : '绑定'}
                     </AButton>
                   </div>
@@ -355,10 +391,10 @@ export default function ProfilePage({
                       <p className="text-[11.5px] font-medium">{t.name}</p>
                       <p className="font-mono text-[9.5px] text-ink/60">{t.prefix}••• · 创建 {t.created} · 最后使用 {t.last}</p>
                     </div>
-                    <IconButton label="复制令牌" onClick={() => { navigator.clipboard?.writeText(t.prefix); show('令牌前缀已复制') }}>
+                    <IconButton label="复制令牌" onClick={() => { navigator.clipboard?.writeText(t.prefix); show('已复制本地演示前缀（非真实令牌）') }}>
                       <Copy size={12} />
                     </IconButton>
-                    <AButton size="sm" variant="danger" onClick={() => { setTokenList((l) => l.filter((x) => x.id !== t.id)); show('令牌已撤销') }}>
+                    <AButton size="sm" variant="danger" onClick={() => show('令牌管理未接入服务端（未撤销）')}>
                       撤销
                     </AButton>
                   </div>
@@ -390,7 +426,7 @@ export default function ProfilePage({
                   </p>
                   <p className="mt-1 text-[10px] leading-relaxed text-ink/60">已绑定 Authenticator，登录时需输入 6 位动态码。</p>
                 </div>
-                <Toggle on={twoFa} onChange={(v) => { setTwoFa(v); show(v ? '两步验证已开启' : '两步验证已关闭') }} label="两步验证" />
+                <Toggle on={twoFa} onChange={(v) => { setTwoFa(v); show('仅改本页状态：两步验证未接入服务端') }} label="两步验证" />
               </div>
               <AButton className="mt-3 w-full" onClick={() => show('恢复码已重新生成')}>
                 查看恢复码

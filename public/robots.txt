@@ -8,8 +8,8 @@ Allow: /work/
 Allow: /life/
 Allow: /me/
 Disallow: /admin
-Disallow: /read?
 Disallow: /*?assistant=
+Disallow: /api/
 
 # 真实服务端 sitemap（fx.md B8）接入后，把这行换成接口地址
 Sitemap: https://wyx.space/sitemap.xml

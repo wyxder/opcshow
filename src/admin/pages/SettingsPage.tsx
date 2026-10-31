@@ -1,5 +1,5 @@
 import { Check, CloudDownload, DatabaseBackup, Download, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { backups as backupSeed, seoDefaults, systemInfo } from '@/admin/data'
 import {
   AButton,
@@ -19,11 +19,22 @@ import {
   Toggle,
 } from '@/admin/ui'
 import { cn, newId } from '@/lib/utils'
+import { serverConfig } from '@/services/config'
+import { apiJson, apiJsonSafe } from '@/services/http'
+import { getSiteSettings, saveSiteSettings } from '@/services/settings'
 import { useTheme } from '@/theme/ThemeProvider'
 import { SWATCH_TOKENS } from '@/theme/theme'
 import { siteMeta } from '@/data/site'
 
 type Tab = 'theme' | 'seo' | 'backup'
+type BackupRow = (typeof backupSeed)[number]
+
+const formatBytes = (n?: number) => {
+  const v = Number(n) || 0
+  if (v < 1024) return `${v} B`
+  if (v < 1024 * 1024) return `${(v / 1024).toFixed(0)} KB`
+  return `${(v / 1024 / 1024).toFixed(1)} MB`
+}
 
 export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: (t: Tab) => void; show: (m: string) => void }) {
   // 主题只有一套数据源：直接读写 ThemeProvider，不再维护后台自己的预设表
@@ -34,9 +45,50 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
   const [tokenValues, setTokenValues] = useState<Record<string, string>>({})
   const [seo, setSeo] = useState(seoDefaults)
   const [autoBackup, setAutoBackup] = useState(true)
-  const [backups, setBackups] = useState(backupSeed)
+  const [backups, setBackups] = useState<BackupRow[]>(backupSeed)
   const [restoring, setRestoring] = useState<string | null>(null)
   const [backingUp, setBackingUp] = useState(false)
+
+  /** FE-05：备份列表直接读服务端 /api/admin/backup */
+  const loadBackups = useCallback(async () => {
+    if (!serverConfig.enabled) return
+    const list = await apiJsonSafe<{ id: string; createdAt?: string; bytes?: number; entries?: number }[]>('/api/admin/backup')
+    if (!list) return
+    setBackups(
+      list.map((b) => ({
+        id: b.id,
+        name: b.id,
+        size: formatBytes(b.bytes),
+        type: '手动' as const,
+        status: '成功' as const,
+        time: b.createdAt ? new Date(b.createdAt).toLocaleString('zh-CN') : '—',
+        items: `${b.entries ?? 0} 类数据`,
+      })),
+    )
+  }, [])
+
+  useEffect(() => {
+    void loadBackups()
+  }, [loadBackups])
+
+  // FE-05 / BE-14：SEO 设置读服务端，未接入时保持本机预览
+  useEffect(() => {
+    if (!serverConfig.enabled) return
+    let alive = true
+    getSiteSettings().then((site) => {
+      if (!alive || !site) return
+      setSeo((cur) => ({
+        ...cur,
+        title: site.title ?? cur.title,
+        description: site.description ?? cur.description,
+        keywords: Array.isArray(site.keywords) ? site.keywords.join(',') : cur.keywords,
+        ogImage: site.ogImage ?? cur.ogImage,
+      }))
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   // 等主题属性落到 <html> 后再读实际值
   useEffect(() => {
@@ -66,16 +118,43 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
     [seo],
   )
 
-  const startBackup = () => {
+  const startBackup = async () => {
+    if (!serverConfig.enabled) return show('未接服务端：不会创建备份')
     setBackingUp(true)
-    window.setTimeout(() => {
-      setBackups((l) => [
-        { id: newId('b'), name: `manual-${new Date().toISOString().slice(0, 10)}`, size: '129 MB', type: '手动', status: '成功', time: '刚刚', items: '内容 + 文件 + 配置' },
-        ...l,
-      ])
+    try {
+      const created = await apiJson<{ id: string; bytes?: number }>('/api/admin/backup', { method: 'POST' })
+      await loadBackups()
+      show(`备份完成 · ${formatBytes(created.bytes)}`)
+    } catch (err) {
+      show(`备份失败：${(err as Error).message}`)
+    } finally {
       setBackingUp(false)
-      show('备份完成 · 129 MB')
-    }, 1100)
+    }
+  }
+
+  const restoreBackup = async (id: string) => {
+    if (!serverConfig.enabled) return show('未接服务端：不会执行恢复')
+    try {
+      await apiJson(`/api/admin/backup/${encodeURIComponent(id)}/restore`, { method: 'POST' })
+      show('已从服务端快照恢复')
+    } catch (err) {
+      show(`恢复失败：${(err as Error).message}`)
+    }
+  }
+
+  const saveSeo = async () => {
+    if (!serverConfig.enabled) return show('未接服务端：SEO 设置只存在本机')
+    try {
+      await saveSiteSettings({
+        title: seo.title,
+        description: seo.description,
+        keywords: seo.keywords.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
+        ogImage: seo.ogImage,
+      })
+      show('SEO 设置已保存到服务端')
+    } catch (err) {
+      show(`保存失败：${(err as Error).message}`)
+    }
   }
 
   return (
@@ -319,16 +398,16 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
               </div>
 
               <div className="mt-4 flex gap-2">
-                <AButton variant="primary" icon={<Check size={12} />} onClick={() => show('SEO 设置已保存')}>
+                <AButton variant="primary" icon={<Check size={12} />} onClick={saveSeo}>
                   保存
                 </AButton>
-                <AButton icon={<Search size={12} />} onClick={() => show('已提交到 Search Console（演示）')}>
+                <AButton icon={<Search size={12} />} onClick={() => show('Search Console 推送未接入（需外部账号）')}>
                   提交收录
                 </AButton>
               </div>
             </Panel>
 
-            <Panel kicker="Sitemap" title="已收录页面">
+            <Panel kicker="Sitemap" title="已收录页面（静态示意）">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
                   ['页面总数', '23'],
@@ -413,7 +492,7 @@ Sitemap: ${seo.canonical}/sitemap.xml`}
                     <span className="font-mono text-[9.5px] text-admin-muted">{b.time}</span>
                     <Status>{b.status}</Status>
                     <div className="flex items-center justify-end gap-1">
-                      <IconButton label="下载" onClick={() => show('备份包已开始下载')}>
+                      <IconButton label="下载" onClick={() => show('备份文件在服务端 data/backups，浏览器下载未接入')}>
                         <Download size={11} />
                       </IconButton>
                       <AButton size="sm" variant="soft" disabled={b.status !== '成功'} onClick={() => setRestoring(b.name)}>
@@ -433,7 +512,7 @@ Sitemap: ${seo.canonical}/sitemap.xml`}
                   <p className="text-[11.5px] font-medium">每日自动备份</p>
                   <p className="mt-0.5 text-[9.5px] text-admin-muted">保留最近 14 份，超出自动清理</p>
                 </div>
-                <Toggle on={autoBackup} onChange={setAutoBackup} label="自动备份" />
+                <Toggle on={autoBackup} onChange={(v) => { setAutoBackup(v); show('仅本页状态：自动备份调度未接入') }} label="自动备份" />
               </div>
               <div className="mt-3 grid gap-3">
                 <Field label="执行时间">
@@ -451,12 +530,12 @@ Sitemap: ${seo.canonical}/sitemap.xml`}
                   </Select>
                 </Field>
               </div>
-              <AButton className="mt-3 w-full" onClick={() => show('备份计划已保存')}>
+              <AButton className="mt-3 w-full" onClick={() => show('自动备份调度未接入（需 cron / 外部调度器）')}>
                 保存计划
               </AButton>
             </Panel>
 
-            <Panel kicker="Storage" title="备份存储">
+            <Panel kicker="Storage" title="备份存储（静态示意）">
               <div className="space-y-2 text-[10.5px]">
                 {[
                   ['存储位置', 'Supabase Storage'],
@@ -471,10 +550,10 @@ Sitemap: ${seo.canonical}/sitemap.xml`}
                 ))}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <AButton size="sm" icon={<CloudDownload size={11} />} onClick={() => show('已导出配置 JSON')}>
+                <AButton size="sm" icon={<CloudDownload size={11} />} onClick={() => show('配置导出未接入服务端')}>
                   导出配置
                 </AButton>
-                <AButton size="sm" icon={<RotateCcw size={11} />} onClick={() => show('导入配置（演示）')}>
+                <AButton size="sm" icon={<RotateCcw size={11} />} onClick={() => show('配置导入未接入服务端')}>
                   导入配置
                 </AButton>
               </div>
@@ -486,10 +565,7 @@ Sitemap: ${seo.canonical}/sitemap.xml`}
                 variant="danger"
                 className="mt-2 w-full"
                 icon={<Trash2 size={11} />}
-                onClick={() => {
-                  setBackups((l) => l.filter((b) => b.status !== '已过期'))
-                  show('过期备份已清理')
-                }}
+                onClick={() => show('旧备份清理未接入（需存储层删除接口）')}
               >
                 清理过期备份
               </AButton>
@@ -509,8 +585,9 @@ Sitemap: ${seo.canonical}/sitemap.xml`}
             <AButton
               variant="primary"
               onClick={() => {
+                const id = restoring
                 setRestoring(null)
-                show('恢复任务已排入队列')
+                if (id) void restoreBackup(id)
               }}
             >
               确认恢复

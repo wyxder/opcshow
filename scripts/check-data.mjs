@@ -10,7 +10,7 @@
  *   5. id 生成不再使用 Date.now()（统一 newId()）。
  */
 import esbuild from 'esbuild'
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -65,6 +65,20 @@ for (const c of categoriesFromIndex) {
 }
 if (totalArticles !== articles.length) fail(`totalArticles ${totalArticles} ≠ ${articles.length}`)
 pass('分类计数为派生值，索引与正文一致（R3 / D2）')
+
+/* G-07：种子快照必须与 src/data 同源（运行时快照允许后台改过，不做比对） */
+const seedPath = join(root, 'server', 'seed', 'content.json')
+if (existsSync(seedPath)) {
+  const seed = JSON.parse(readFileSync(seedPath, 'utf8'))
+  const seedArticles = seed.articles ?? []
+  if (seedArticles.length !== articles.length) fail(`种子文章数 ${seedArticles.length} ≠ src/data ${articles.length}，请跑 npm run gen:content`)
+  for (const a of articles) {
+    const s = seedArticles.find((x) => x.id === a.id)
+    if (!s) fail(`种子缺少文章 ${a.id}，请跑 npm run gen:content`)
+    else if (s.title !== a.title) fail(`种子文章 ${a.id} 标题漂移：「${s.title}」≠「${a.title}」`)
+  }
+  if (!problems) pass('种子快照与 src/data 一致（G-07）')
+}
 
 /* ------------------------------- 2. 代码卫生 ------------------------------- */
 const tsFiles = []

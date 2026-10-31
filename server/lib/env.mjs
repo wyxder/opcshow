@@ -41,13 +41,16 @@ export const env = {
   host: process.env.HOST || '127.0.0.1',
   dataDir: resolve(ROOT, process.env.API_DATA_DIR || 'server/data'),
   seedDir: resolve(ROOT, 'server/seed'),
-  corsOrigins: list(process.env.API_CORS_ORIGIN, 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173'),
+  corsOrigins: list(process.env.API_CORS_ORIGIN, 'http://localhost:5273,http://127.0.0.1:5273,http://localhost:4173'),
   adminUser: process.env.ADMIN_USER || 'admin',
-  adminPass: process.env.ADMIN_PASS || 'wyx-admin-2026',
+  /** BE-01：不再内置默认口令。未配置时 boot 阶段直接拒绝启动，避免「已知口令可登录」。 */
+  adminPass: process.env.ADMIN_PASS || '',
   editorUser: process.env.EDITOR_USER || 'editor',
-  editorPass: process.env.EDITOR_PASS || 'wyx-editor-2026',
+  editorPass: process.env.EDITOR_PASS || '',
   sessionTtlMs: num(process.env.SESSION_TTL_MS, 7 * 24 * 3600 * 1000),
   cookieSecure: process.env.COOKIE_SECURE === '1',
+  /** BE-02：只有显式声明在反向代理后面时，才信任 X-Real-IP / X-Forwarded-For */
+  trustProxy: process.env.TRUST_PROXY === '1',
   /** AI 网关（A-01）：OpenAI 兼容。没有密钥时走「站内检索回答」，不会假装接了模型 */
   ai: {
     baseUrl: process.env.AI_BASE_URL || '',
@@ -68,3 +71,15 @@ export const env = {
 }
 
 export const hasModelKey = () => Boolean(env.ai.apiKey && env.ai.baseUrl)
+
+/** 启动前的配置硬校验（BE-01）：缺口令 / 用示例口令时拒绝启动，并给出可执行的修复提示。 */
+export function assertSecureConfig() {
+  const problems = []
+  const weak = (v) => !v || v.length < 8 || v === 'change-me'
+  if (weak(env.adminPass)) problems.push('ADMIN_PASS 未设置或过于简单（至少 8 位，且不能是 change-me）')
+  if (weak(env.editorPass)) problems.push('EDITOR_PASS 未设置或过于简单（至少 8 位，且不能是 change-me）')
+  if (!problems.length) return
+  console.error('[env] 拒绝启动：' + problems.join('；'))
+  console.error('[env] 修复：cp .env.example .env，然后修改 ADMIN_PASS / EDITOR_PASS（不要提交 .env）')
+  process.exit(1)
+}

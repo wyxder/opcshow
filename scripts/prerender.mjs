@@ -15,7 +15,7 @@
  * 用法：npm run prerender（在 vite build 之后执行）
  */
 import esbuild from 'esbuild'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -274,7 +274,23 @@ function resumeBody({ profile, figures, education, skillGroups, resumeSnapshot }
 /* --------------------------------- 主流程 -------------------------------- */
 
 const data = await loadData()
-const { articles, siteMeta, profile, figures, education, skillGroups, resumeSnapshot } = data
+let { articles, siteMeta, profile, figures, education, skillGroups, resumeSnapshot } = data
+
+// X-05：有运行时快照时，预渲染页与后台改过的内容保持一致；否则回落 src/data
+try {
+  const runtime = join(root, 'server', 'data', 'content.json')
+  if (existsSync(runtime)) {
+    const snap = JSON.parse(readFileSync(runtime, 'utf8'))
+    if (Array.isArray(snap.articles) && snap.articles.length) {
+      articles = snap.articles.filter((a) => !a.status || a.status === 'published')
+    }
+    if (snap.siteMeta) siteMeta = { ...siteMeta, ...snap.siteMeta }
+    if (snap.profile) profile = snap.profile
+    console.log('[prerender] 已使用 server/data/content.json 运行时快照')
+  }
+} catch (err) {
+  console.warn('[prerender] 读取运行时快照失败，回落 src/data：', err.message)
+}
 const BASE = siteMeta.url.replace(/\/$/, '')
 let template
 try {

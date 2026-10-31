@@ -37,6 +37,8 @@ export interface ContentRepository {
   list: <K extends ContentDomain>(domain: K) => Promise<DomainData[K]>
   /** 后台读：scope=admin 时返回全量（含草稿），需登录 */
   listAdmin: <K extends ContentDomain>(domain: K) => Promise<DomainData[K]>
+  /** 新建（X-02 / BE-04）：后台与前台投稿共用，未接服务端时抛 NotSupportedError */
+  create: (domain: ContentDomain, id: string, payload: Record<string, unknown>) => Promise<{ id: string; version: number; status: PublishStatus }>
   /** 写（B3）：未接入服务端时抛 NotSupportedError */
   upsert: (domain: ContentDomain, id: string, payload: unknown, version?: number) => Promise<unknown>
   /** 状态机（B3）：草稿 → 待审 → 已发布 → 已隐藏 */
@@ -75,6 +77,9 @@ export const localContent: ContentRepository = {
   async listAdmin(domain) {
     return localSnapshot[domain]
   },
+  async create() {
+    throw new NotSupportedError('内容新建')
+  },
   async upsert() {
     throw new NotSupportedError('内容写入')
   },
@@ -94,6 +99,7 @@ export const remoteContent: ContentRepository = {
     const data = await apiJsonSafe<{ items: DomainData[K] }>(`/api/content/${domain}?scope=admin&limit=200`)
     return data?.items ?? (localSnapshot[domain] as DomainData[K])
   },
+  create: (domain, id, payload) => apiJson<{ id: string; version: number; status: PublishStatus }>('/api/content', { method: 'POST', body: JSON.stringify({ domain, id, payload }) }),
   upsert: (domain, id, payload, version) =>
     apiJson(`/api/content/${domain}/${id}`, {
       method: 'PUT',

@@ -10,7 +10,7 @@
  * GET  /api/og/:id.svg              每篇文章专属 OG 图（构建期脚本也会用同一逻辑）
  * GET  /api/openapi.json            OpenAPI 3.1
  */
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { route } from '../lib/router.mjs'
@@ -19,6 +19,7 @@ import { env } from '../lib/env.mjs'
 import { getStores, backupSnapshot, restoreSnapshot } from '../lib/store.mjs'
 import { getSession, requireRole, audit, ROLE_ADMIN } from '../lib/auth.mjs'
 import { text, object } from '../lib/validate.mjs'
+import { invalidate } from '../ai/indexer.mjs'
 
 const BACKUP_DIR = resolve(env.dataDir, 'backups')
 const startedAt = Date.now()
@@ -36,31 +37,36 @@ async function pushJob(type, input, work) {
     return item
   })
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    try {
-      const result = await work(input)
-      await jobs.update((data) => {
-        const j = data.jobs.find((x) => x.id === job.id)
-        j.status = 'completed'
-        j.attempts = attempt
-        j.result = result
-        j.finishedAt = new Date().toISOString()
-      })
-      return { id: job.id, status: 'completed' }
-    } catch (err) {
-      if (attempt === MAX_ATTEMPTS) {
+  // BE-08：请求内只负责建任务，真正执行放到下一个事件循环，接口可以立即 202
+  setImmediate(async () => {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+      try {
+        const result = await work(input)
         await jobs.update((data) => {
           const j = data.jobs.find((x) => x.id === job.id)
-          j.status = 'dead'
+          if (!j) return
+          j.status = 'completed'
           j.attempts = attempt
-          j.error = err.message
+          j.result = result
           j.finishedAt = new Date().toISOString()
         })
-        return { id: job.id, status: 'dead' }
+        return
+      } catch (err) {
+        if (attempt === MAX_ATTEMPTS) {
+          await jobs.update((data) => {
+            const j = data.jobs.find((x) => x.id === job.id)
+            if (!j) return
+            j.status = 'dead'
+            j.attempts = attempt
+            j.error = err.message
+            j.finishedAt = new Date().toISOString()
+          })
+        }
       }
     }
-  }
-  return { id: job.id, status: 'dead' }
+  })
+
+  return { id: job.id, status: 'running' }
 }
 
 route('GET', '/api/jobs/:id', async ({ req, res, reqId, params }) => {
@@ -139,10 +145,16 @@ route('GET', '/api/admin/backup', async ({ req, res }) => {
 
 route('POST', '/api/admin/backup/:id/restore', async ({ req, res, reqId, params }) => {
   const session = requireRole(await getSession(req), ROLE_ADMIN)
+  // BE-06：只接受本服务生成的备份文件名，防止读取任意 JSON
+  if (!/^backup-[\w.-]+\.json$/.test(params.id) || params.id.includes('..')) return sendError(res, 404, 'NOT_FOUND', '备份不存在', reqId)
   const full = join(BACKUP_DIR, params.id)
-  if (params.id.includes('..') || !existsSync(full)) return sendError(res, 404, 'NOT_FOUND', '备份不存在', reqId)
+  if (!existsSync(full)) return sendError(res, 404, 'NOT_FOUND', '备份不存在', reqId)
   const content = JSON.parse(await readFile(full, 'utf8'))
   await restoreSnapshot(content.snapshot)
+  // 恢复后：问答索引与聚合缓存必须失效，否则会继续用旧内容/旧数字
+  invalidate()
+  const { clearAnalyticsCache } = await import('../lib/hits.mjs')
+  clearAnalyticsCache()
   await audit(session.user, 'backup.restore', params.id, null, null)
   sendJson(res, 200, { ok: true, restoredAt: new Date().toISOString() })
 })
@@ -262,7 +274,7 @@ const openapi = {
     '/admin/backup': { get: { summary: '备份列表' }, post: { summary: '创建快照' } },
     '/admin/backup/{id}/restore': { post: { summary: '恢复快照', responses: { 200: { description: '已恢复' } } } },
     '/admin/metrics': { get: { summary: '运行指标', responses: { 200: { description: 'metrics' } } } },
-    '/og/{id}.svg': { get: { summary: '文章专属 OG 图', responses: { 200: { description: 'image/svg+xml' } } } },
+    '/og/{file}.svg': { get: { summary: '文章专属 OG 图', responses: { 200: { description: 'image/svg+xml' } } } },
   },
 }
 
@@ -274,5 +286,16 @@ route('GET', '/healthz', async ({ res }) => sendJson(res, 200, { status: 'ok', u
 route('GET', '/readyz', async ({ res }) => {
   const stores = await getStores()
   await stores.content.read()
-  sendJson(res, 200, { status: 'ready', stores: Object.keys(stores).length })
+  // BE-13：真的探一次目录可写，而不是只读缓存
+  let writable = true
+  try {
+    await mkdir(resolve(env.dataDir, 'uploads'), { recursive: true })
+    const probe = resolve(env.dataDir, `.readyz-${process.pid}.tmp`)
+    await writeFile(probe, 'ok')
+    await rm(probe, { force: true })
+  } catch {
+    writable = false
+  }
+  if (!writable) return sendError(res, 503, 'DATA_DIR_READONLY', '数据目录不可写', 'readyz')
+  sendJson(res, 200, { status: 'ready', stores: Object.keys(stores).length, writable })
 })

@@ -1,0 +1,21 @@
+# 构建上下文只保留服务端需要的文件（BE-13）
+node_modules
+dist
+dist-ssr
+.git
+.github
+.screenshots
+.trae-html-share-packages
+doc
+theme-preview
+简历
+public
+scripts
+src
+*.md
+*.docx
+*.log
+tsconfig.tsbuildinfo
+.env
+.env.*
+!.env.example

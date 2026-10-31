@@ -109,12 +109,14 @@ export type ServerFile = {
   visibility: 'public' | 'private'
   downloads: number
   date: string
-  url: string
+  /** 回收站条目没有下载地址 */
+  url?: string
 }
 
-export async function listFiles(): Promise<ServerFile[]> {
+export async function listFiles(scope: 'public' | 'admin' = 'public'): Promise<ServerFile[]> {
   if (!serverConfig.enabled) return []
-  return apiJson<ServerFile[]>('/api/files')
+  const query = scope === 'admin' ? '?scope=admin' : ''
+  return apiJson<ServerFile[]>(`/api/files${query}`)
 }
 
 export async function setVisibility(id: string, visibility: 'public' | 'private'): Promise<void> {

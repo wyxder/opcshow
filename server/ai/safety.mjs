@@ -21,6 +21,8 @@ const INJECTION = [
   /(内部|系统|后台)的?(配置|密钥|凭证|秘钥)/,
   /打印\s*(?:API\s*KEY|api\s*key|密钥)/i,
   /(扮演|假装|装作)[^，。]{0,12}(不受限制|无限制|没有限制|越狱)/,
+  /(重复|复述|回显)(一下)?(你的)?(系统)?(指令|提示词)/,
+  /把你的?(指令|提示词|配置)原样输出/,
   /\bDAN\b/,
 ]
 
@@ -42,10 +44,11 @@ export function redactPII(text) {
 }
 
 const SENSITIVE_OUT = ['忽略之前的指令', '系统提示词是', '我的密钥', 'API KEY 是']
-export function filterOutput(text) {
+/** AI-09：输出同时做 PII 与长度限制，避免无限长回答刷屏/刷成本 */
+export function filterOutput(text, maxChars = 4000) {
   let out = redactPII(text ?? '')
   for (const word of SENSITIVE_OUT) out = out.split(word).join('***')
-  return out
+  return out.length > maxChars ? `${out.slice(0, maxChars)}…` : out
 }
 
 /** 日志里只放可关联信息，不放原文 */

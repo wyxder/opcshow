@@ -1,5 +1,5 @@
 import { CloudUpload, Download, FileArchive, FileCode2, FileSpreadsheet, FileText, FolderOpen, LayoutGrid, List, Lock, Search, Star } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHead } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
@@ -7,7 +7,8 @@ import { resourceFiles, type ResourceFile } from '@/data/work'
 import { cn, useLocalStorage } from '@/lib/utils'
 import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
 import { useSeo } from '@/lib/seo'
-import { resolveDownload } from '@/services/files'
+import { resolveDownload, listFiles } from '@/services/files'
+import { serverConfig } from '@/services/config'
 
 const extMeta: Record<ResourceFile['ext'], { color: string; icon: typeof FileText; label: string }> = {
   pdf: { color: 'rgb(var(--c-coral))', icon: FileText, label: 'PDF' },
@@ -63,12 +64,42 @@ export default function Files() {
   const [stars, setStars] = useLocalStorage<string[]>(STORAGE_KEYS.fileStars, ['f1', 'f4'], isStringArray)
   const { show, node } = useToast()
 
-  const downloadable = resourceFiles.filter((f) => f.url).length
+  // FE-07：服务端公开文件合并进资源中心，角标标明来源
+  const [serverFiles, setServerFiles] = useState<ResourceFile[]>([])
+  useEffect(() => {
+    if (!serverConfig.enabled) return
+    let alive = true
+    listFiles('public').then((list) => {
+      if (!alive) return
+      const known = new Set<ResourceFile['ext']>(['pdf', 'md', 'docx', 'csv', 'zip', 'fig', 'py', 'pptx', 'xlsx'])
+      setServerFiles(
+        list
+          .filter((f) => f.url)
+          .map((f) => ({
+            id: f.id,
+            name: f.name,
+            ext: (known.has(f.ext as ResourceFile['ext']) ? f.ext : 'md') as ResourceFile['ext'],
+            size: f.size,
+            date: f.date,
+            category: '数据集',
+            desc: '服务端公开文件',
+            downloads: f.downloads,
+            url: f.url,
+          })),
+      )
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const allFiles = useMemo(() => [...serverFiles, ...resourceFiles], [serverFiles])
+  const downloadable = allFiles.filter((f) => f.url).length
   const online = downloadable
-  const pending = resourceFiles.length - online
+  const pending = allFiles.length - online
   /** 体积汇总：把 '1.2 MB' / '48 KB' 这类写法算成 MB，避免手写一个假数字 */
   const totalSizeMb =
-    resourceFiles
+    allFiles
       .filter((f) => f.url)
       .reduce((sum, f) => {
         const num = parseFloat(f.size.replace(/[^\d.]/g, '')) || 0
@@ -83,7 +114,7 @@ export default function Files() {
 
   const list = useMemo(() => {
     const key = q.trim().toLowerCase()
-    const filtered = resourceFiles.filter((f) => {
+    const filtered = allFiles.filter((f) => {
       const cOk = cat === '全部' || f.category === cat
       const qOk = !key || (f.name + f.desc + f.category).toLowerCase().includes(key)
       return cOk && qOk
@@ -93,7 +124,7 @@ export default function Files() {
       if (sort === 'name') return a.name.localeCompare(b.name, 'zh')
       return b.date.localeCompare(a.date)
     })
-  }, [cat, q, sort])
+  }, [allFiles, cat, q, sort])
 
   const toggleStar = (id: string) => setStars((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
 
@@ -104,7 +135,7 @@ export default function Files() {
         title="文件资源中心"
         right={
           <span className="font-mono text-[9.5px] text-ink/45">
-            {resourceFiles.length} 个文件 · {online} 可下载 · 已收藏 {stars.length}
+            {allFiles.length} 个文件 · {online} 可下载 · 已收藏 {stars.length}
           </span>
         }
       />
@@ -149,13 +180,13 @@ export default function Files() {
             <span className="font-mono text-[9px] text-paper/40">{totalSizeMb.toFixed(1)} MB 已公开</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-paper/15">
-            <div className="h-full rounded-full bg-lime" style={{ width: `${(online / resourceFiles.length) * 100}%` }} />
+            <div className="h-full rounded-full bg-lime" style={{ width: `${(online / Math.max(allFiles.length, 1)) * 100}%` }} />
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             {[
               ['可下载', online],
               ['待上传', pending],
-              ['合计', resourceFiles.length],
+              ['合计', allFiles.length],
             ].map(([k, v]) => (
               <div key={k as string}>
                 <p className="font-display text-[15px] font-extrabold">{v}</p>

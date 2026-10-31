@@ -38,11 +38,25 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
 
   useEffect(() => {
     let alive = true
-    getSummary().then((s) => alive && setLocal(s))
+    getSummary(win).then((s) => alive && setLocal(s))
     return () => {
       alive = false
     }
-  }, [])
+  }, [win])
+
+  /** FE-06：导出真实样本（服务端模式导热门页，本机模式导本机样本） */
+  const exportCsv = () => {
+    if (!local) return show('还没有样本可导出')
+    const rows = [['path', 'views'], ...local.topPages.map((p) => [p.path, String(p.views)])]
+    const csv = rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `wyx-analytics-${win}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    show('CSV 已导出')
+  }
 
   return (
     <div className="space-y-4">
@@ -52,7 +66,7 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
         desc="埋点明细 + 日聚合。PV/UV 为去重后的会话口径，AI 会话按消息轮次计数。"
         right={
           <>
-            <Badge tone="amber">看板数字为预置样本</Badge>
+            <Badge tone={local?.source === 'server' ? 'teal' : 'amber'}>{local?.source === 'server' ? '服务端真实数据' : '看板数字为预置样本'}</Badge>
             <Segmented
               value={win}
               onChange={setWin}
@@ -61,10 +75,10 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
                 { key: '30d', label: '近 30 天' },
               ]}
             />
-            <AButton icon={<RefreshCw size={13} />} onClick={() => show('聚合任务已重跑')}>
+            <AButton icon={<RefreshCw size={13} />} onClick={() => getSummary(win).then((s) => { setLocal(s); show('已重新拉取聚合') })}>
               重跑聚合
             </AButton>
-            <AButton variant="dark" icon={<Download size={13} />} onClick={() => show('CSV 已导出（演示）')}>
+            <AButton variant="dark" icon={<Download size={13} />} onClick={exportCsv}>
               导出
             </AButton>
           </>
@@ -95,6 +109,11 @@ export default function AnalyticsPage({ show }: { show: (m: string) => void }) {
                 <span className="ml-1 text-[12px] font-medium text-admin-muted">/ {local.uv}</span>
               </p>
               {local.since && <p className="mt-1 font-mono text-[9px] text-admin-muted">自 {local.since}</p>}
+              {local.source === 'server' && (
+                <p className="mt-1 font-mono text-[9px] text-admin-muted">
+                  平均停留 {local.avgStaySec ?? 0}s · AI 会话 {local.aiSessions ?? 0}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               {local.topPages.map((p) => (

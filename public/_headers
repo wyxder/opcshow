@@ -1,0 +1,17 @@
+# WYX.SPACE 静态托管安全头（Netlify / Cloudflare Pages 读取本文件；Nginx 等同配置见 README）
+# fx2 FE-15：主题引导脚本已抽成 /theme-boot.js，script-src 可以收到 'self'
+# connect-src 含 https:，用于允许把 VITE_API_BASE 指到自建 API 域名
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+/sw.js
+  Cache-Control: no-cache
+
+/theme-boot.js
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache

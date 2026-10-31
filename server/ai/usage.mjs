@@ -20,8 +20,27 @@ export async function checkQuota(ip) {
   const { ai } = await getStores()
   const data = await ai.read()
   const day = today()
-  const used = data.usage.filter((u) => u.day === day && u.ip === ip).length
+  // BE-07：配额计数独立于 usage 的截断数组，避免 5000 条上限把当天计数“挤出”
+  const used = data.quota?.[`${day}|${ip}`] ?? 0
   return { ok: used < env.ai.dailyQuota, used, limit: env.ai.dailyQuota }
+}
+
+/** AI-05：月度 token 预算硬拦截（超限直接走检索，不再调模型） */
+export async function checkBudget() {
+  const { ai } = await getStores()
+  const data = await ai.read()
+  const month = today().slice(0, 7)
+  const used = data.usage.filter((u) => u.day.startsWith(month)).reduce((s, u) => s + (u.tokens ?? 0), 0)
+  return { ok: used < env.ai.monthlyTokenBudget, used, limit: env.ai.monthlyTokenBudget }
+}
+
+export async function consumeQuota(ip) {
+  const { ai } = await getStores()
+  const day = today()
+  await ai.update((data) => {
+    data.quota = data.quota ?? {}
+    data.quota[`${day}|${ip}`] = (data.quota[`${day}|${ip}`] ?? 0) + 1
+  })
 }
 
 export async function recordUsage({ ip, model, tokens, cost, latency, source, ok }) {
@@ -87,4 +106,9 @@ export async function getUsageSummary() {
 
 export function priceOf(tokens) {
   return Number(((tokens / 1000) * env.ai.pricePer1k).toFixed(4))
+}
+
+/** AI-06：输入 + 输出分开计费，不再只算 completion */
+export function costOf(promptTokens, completionTokens) {
+  return Number((((promptTokens + completionTokens) / 1000) * env.ai.pricePer1k).toFixed(4))
 }

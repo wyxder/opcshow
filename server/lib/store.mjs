@@ -44,18 +44,24 @@ export class JsonStore {
   async #write(data) {
     const tmp = `${this.path}.${process.pid}.${Date.now()}.tmp`
     await writeFile(tmp, JSON.stringify(data, null, 2), 'utf8')
-    await rm(this.path, { force: true })
-    await rename(tmp, this.path)
+    try {
+      // BE-12：优先直接覆盖 rename（POSIX/Windows 均可），避免 rm 与 rename 之间的崩溃窗口
+      await rename(tmp, this.path)
+    } catch {
+      await rm(this.path, { force: true })
+      await rename(tmp, this.path)
+    }
     this.version += 1
     cache.set(this.path, data)
   }
 
-  /** 串行化读改写，避免并发请求丢更新 */
+  /** 串行化读改写：在深拷贝上执行，读者不会看到写一半的状态（BE-12） */
   update(mutator) {
     const run = this.chain.then(async () => {
-      const data = await this.read()
-      const result = await mutator(data)
-      await this.#write(data)
+      const current = await this.read()
+      const draft = structuredClone(current)
+      const result = await mutator(draft)
+      await this.#write(draft)
       return result
     })
     this.chain = run.catch(() => {})
@@ -94,18 +100,23 @@ export async function getStores() {
     guestbook: new JsonStore('guestbook.json', { messages: [] }),
     files: new JsonStore('files.json', { files: [], shares: [] }),
     analytics: new JsonStore('analytics.json', { hits: [], errors: [] }),
-    ai: new JsonStore('ai.json', { prompts: [], usage: [], sessions: [], cache: {}, feedback: [] }),
+    ai: new JsonStore('ai.json', { prompts: [], usage: [], sessions: [], cache: {}, feedback: [], quota: {}, models: [] }),
     jobs: new JsonStore('jobs.json', { jobs: [] }),
     audit: new JsonStore('audit.json', { logs: [] }),
+    /** BE-14：个人资料 / 站点设置（后台资料页与 SEO 页的真源） */
+    settings: new JsonStore('settings.json', { profile: null, site: null, updatedAt: null }),
   }
   return stores
 }
 
-/** 备份/恢复（B-10）：把全部 JSON 数据打包成一个快照文件 */
+/** 备份/恢复（B-10）：全量快照；BE-06 不导出会话（避免 sid 哈希随备份外流） */
 export async function backupSnapshot() {
   const s = await getStores()
   const snapshot = {}
-  for (const [name, store] of Object.entries(s)) snapshot[name] = await store.read()
+  for (const [name, store] of Object.entries(s)) {
+    if (name === 'sessions') continue
+    snapshot[name] = await store.read()
+  }
   return { createdAt: new Date().toISOString(), snapshot }
 }
 

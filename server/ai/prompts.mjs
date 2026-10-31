@@ -51,13 +51,17 @@ export function activePrompt(prompts, scene) {
 
 export const SITE_FACTS = [
   '站点：WYX.SPACE / 晓叶的个人作品站。',
-  '作者：魏云潇（晓叶），陕西科技大学信息与通信工程硕士在读，求职方向 AI 全栈 / 智能体开发实习。',
+  '作者：晓叶，陕西科技大学信息与通信工程硕士在读，求职方向 AI 全栈 / 智能体开发实习。',
   '核心经历：字节跳动电商 RAG 客服（Recall@5 0.72→0.93，人工接待 -45%）；Agent 与 RSI 评测中台（22 指标 + 42 用例）；跨境电商 AIGC 带货视频平台（收益 1.2w，星火 OPC 国赛一等奖）。',
   '联系方式：wyxcode@qq.com。',
-  '站内有 6 篇结构化长文、7 个项目、简历与文件下载。',
 ]
 
-export function buildMessages({ prompt, guardrails, context, hits, history, message }) {
+/** AI-08：站点事实改为运行时拼装，内容数量变化后不需要改代码 */
+export function buildSiteFacts({ articleCount = 0, projectCount = 0, extra = [] } = {}) {
+  return [...SITE_FACTS, `站内当前有 ${articleCount} 篇结构化长文、${projectCount} 个项目、简历与文件下载。`, ...extra]
+}
+
+export function buildMessages({ prompt, guardrails, context, hits, history, message, facts }) {
   const contextLine = context
     ? `用户正在阅读：${context.articleTitle ?? ''}${context.sectionTitle ? ` · ${context.sectionTitle}` : ''}`
     : '用户当前不在文章页。'
@@ -75,7 +79,7 @@ export function buildMessages({ prompt, guardrails, context, hits, history, mess
     prompt.body,
     '',
     '【站点事实】',
-    ...SITE_FACTS.map((s) => `· ${s}`),
+    ...(facts ?? SITE_FACTS).map((s) => `· ${s}`),
     '',
     '【全局约束】',
     guardrails,

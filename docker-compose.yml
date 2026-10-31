@@ -13,17 +13,26 @@ services:
     environment:
       HOST: 0.0.0.0
       API_DATA_DIR: /data
-      API_CORS_ORIGIN: ${API_CORS_ORIGIN:-http://localhost:5173,http://localhost:4173,https://wyx.space}
+      API_CORS_ORIGIN: ${API_CORS_ORIGIN:-http://localhost:5273,http://localhost:4173,https://wyx.space}
+      # BE-01：口令必须由 .env 提供，容器不再内置默认值
       ADMIN_USER: ${ADMIN_USER:-admin}
-      ADMIN_PASS: ${ADMIN_PASS:-change-me}
+      ADMIN_PASS: ${ADMIN_PASS:?请在 .env 中设置 ADMIN_PASS（至少 8 位）}
       EDITOR_USER: ${EDITOR_USER:-editor}
-      EDITOR_PASS: ${EDITOR_PASS:-change-me}
+      EDITOR_PASS: ${EDITOR_PASS:?请在 .env 中设置 EDITOR_PASS（至少 8 位）}
       COOKIE_SECURE: ${COOKIE_SECURE:-0}
       IP_SALT: ${IP_SALT:-change-me}
+      # BE-02：在 Nginx / 网关后运行时设为 1，才信任 X-Real-IP
+      TRUST_PROXY: ${TRUST_PROXY:-0}
       AI_BASE_URL: ${AI_BASE_URL:-}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-deepseek-chat}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
     volumes:
       # 与 npm run api 使用同一个数据目录；JSON 持久化，备份可直接拷走
       - ./server/data:/data

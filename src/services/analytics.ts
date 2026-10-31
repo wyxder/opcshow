@@ -22,6 +22,10 @@ export type AnalyticsSummary = {
   uv: number
   topPages: { path: string; views: number }[]
   since: string | null
+  /** 平均停留秒数（BE-09：前端补发 stayMs 后才非 0） */
+  avgStaySec?: number
+  /** AI 会话轮次（服务端 kind='ai' 计数） */
+  aiSessions?: number
   /** 数据口径说明，UI 直接展示，避免把本机样本讲成全站流量 */
   note: string
 }
@@ -43,6 +47,25 @@ const isViews = arrayOf<PageView>((v) => typeof v.path === 'string' && typeof v.
 
 const MAX_SAMPLES = 300
 
+/** BE-09：记录上一页与进入时间，路由切换/页面隐藏时把真实停留时长补发出去 */
+let lastPath: string | null = null
+let lastAt = 0
+
+function sendTrack(payload: Record<string, unknown>, keepalive = false) {
+  if (!serverConfig.enabled) return
+  const url = `${serverConfig.baseUrl}${serverConfig.trackPath}`
+  const body = JSON.stringify(payload)
+  try {
+    if (keepalive && navigator.sendBeacon) {
+      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))
+      return
+    }
+  } catch {
+    /* sendBeacon 不可用时回落 fetch */
+  }
+  void apiJsonSafe(serverConfig.trackPath, { method: 'POST', body, timeoutMs: 3000 })
+}
+
 function referrerPath() {
   const ref = document.referrer
   if (!ref) return ''
@@ -54,18 +77,28 @@ function referrerPath() {
 }
 
 export function trackPageview(path: string) {
+  const now = Date.now()
+  const stayMs = lastPath && lastPath !== path ? now - lastAt : 0
   const view: PageView = {
     path,
-    ts: Date.now(),
+    ts: now,
     session: getSessionId(),
     referrer: referrerPath(),
   }
   const samples = readStored<PageView[]>(STORAGE_KEYS.analytics, [], isViews)
   writeStored(STORAGE_KEYS.analytics, [...samples, view].slice(-MAX_SAMPLES))
-  if (serverConfig.enabled) {
-    // 不落明文 IP，服务端自己做哈希与限流（B5）
-    void apiJsonSafe(serverConfig.trackPath, { method: 'POST', body: JSON.stringify({ ...view, stayMs: undefined }) })
-  }
+  sendTrack({ ...view, sessionHash: view.session, stayMs, kind: 'page' })
+  lastPath = path
+  lastAt = now
+}
+
+/** 页面隐藏/关闭时补一条停留时长，避免平均停留永远为 0 */
+export function flushStay() {
+  if (!lastPath) return
+  const stayMs = Date.now() - lastAt
+  if (stayMs < 1000) return
+  lastAt = Date.now()
+  sendTrack({ path: lastPath, sessionHash: getSessionId(), stayMs, kind: 'page' }, true)
 }
 
 export function localSummary(): AnalyticsSummary {
@@ -83,14 +116,44 @@ export function localSummary(): AnalyticsSummary {
     uv,
     topPages,
     since: samples.length ? new Date(samples[0].ts).toLocaleString('zh-CN') : null,
+    avgStaySec: 0,
+    aiSessions: 0,
     note: '本机样本 · 仅统计这台浏览器访问过的页面，不代表全站流量',
   }
 }
 
-export async function getSummary(): Promise<AnalyticsSummary> {
+type ServerSummary = {
+  pv?: number
+  uv?: number
+  totalPv?: number
+  totalUv?: number
+  topPages?: { path: string; views?: number; pv?: number }[]
+  since?: string | null
+  avgStaySec?: number
+  aiSessions?: number
+  days?: { ai?: number }[]
+  note?: string
+}
+
+/** X-01：把服务端字段映射成前端类型，页面不再看到 undefined */
+export function mapServerSummary(data: ServerSummary): AnalyticsSummary {
+  const days = data.days ?? []
+  return {
+    source: 'server',
+    pv: data.pv ?? data.totalPv ?? 0,
+    uv: data.uv ?? data.totalUv ?? 0,
+    topPages: (data.topPages ?? []).map((p) => ({ path: p.path, views: p.views ?? p.pv ?? 0 })),
+    since: data.since ?? null,
+    avgStaySec: data.avgStaySec ?? 0,
+    aiSessions: data.aiSessions ?? days.reduce((s, d) => s + (d.ai ?? 0), 0),
+    note: data.note ?? '真实站点指标 · 无 Cookie 埋点聚合',
+  }
+}
+
+export async function getSummary(window: '7d' | '30d' = '7d'): Promise<AnalyticsSummary> {
   if (serverConfig.enabled) {
-    const data = await apiJsonSafe<AnalyticsSummary>('/api/analytics/summary')
-    if (data) return { ...data, source: 'server', note: '真实站点指标 · 无 Cookie 埋点聚合' }
+    const data = await apiJsonSafe<ServerSummary>(`/api/analytics/summary?window=${window}`)
+    if (data) return mapServerSummary(data)
   }
   return localSummary()
 }
