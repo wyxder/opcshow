@@ -46,11 +46,14 @@ export default function Guestbook() {
     }
   }, [])
 
+  /** 内置示例（preset）留言默认不渲染到弹幕墙，只展示真实（本机 / 服务端）留言 */
+  const real = useMemo(() => items.filter((m) => m.source !== 'preset'), [items])
+
   const rows = useMemo(() => {
     const r: GuestMessage[][] = [[], [], [], []]
-    items.forEach((m, i) => r[i % 4].push(m))
+    real.forEach((m, i) => r[i % 4].push(m))
     return r
-  }, [items])
+  }, [real])
 
   const submit = async () => {
     if (sending) return
@@ -107,7 +110,7 @@ export default function Guestbook() {
         title="留言，会飞过去"
         right={
           <span className="font-mono text-[9.5px] text-ink/45">
-            {items.length} 条 · {guestbook.origin === 'local' ? '本机存储' : '服务端存储'}
+            {real.length} 条真实留言 · {guestbook.origin === 'local' ? '本机存储' : '服务端存储'}
           </span>
         }
       />
@@ -126,7 +129,14 @@ export default function Guestbook() {
         </div>
         <div className="relative space-y-2.5">
           {loading && <p className="px-5 text-center font-mono text-[10px] text-paper/35">LOADING…</p>}
-          {rows.map((row, i) => (
+          {!loading && real.length === 0 && (
+            <p className="px-5 py-3 text-center font-mono text-[10px] text-paper/40">
+              还没有真实留言——写下第一句，它就会飞上这面墙。
+            </p>
+          )}
+          {!loading &&
+            real.length > 0 &&
+            rows.map((row, i) => (
             <Marquee
               key={i}
               speed={26 + i * 7}
@@ -213,11 +223,16 @@ export default function Guestbook() {
         <div className="rounded-2xl border-1.5 border-ink bg-cream p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-[15px] font-extrabold">最近的留言</h2>
-            <span className="font-mono text-[9px] text-ink/35">{items.length} 条</span>
+            <span className="font-mono text-[9px] text-ink/35">{real.length} 条</span>
           </div>
           <div className="mt-3 max-h-[420px] space-y-2 overflow-y-auto pr-1 no-scrollbar">
+            {!loading && real.length === 0 && (
+              <p className="rounded-xl border border-dashed border-ink/20 px-3 py-6 text-center text-[11.5px] text-ink/40">
+                这里还空着。左侧写一条，它就会出现在墙上与下方列表。
+              </p>
+            )}
             <AnimatePresence initial={false}>
-              {items.map((m) => {
+              {real.map((m) => {
                 const isMine = m.source === 'local'
                 return (
                   <motion.div

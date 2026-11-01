@@ -128,7 +128,7 @@ function Hero({ onContact }: { onContact: () => void }) {
   ]
 
   return (
-    <section id="top" className="relative isolate overflow-hidden pb-10 pt-7 sm:pb-16 sm:pt-10">
+    <section id="top" className="relative isolate overflow-hidden pb-8 pt-5 sm:pb-12 sm:pt-7">
       {/* 背景光晕与装饰：全部 aria-hidden，不参与焦点与读屏 */}
       <div className="home-hero-glow pointer-events-none absolute inset-0 -z-10" aria-hidden />
       <div className="pointer-events-none absolute -left-36 -top-32 -z-10 h-[340px] w-[340px] rounded-full border-[10px] border-coral/25 sm:-left-28 sm:h-[440px] sm:w-[440px]" aria-hidden />
@@ -137,41 +137,44 @@ function Hero({ onContact }: { onContact: () => void }) {
       <Plus size={17} strokeWidth={2.5} className="pointer-events-none absolute bottom-28 right-[20%] -z-10 hidden animate-float text-rose sm:block" style={{ animationDelay: '1.8s' }} aria-hidden />
       <span className="pointer-events-none absolute right-1 top-1/2 -z-10 hidden -translate-y-1/2 rotate-90 font-mono text-[9px] tracking-[0.32em] text-ink/25 xl:block">PORTFOLIO / 2026 — 01</span>
 
-      <div className="grid gap-9 lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-start lg:gap-12">
-        <div className="min-w-0">
+      {/* 左右分栏（≥lg）：左列文字主视觉，右列统计 + QUICK LOOK 紧凑卡；窄屏回退单列居中 */}
+      <div className="relative mx-auto grid w-full max-w-3xl items-center gap-8 lg:max-w-6xl lg:grid-cols-[1.15fr_1fr] lg:gap-10">
+        <div>
         <Reveal>
-          <div className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-cream/95 px-3.5 py-1.5 shadow-soft">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-            </span>
-            <span className="text-[11.5px] font-medium text-ink/80">
-              正在寻找 AI 应用与智能体开发实习 <span className="text-ink/30">·</span> 可实习 6 个月+
-            </span>
+          <div className="flex justify-center lg:justify-start">
+            <div className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-cream/95 px-3.5 py-1.5 shadow-soft">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+              </span>
+              <span className="text-[11.5px] font-medium text-ink/80">
+                正在寻找 AI 应用与智能体开发实习 <span className="text-ink/30">·</span> 可实习 6 个月+
+              </span>
+            </div>
           </div>
         </Reveal>
 
         <Reveal delay={0.06}>
-          <h1 className="mt-6 sm:mt-8">
-            <span className="block text-[clamp(32px,5vw,52px)] font-black leading-[1.06] tracking-[-0.04em] text-ink/85">你好，我是</span>
-            <span className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-2 sm:mt-2">
-              <span className="hero-name whitespace-nowrap text-[clamp(42px,7vw,76px)] font-black leading-[1.08] tracking-[-0.05em]">晓叶</span>
-              <span aria-hidden className="animate-wiggle text-[clamp(26px,4vw,42px)] leading-none">👋</span>
+          <h1 className="mt-5 text-center lg:text-left">
+            <span className="block text-[clamp(24px,4.2vw,38px)] font-black leading-[1.08] tracking-[-0.04em] text-ink/85">你好，我是</span>
+            <span className="mt-1 flex items-baseline justify-center gap-x-3 lg:justify-start">
+              <span className="hero-name whitespace-nowrap text-[clamp(36px,6vw,56px)] font-black leading-[1.08] tracking-[-0.05em]">晓叶</span>
+              <span aria-hidden className="animate-wiggle text-[clamp(22px,3.4vw,32px)] leading-none">👋</span>
             </span>
           </h1>
         </Reveal>
 
         <Reveal delay={0.12}>
-          <p className="mt-5 text-[clamp(17px,2vw,20px)] font-bold text-ink/80">
+          <p className="mt-4 text-center text-[clamp(16px,1.8vw,19px)] font-bold text-ink/80 lg:text-left">
             我是一名 <Typewriter words={heroRoles} />
           </p>
-          <p className="mt-4 max-w-[620px] text-[13.5px] leading-[1.9] text-ink-soft sm:text-[14.5px]">
+          <p className="mx-auto mt-3 max-w-[560px] text-center text-[13px] leading-[1.85] text-ink-soft sm:text-[13.5px] lg:mx-0 lg:text-left">
             陕西科技大学多模态 AI 方向硕士在读，CCF-A 学生一作在投，{figures.products} 款 AI 商业产品上线者，{figures.mainPlatformFollowers} 粉 AI 自媒体博主。信奉「把 Agent 做成产品，把产品做成事业」。
           </p>
         </Reveal>
 
         <Reveal delay={0.18}>
-          <div className="mt-7 flex flex-wrap items-center gap-2.5 sm:mt-9 sm:gap-3">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
             <a href="#projects" className="hero-cta-primary group">
               <Rocket size={16} className="transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               看看我的项目
@@ -181,7 +184,7 @@ function Hero({ onContact }: { onContact: () => void }) {
             </button>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[9px] tracking-[0.12em] text-ink/40">
+          <div className="mt-3.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-mono text-[9px] tracking-[0.12em] text-ink/40 lg:justify-start">
             <span className="inline-flex items-center gap-1.5">
               <MapPin size={10} /> 西安 · 可远程 / 出差
             </span>
@@ -197,13 +200,31 @@ function Hero({ onContact }: { onContact: () => void }) {
             </span>
           </div>
         </Reveal>
-
         </div>
 
-        {/* 右栏：数据概览 + 正在推进的事，桌面填满右侧空白，移动端排在正文之后 */}
-        <Reveal delay={0.18}>
-          <aside className="relative min-w-0 overflow-hidden rounded-[24px] border-1.5 border-ink bg-cream p-5 shadow-hard sm:p-6 lg:mt-3">
-            <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-lime/35 blur-2xl" />
+        {/* 右列：统计 2×2 紧凑卡 + QUICK LOOK / FOCUS 单卡（移动端回退单列时沿用原 2/4 列规则） */}
+        <div className="lg:flex lg:flex-col lg:gap-3">
+        {/* 统计卡片：横向 4 列紧凑小卡（移动端 2 列） */}
+        <Reveal delay={0.24}>
+          <dl className="mt-7 grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:mt-0 lg:grid-cols-2">
+            {heroStats.map((s) => (
+              <div key={s.label} className="rounded-2xl border-1.5 border-ink bg-cream px-3 py-3 text-center shadow-hard-sm">
+                <dt className="sr-only">{s.label}</dt>
+                <dd>
+                  <span className="font-display text-[clamp(22px,2.4vw,28px)] font-extrabold leading-none tracking-[-0.03em]">
+                    <CountUp to={s.value} />
+                    <span className="text-coral">{s.suffix}</span>
+                  </span>
+                  <span className="mt-1.5 block text-[10.5px] font-medium text-ink/55">{s.label}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Reveal>
+
+        {/* QUICK LOOK / 2026 + OPEN TO WORK + FOCUS / NOW：合并为单张紧凑小卡 */}
+        <Reveal delay={0.3}>
+          <div className="mt-3 rounded-2xl border-1.5 border-ink bg-cream p-4 shadow-hard-sm lg:mt-0">
             <div className="relative">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-mono text-[9.5px] tracking-[0.2em] text-ink/45">QUICK LOOK / 2026</span>
@@ -211,39 +232,24 @@ function Hero({ onContact }: { onContact: () => void }) {
                   <Sparkles size={11} /> OPEN TO WORK
                 </span>
               </div>
-
-              <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-6">
-                {heroStats.map((s) => (
-                  <div key={s.label}>
-                    <dt className="sr-only">{s.label}</dt>
-                    <dd>
-                      <p className="font-display text-[clamp(26px,2.4vw,34px)] font-extrabold leading-none tracking-[-0.03em]">
-                        <CountUp to={s.value} />
-                        <span className="text-coral">{s.suffix}</span>
-                      </p>
-                      <p className="mt-1.5 text-[11px] font-medium text-ink/55">{s.label}</p>
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-
-              <div className="mt-6 border-t border-dashed border-ink/15 pt-4">
+              <div className="mt-3 border-t border-dashed border-ink/15 pt-3">
                 <p className="font-mono text-[9px] tracking-[0.18em] text-ink/40">FOCUS / NOW</p>
-                <ul className="mt-2.5 space-y-2">
+                <ul className="mt-2 grid gap-1.5 sm:grid-cols-3">
                   {focusNow.map((f) => (
-                    <li key={f.title} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-coral" />
-                        {f.title}
+                    <li key={f.title} className="flex items-center gap-2 rounded-xl border border-ink/12 bg-paper px-2.5 py-2">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-coral" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[11.5px] font-medium">{f.title}</span>
+                        <span className="block truncate font-mono text-[9px] text-ink/40">{f.meta}</span>
                       </span>
-                      <span className="font-mono text-[9px] text-ink/40">{f.meta}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
-          </aside>
+          </div>
         </Reveal>
+        </div>
       </div>
     </section>
   )

@@ -7,6 +7,8 @@
  * POST /api/files/sign               直传签名（admin/editor）
  * PUT  /api/files/upload/:key        上传（签名后）
  * GET  /api/files                    公开文件列表
+ * POST /api/files                    手工新建「待上传」元数据记录（无真实文件，不提供下载）
+ * PATCH /api/files/:id               编辑文件记录（名称/分类/大小/可见性/状态）
  * POST /api/files/:id/visibility     公开 / 私密
  * POST /api/files/share              分享短链（密码 + 过期）
  * GET  /api/files/download/:token    下载（Range / 密码 / 计数）
@@ -43,6 +45,9 @@ const humanSize = (bytes) => {
 }
 
 const extOf = (name) => extname(name).replace('.', '').toLowerCase()
+
+/** 手工新建 / 编辑记录共用的状态白名单：pending = 只有元数据、还没上传真实文件 */
+const FILE_STATUS = ['published', 'pending', 'trashed']
 
 const hashPassword = (pwd) => {
   const salt = randomBytes(12).toString('hex')
@@ -133,8 +138,63 @@ route('GET', '/api/files', async ({ req, res, url }) => {
   const adminScope = Boolean(session) && url.searchParams.get('scope') === 'admin'
   const list = data.files
     .filter((f) => (adminScope ? f.status !== 'deleted' : f.status === 'published' && f.visibility === 'public'))
-    .map((f) => (f.status === 'trashed' ? { ...f } : { ...f, url: `/api/files/download-by-id/${f.id}` }))
+    // 回收站条目与「待上传」记录没有存储实体，不给下载地址，前台如实显示禁用态
+    .map((f) => (f.status === 'trashed' || !f.storageKey ? { ...f } : { ...f, url: `/api/files/download-by-id/${f.id}` }))
   sendJson(res, 200, list)
+})
+
+route('POST', '/api/files', async ({ req, res, reqId }) => {
+  const session = requireRole(await getSession(req))
+  const body = await readJson(req, 32 * 1024)
+  const name = text(body.name, { field: '文件名', min: 1, max: 200 })
+  const category = text(body.category ?? '未分类', { field: '分类', max: 40 })
+  const size = body.size ? text(body.size, { field: '大小', max: 20 }) : '—'
+  const { files } = await getStores()
+  const record = await files.update((data) => {
+    const item = {
+      id: `file_${Date.now()}_${randomBytes(3).toString('hex')}`,
+      name,
+      ext: extOf(name),
+      size,
+      sizeBytes: 0,
+      category,
+      // 没有 storageKey = 还没上传真实文件；状态固定 pending，下载入口天然不可用
+      visibility: 'private',
+      status: 'pending',
+      downloads: 0,
+      date: new Date().toISOString().slice(0, 10),
+      createdAt: new Date().toISOString(),
+    }
+    data.files.unshift(item)
+    return item
+  })
+  await audit(session.user, 'files.create', record.id, null, { name, category })
+  sendJson(res, 201, record)
+})
+
+route('PATCH', '/api/files/:id', async ({ req, res, reqId, params }) => {
+  const session = requireRole(await getSession(req))
+  const body = await readJson(req, 32 * 1024)
+  const { files } = await getStores()
+  const item = await files.update((data) => {
+    const f = data.files.find((x) => x.id === params.id)
+    if (!f) throw Object.assign(new Error('文件不存在'), { status: 404, code: 'NOT_FOUND' })
+    if (body.name !== undefined) {
+      f.name = text(body.name, { field: '文件名', min: 1, max: 200 })
+      f.ext = extOf(f.name)
+    }
+    if (body.category !== undefined) f.category = text(body.category, { field: '分类', min: 1, max: 40 })
+    if (body.size !== undefined) f.size = text(body.size, { field: '大小', min: 1, max: 20 })
+    if (body.visibility !== undefined) f.visibility = oneOf(body.visibility, ['public', 'private'], 'visibility')
+    if (body.status !== undefined) {
+      f.status = oneOf(body.status, FILE_STATUS, 'status')
+      if (f.status === 'trashed') f.deletedAt = new Date().toISOString()
+      else delete f.deletedAt
+    }
+    return f
+  })
+  await audit(session.user, 'files.update', params.id, null, { fields: Object.keys(body) })
+  sendJson(res, 200, item)
 })
 
 route('POST', '/api/files/:id/visibility', async ({ req, res, reqId, params }) => {
@@ -255,6 +315,11 @@ function streamFile(req, res, key, name) {
     txt: 'text/plain; charset=utf-8',
     csv: 'text/csv; charset=utf-8',
     html: 'text/html; charset=utf-8',
+    json: 'application/json',
+    py: 'text/x-python; charset=utf-8',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     png: 'image/png',
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
@@ -262,6 +327,8 @@ function streamFile(req, res, key, name) {
     avif: 'image/avif',
     svg: 'image/svg+xml',
     zip: 'application/zip',
+    rar: 'application/vnd.rar',
+    exe: 'application/vnd.microsoft.portable-executable',
   }[extOf(key)] ?? 'application/octet-stream'
 
   stat(full).then((s) => {
@@ -290,6 +357,8 @@ route('GET', '/api/files/download-by-id/:id', async ({ req, res, reqId, params }
   const data = await files.read()
   const file = data.files.find((f) => f.id === params.id)
   if (!file || file.status === 'deleted' || file.status === 'trashed') return sendError(res, 404, 'NOT_FOUND', '文件不存在', reqId)
+  // 手工新建的「待上传」记录没有存储实体，如实拒绝而不是读盘报错
+  if (!file.storageKey) return sendError(res, 404, 'FILE_MISSING', '文件尚未上传实际内容，暂不可下载', reqId)
   if (file.visibility !== 'public') {
     const session = await getSession(req)
     if (!session) return sendError(res, 404, 'NOT_FOUND', '文件不存在', reqId)
@@ -315,6 +384,7 @@ route('GET', '/api/files/download/:token', async ({ req, res, reqId, params, url
   }
   const file = data.files.find((f) => f.id === share.fileId)
   if (!file || file.status === 'deleted') return sendError(res, 404, 'NOT_FOUND', '链接不存在或已失效', reqId)
+  if (!file.storageKey) return sendError(res, 404, 'FILE_MISSING', '文件尚未上传实际内容，暂不可下载', reqId)
   await files.update((d) => {
     const s = d.shares.find((x) => x.token === params.token)
     if (s) s.visits = (s.visits ?? 0) + 1

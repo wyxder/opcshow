@@ -1,7 +1,8 @@
-import { CalendarDays, Compass, Images, MapPin, Plane, Route, Users } from 'lucide-react'
+import { CalendarDays, Compass, Images, MapPin, Maximize2, Plane, Route, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHead, Plate, Reveal } from '@/components/ui/primitives'
+import { Modal } from '@/components/ui/Modal'
 import { SmartImage } from '@/components/SmartImage'
 import { trips, type Trip } from '@/data/life'
 import { lookupMedia } from '@/data/media'
@@ -38,9 +39,26 @@ const outlinePath =
 
 const ordered = [...trips].sort((a, b) => a.date.localeCompare(b.date))
 
+/** 旅拍卡 / 放大弹窗共用的占位图形（未上传真实照片时的同色系兜底） */
+function TripArt({ t }: { t: Trip }) {
+  return (
+    <>
+      <div className="absolute inset-0" style={{ background: `linear-gradient(150deg, ${t.color}, rgb(var(--c-surface)) 85%)` }} />
+      <div className="absolute inset-0 halftone opacity-25" />
+      <svg viewBox="0 0 120 90" className="absolute inset-0 h-full w-full" aria-hidden>
+        <circle cx="60" cy="42" r="26" fill="none" stroke="rgb(var(--c-ink))" strokeOpacity="0.15" />
+        <circle cx="60" cy="42" r="14" fill="rgb(var(--c-ink))" fillOpacity="0.06" />
+        <path d="M0 68 Q 30 52 60 66 T 120 58 L120 90 L0 90Z" fill="rgb(var(--c-ink))" fillOpacity="0.07" />
+      </svg>
+    </>
+  )
+}
+
 export default function Travel() {
   const [activeId, setActiveId] = useState(trips[0].id)
+  const [zoomId, setZoomId] = useState<string | null>(null)
   const active = trips.find((t) => t.id === activeId)!
+  const zoomTrip = zoomId ? trips.find((t) => t.id === zoomId) ?? null : null
 
   useSeo({
     title: '旅拍相册 · 晓叶',
@@ -217,40 +235,65 @@ export default function Travel() {
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {trips.map((t: Trip) => (
-            <button
+            <div
               key={t.id}
-              onClick={() => setActiveId(t.id)}
               className={cn(
                 'group relative rounded-md border border-ink/20 bg-cream p-2 pb-8 text-left shadow-soft transition-all duration-300 hover:z-10 hover:-translate-y-1.5 hover:rotate-0',
                 t.id === activeId && 'ring-2 ring-ink',
               )}
               style={{ transform: `rotate(${(t.lon % 5) - 2.5}deg)` }}
             >
-              <div className="relative aspect-[4/3] overflow-hidden rounded-sm border border-ink/10">
-                <SmartImage
-                  asset={lookupMedia(`trip:${t.id}`)}
-                  className="absolute inset-0"
-                  eager={t.id === activeId}
-                  fallback={
-                    <>
-                      <div className="absolute inset-0" style={{ background: `linear-gradient(150deg, ${t.color}, rgb(var(--c-surface)) 85%)` }} />
-                      <div className="absolute inset-0 halftone opacity-25" />
-                      <svg viewBox="0 0 120 90" className="absolute inset-0 h-full w-full" aria-hidden>
-                        <circle cx="60" cy="42" r="26" fill="none" stroke="rgb(var(--c-ink))" strokeOpacity="0.15" />
-                        <circle cx="60" cy="42" r="14" fill="rgb(var(--c-ink))" fillOpacity="0.06" />
-                        <path d="M0 68 Q 30 52 60 66 T 120 58 L120 90 L0 90Z" fill="rgb(var(--c-ink))" fillOpacity="0.07" />
-                      </svg>
-                    </>
-                  }
-                />
-                <span className="absolute bottom-1.5 left-2 font-display text-[15px] font-extrabold text-ink/70">{t.city}</span>
-                <span className="absolute right-1.5 top-1.5 font-mono text-[9px] text-ink/40">{t.date.slice(0, 7)}</span>
-              </div>
-              <p className="mt-1.5 truncate px-0.5 font-hand text-[15px] leading-none text-ink/60">{t.spot.split('·')[0]}</p>
-            </button>
+              <button onClick={() => setActiveId(t.id)} className="block w-full text-left" aria-label={`在地图查看 ${t.city}`}>
+                <div className="relative aspect-[4/3] overflow-hidden rounded-sm border border-ink/10">
+                  <SmartImage
+                    asset={lookupMedia(`trip:${t.id}`)}
+                    className="absolute inset-0"
+                    eager={t.id === activeId}
+                    fallback={<TripArt t={t} />}
+                  />
+                  <span className="absolute bottom-1.5 left-2 font-display text-[15px] font-extrabold text-ink/70">{t.city}</span>
+                  <span className="absolute bottom-1.5 right-2 font-mono text-[9px] text-ink/40">{t.date.slice(0, 7)}</span>
+                </div>
+                <p className="mt-1.5 truncate px-0.5 font-hand text-[15px] leading-none text-ink/60">{t.spot.split('·')[0]}</p>
+              </button>
+              <button
+                onClick={() => setZoomId(t.id)}
+                aria-label={`放大 ${t.city} 的照片`}
+                className="absolute right-3 top-3 z-20 flex h-7 w-7 items-center justify-center rounded-lg border border-ink/25 bg-cream/90 text-ink/60 opacity-0 transition hover:bg-lime hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+              >
+                <Maximize2 size={12} />
+              </button>
+            </div>
           ))}
         </div>
       </div>
+
+      {/* 点击放大：将当前这张照片 / 占位图放大展示，附城市、地点与备注 */}
+      <Modal open={!!zoomTrip} onClose={() => setZoomId(null)} bare className="max-w-3xl">
+        {zoomTrip && (
+          <div className="p-3 sm:p-4">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-ink/15 bg-sand">
+              <SmartImage asset={lookupMedia(`trip:${zoomTrip.id}`)} className="absolute inset-0" eager fallback={<TripArt t={zoomTrip} />} />
+            </div>
+            <div className="mt-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+              <div className="min-w-0">
+                <p className="font-mono text-[9px] tracking-[0.16em] text-ink/40">{zoomTrip.tag.toUpperCase()} · {zoomTrip.date}</p>
+                <h3 className="mt-1 text-[20px] font-extrabold leading-tight">{zoomTrip.city} · {zoomTrip.spot}</h3>
+                <p className="mt-1.5 font-hand text-[18px] leading-snug text-ink/70">{zoomTrip.note}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 font-mono text-[9.5px] text-ink/45">
+                <span className="flex items-center gap-1 rounded-full border border-ink/15 px-2 py-0.5">{zoomTrip.days} 天</span>
+                <span className="flex items-center gap-1 rounded-full border border-ink/15 px-2 py-0.5"><Users size={10} /> {zoomTrip.companion}</span>
+              </div>
+            </div>
+            {lookupMedia(`trip:${zoomTrip.id}`) ? null : (
+              <p className="mt-2 flex items-center gap-1.5 font-mono text-[9px] text-ink/35">
+                <Images size={10} /> 真实照片待上传，当前为同色系占位图形（F1）
+              </p>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

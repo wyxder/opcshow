@@ -251,31 +251,31 @@ export default function Learn() {
                       <Plate
                         motif={coverMotifs[artIndex % coverMotifs.length]}
                         accent={coverAccents[artIndex % coverAccents.length]}
-                        className="relative aspect-[16/9] w-full shrink-0 border-b border-ink/10 [&>svg]:transition-transform [&>svg]:duration-500 group-hover:[&>svg]:scale-[1.04]"
+                        className="relative aspect-[16/6] w-full shrink-0 border-b border-ink/10 [&>svg]:transition-transform [&>svg]:duration-500 group-hover:[&>svg]:scale-[1.04] sm:aspect-[16/7]"
                       />
 
-                      <div className="flex flex-1 flex-col p-2.5 sm:p-[18px]">
-                        <span className="truncate text-[10px] font-medium text-ink/45 sm:text-[11.5px]">{a.category}</span>
-                        <h2 className="mt-1 line-clamp-2 text-[12.5px] font-bold leading-snug transition-colors group-hover:text-blue sm:mt-1.5 sm:text-[15.5px]">
+                      <div className="flex flex-1 flex-col p-2 sm:p-3">
+                        <span className="truncate text-[9.5px] font-medium text-ink/45 sm:text-[11px]">{a.category}</span>
+                        <h2 className="mt-0.5 line-clamp-1 text-[12px] font-bold leading-snug transition-colors group-hover:text-blue sm:mt-1 sm:line-clamp-2 sm:text-[14px]">
                           {a.title}
                         </h2>
-                        <p className="mt-1.5 line-clamp-2 flex-1 text-[10.5px] leading-[1.65] text-ink/55 sm:mt-2 sm:line-clamp-3 sm:text-[12px] sm:leading-[1.7]">
+                        <p className="mt-1 line-clamp-1 flex-1 text-[10px] leading-[1.55] text-ink/55 sm:mt-1.5 sm:line-clamp-2 sm:text-[11.5px] sm:leading-[1.6]">
                           {a.abstract}
                         </p>
 
-                        <div className="mt-2 hidden flex-wrap gap-x-2 gap-y-1 text-[10.5px] text-ink/40 sm:mt-3 sm:flex">
+                        <div className="mt-1.5 hidden flex-wrap gap-x-2 gap-y-1 text-[10px] text-ink/40 sm:mt-2 sm:flex">
                           {a.tags.map((t) => (
                             <span key={t}># {t}</span>
                           ))}
                         </div>
 
-                        <div className="mt-2 flex items-center justify-between gap-1 border-t border-ink/[0.08] pt-2 font-mono text-[9px] text-ink/40 sm:mt-3.5 sm:gap-2 sm:pt-3 sm:text-[10.5px]">
+                        <div className="mt-1.5 flex items-center justify-between gap-1 border-t border-ink/[0.08] pt-1.5 font-mono text-[9px] text-ink/40 sm:mt-2 sm:gap-2 sm:pt-2 sm:text-[10px]">
                           <span className="flex min-w-0 items-center gap-1 sm:gap-1.5">
-                            <CalendarDays size={11} className="shrink-0 text-ink/30 sm:size-[12px]" />
+                            <CalendarDays size={10} className="shrink-0 text-ink/30 sm:size-[11px]" />
                             <span className="truncate">{a.date}</span>
                           </span>
                           <span className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-                            <Clock size={11} className="text-ink/30 sm:size-[12px]" />
+                            <Clock size={10} className="text-ink/30 sm:size-[11px]" />
                             {a.readMin} 分钟
                           </span>
                         </div>

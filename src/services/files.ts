@@ -123,6 +123,20 @@ export async function listFiles(scope: 'public' | 'admin' = 'public'): Promise<S
   return apiJson<ServerFile[]>(`/api/files${query}`, scope === 'admin' ? { cache: 'no-store' } : {})
 }
 
+/** 后台编辑文件记录（名称/分类/大小/可见性/状态），字段白名单与服务端 PATCH /api/files/:id 对齐 */
+export type FilePatch = Partial<Pick<ServerFile, 'name' | 'category' | 'size' | 'visibility' | 'status'>>
+
+export async function updateFile(id: string, patch: FilePatch): Promise<ServerFile> {
+  if (!serverConfig.enabled) throw new NotSupportedError('文件编辑')
+  return apiJson<ServerFile>(`/api/files/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
+}
+
+/** 手工新建「待上传」记录：只有元数据，没有真实文件，服务端不会给出下载地址 */
+export async function createFileRecord(input: { name: string; category?: string; size?: string }): Promise<ServerFile> {
+  if (!serverConfig.enabled) throw new NotSupportedError('新建文件记录')
+  return apiJson<ServerFile>('/api/files', { method: 'POST', body: JSON.stringify(input) })
+}
+
 export async function setVisibility(id: string, visibility: 'public' | 'private'): Promise<void> {
   if (!serverConfig.enabled) throw new NotSupportedError('文件可见性')
   await apiJson(`/api/files/${id}/visibility`, { method: 'POST', body: JSON.stringify({ visibility }) })

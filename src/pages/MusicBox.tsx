@@ -80,8 +80,8 @@ export default function MusicBox() {
   const jump = (dir: number) => {
     const nextIndex = (index + dir + playlist.length) % playlist.length
     setIndex(nextIndex)
-    // 目标曲目没有试听片段就不要假装开始播放
-    setPlaying(Boolean(resolveAudio(playlist[nextIndex].id)))
+    // 有真实片段就播音频；没有就开“模拟播放”（进度条 / 频谱 / 歌词照常跑，UI 已标“试听暂缺”）
+    setPlaying(true)
   }
 
   const totalDuration = useMemo(() => playlist.reduce((s, t) => s + t.duration, 0), [])
@@ -112,7 +112,7 @@ export default function MusicBox() {
             </div>
             <span className="flex items-center gap-1.5 rounded-full border border-paper/20 px-2 py-0.5 font-mono text-[9.5px] text-paper/50">
               <span className={cn('h-1.5 w-1.5 rounded-full', playing ? 'animate-blink bg-lime' : 'bg-paper/30')} />
-              {src ? (playing ? 'PLAYING' : 'PAUSED') : 'NO PREVIEW'}
+              {src ? (playing ? 'PLAYING' : 'PAUSED') : playing ? 'SIMULATING' : 'NO PREVIEW'}
             </span>
           </div>
 
@@ -249,10 +249,9 @@ export default function MusicBox() {
               </button>
               <button
                 onClick={() => setPlaying((v) => !v)}
-                disabled={!src}
-                title={!src ? '试听暂缺：未接入音频源' : undefined}
-                className="flex h-12 w-12 items-center justify-center rounded-full border-1.5 border-paper bg-lime text-ink transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
-                aria-label={!src ? '试听暂缺，播放不可用' : playing ? '暂停' : '播放'}
+                title={!src ? '未接入音频：将模拟播放进度' : undefined}
+                className="flex h-12 w-12 items-center justify-center rounded-full border-1.5 border-paper bg-lime text-ink transition hover:scale-105"
+                aria-label={playing ? '暂停' : src ? '播放' : '模拟播放'}
               >
                 {playing ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
               </button>
@@ -304,7 +303,7 @@ export default function MusicBox() {
                   <button
                     onClick={() => {
                       setIndex(i)
-                      setPlaying(Boolean(resolveAudio(t.id)))
+                      setPlaying(true)
                     }}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink bg-cream"
                     style={{ background: isActive ? t.color : undefined }}
@@ -315,7 +314,7 @@ export default function MusicBox() {
                   <button
                     onClick={() => {
                       setIndex(i)
-                      setPlaying(Boolean(resolveAudio(t.id)))
+                      setPlaying(true)
                     }}
                     className="min-w-0 flex-1 text-left"
                   >
@@ -348,7 +347,7 @@ export default function MusicBox() {
             onClick={() => {
               const next = Math.floor(Math.random() * playlist.length)
               setIndex(next)
-              setPlaying(Boolean(resolveAudio(playlist[next].id)))
+              setPlaying(true)
             }}
             className="mt-2 flex w-full items-center justify-between rounded-xl border border-ink/15 bg-paper px-3 py-2.5 text-[11px] transition hover:border-ink hover:bg-lime/40"
           >

@@ -21,7 +21,6 @@ import {
   Map,
   MessageCircle,
   Music,
-  Rss,
   Search,
   Send,
   Settings,
@@ -680,11 +679,7 @@ function Footer() {
             >
               一起做点
               <span className="marker ml-1">有用的东西</span>
-              <ArrowUpRight className="mb-1.5 ml-1 inline-block transition group-hover:-translate-y-1 group-hover:translate-x-1" size={26} />
             </a>
-            <p className="mt-3 max-w-sm text-[12.5px] leading-relaxed text-ink-soft sm:text-[13px]">
-              如果这里有个项目让你觉得「这人可以聊一聊」，直接发邮件。我通常 12 小时内回复。
-            </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <a href={`mailto:${profile.email}`} className="tag hover:bg-lime">
                 <Mail size={12} /> {profile.email}
@@ -695,9 +690,6 @@ function Footer() {
               {/* fx.md F4：真实外链 + rel="noopener noreferrer"，不再留 href="#" */}
               <a href={links.github} target="_blank" rel="noopener noreferrer" className="tag hover:bg-lime">
                 <Github size={12} /> GitHub
-              </a>
-              <a href={links.rss} className="tag hover:bg-lime">
-                <Rss size={12} /> 订阅 RSS
               </a>
             </div>
           </div>

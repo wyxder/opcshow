@@ -1,5 +1,6 @@
-import { Copy, Download, Link2, Loader2, Plus, RefreshCw, Share2, Trash2, UploadCloud } from 'lucide-react'
+import { Copy, Download, Link2, Loader2, Pencil, Plus, RefreshCw, Share2, Trash2, UploadCloud } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import FileIcon from '@/components/ui/FileIcon'
 import { adminFiles, shares as shareSeed, storage } from '@/admin/data'
 import {
   AButton,
@@ -24,6 +25,7 @@ import { cn, newId } from '@/lib/utils'
 import { purgeFile } from '@/services/admin'
 import { apiUrl, serverConfig } from '@/services/config'
 import {
+  createFileRecord,
   createShareLink,
   deleteShare,
   listFiles,
@@ -33,6 +35,7 @@ import {
   setVisibility,
   shareHref,
   trashFile,
+  updateFile,
   uploadToTicket,
   type ServerFile,
 } from '@/services/files'
@@ -45,20 +48,19 @@ type TrashRow = { id: string; name: string; size: string; deleted: string }
 type QueueRow = { id: string; name: string; size: string; progress: number; state: string }
 
 const real = serverConfig.enabled
-const DEMO_NOTE = '当前未配置服务端（VITE_API_BASE），上传、分享、可见性、删除与回收站操作均已禁用。'
+const DEMO_NOTE = '当前未配置服务端（VITE_API_BASE），上传、新建、编辑、分享、可见性、删除与回收站操作均已禁用。'
 
-const KNOWN_EXT = ['md', 'pdf', 'zip', 'fig', 'py', 'pptx', 'xlsx', 'docx', 'csv'] as const
-const KNOWN_CATEGORY = ['简历与作品集', '课程与讲义', '数据集', '模板', '源码'] as const
-const pickExt = (v: string): FileRow['ext'] => ((KNOWN_EXT as readonly string[]).includes(v) ? (v as FileRow['ext']) : 'pdf')
-const pickCategory = (v: string): FileRow['category'] =>
-  (KNOWN_CATEGORY as readonly string[]).includes(v) ? (v as FileRow['category']) : '数据集'
+const KNOWN_CATEGORY = ['简历与作品集', '课程与讲义', '数据集', '模板', '源码', '未分类'] as const
+
+/** 状态徽标：pending = 只有元数据没传真实文件，与服务端白名单对齐 */
+const FILE_STATUS_LABEL: Record<string, string> = { published: '已发布', pending: '待上传' }
 
 const rowFromServer = (f: ServerFile): Row => ({
   id: f.id,
   name: f.name,
-  ext: pickExt(f.ext),
+  ext: (f.ext || '').toLowerCase(),
   size: f.size,
-  category: pickCategory(f.category),
+  category: f.category || '未分类',
   downloads: f.downloads,
   date: f.date,
   visibility: f.visibility === 'public' ? '公开' : '私密',
@@ -94,16 +96,6 @@ async function copyText(text: string) {
   }
 }
 
-const extColor: Record<string, string> = {
-  pdf: 'bg-coral/15 text-admin-danger',
-  md: 'bg-blue/10 text-admin-info',
-  zip: 'bg-sand text-admin-amber',
-  fig: 'bg-grape/10 text-admin-plum',
-  py: 'bg-lime/50 text-admin-moss',
-  pptx: 'bg-coral/15 text-admin-danger',
-  xlsx: 'bg-blue/10 text-admin-info',
-}
-
 export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab: (t: Tab) => void; show: (m: string) => void }) {
   const [files, setFiles] = useState<Row[]>(real ? [] : adminFiles)
   const [shares, setShares] = useState<ShareRow[]>(real ? [] : shareSeed)
@@ -118,6 +110,10 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [shareDraft, setShareDraft] = useState({ file: adminFiles[0]?.name ?? '', password: '', expires: '永久' })
+  const [editing, setEditing] = useState<Row | null>(null)
+  const [editDraft, setEditDraft] = useState({ name: '', category: '', size: '', visibility: '公开', status: 'published' })
+  const [recordOpen, setRecordOpen] = useState(false)
+  const [recordDraft, setRecordDraft] = useState({ name: '', category: '未分类', size: '' })
   const inputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async (spinner = true) => {
@@ -239,6 +235,56 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
     }
   }
 
+  const openEdit = (f: Row) => {
+    setEditDraft({ name: f.name, category: f.category, size: f.size, visibility: f.visibility, status: f.status ?? 'published' })
+    setFormError('')
+    setEditing(f)
+  }
+
+  const saveEdit = async () => {
+    if (!real) return setFormError(DEMO_NOTE)
+    if (!editing || saving) return
+    const name = editDraft.name.trim()
+    if (!name) return setFormError('文件名不能为空')
+    setSaving(true)
+    setFormError('')
+    try {
+      await updateFile(editing.id, {
+        name,
+        category: editDraft.category.trim() || undefined,
+        size: editDraft.size.trim() || undefined,
+        visibility: editDraft.visibility === '公开' ? 'public' : 'private',
+        status: editDraft.status,
+      })
+      setEditing(null)
+      await load(false)
+      show('文件记录已更新')
+    } catch (err) {
+      setFormError(`保存失败：${(err as Error).message}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveRecord = async () => {
+    if (!real) return setFormError(DEMO_NOTE)
+    if (saving) return
+    const name = recordDraft.name.trim()
+    if (!name) return setFormError('文件名不能为空')
+    setSaving(true)
+    setFormError('')
+    try {
+      await createFileRecord({ name, category: recordDraft.category.trim() || undefined, size: recordDraft.size.trim() || undefined })
+      setRecordOpen(false)
+      await load(false)
+      show('已创建「待上传」记录；在上传真实文件前不会提供下载')
+    } catch (err) {
+      setFormError(`新建失败：${(err as Error).message}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <PageTitle
@@ -257,6 +303,18 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
               disabled={loading}
             >
               {loading ? '刷新中…' : '刷新'}
+            </AButton>
+            <AButton
+              icon={<Plus size={13} />}
+              onClick={() => {
+                setRecordDraft({ name: '', category: '未分类', size: '' })
+                setFormError('')
+                setRecordOpen(true)
+              }}
+              disabled={!real}
+              title={real ? '新建待上传的文件记录（不伪造下载地址）' : '未配置服务端：不能新建记录'}
+            >
+              新建记录
             </AButton>
             <AButton
               variant="primary"
@@ -356,20 +414,22 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
               <LoadState loading={loading} error={error} onRetry={() => void load()} label="正在加载文件…">
                 <div className="overflow-x-auto no-scrollbar">
                   <div className="admin-zebra min-w-[760px]">
-                    <TableHead cols={['文件', '分类', '大小', '下载', '可见性', '操作']} template="minmax(0,1fr) 96px 68px 58px 92px 96px" />
+                    <TableHead cols={['文件', '分类', '大小', '下载', '可见性', '操作']} template="minmax(0,1fr) 96px 68px 58px 92px 148px" />
                     {filtered.map((f) => {
                       const visibilityKey = `visibility-${f.id}`
                       const trashKey = `trash-${f.id}`
+                      const status = f.status ?? 'published'
                       return (
                         <div
                           key={f.id}
-                          className="grid grid-cols-[minmax(0,1fr)_96px_68px_58px_92px_96px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
+                          className="grid grid-cols-[minmax(0,1fr)_96px_68px_58px_92px_148px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
                         >
                           <div className="flex min-w-0 items-center gap-2">
-                            <span className={cn('rounded px-1 py-0.5 font-mono text-[8.5px] uppercase', extColor[f.ext] ?? 'bg-sand/55 text-ink/60')}>{f.ext}</span>
+                            <FileIcon ext={f.ext} size={16} className="shrink-0" />
                             <span className="truncate" title={f.name}>
                               {f.name}
                             </span>
+                            {status !== 'published' && <Badge tone="amber" className="shrink-0">{FILE_STATUS_LABEL[status] ?? status}</Badge>}
                           </div>
                           <span className="truncate text-[10px] text-admin-muted">{f.category}</span>
                           <span className="font-mono text-[10px] text-admin-muted">{f.size}</span>
@@ -387,14 +447,34 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                           </button>
                           <div className="flex items-center justify-end gap-1">
                             <IconButton
-                              label="下载"
+                              label={f.url ? '下载' : '无真实文件，不可下载'}
                               disabled={!f.url}
+                              title={f.url ? undefined : '该条目还没有上传实际文件，不提供下载'}
                               onClick={() => {
                                 if (f.url) window.open(apiUrl(f.url), '_blank', 'noopener')
                                 else show('该文件没有服务端存储，无法下载')
                               }}
                             >
                               <Download size={11} />
+                            </IconButton>
+                            <IconButton
+                              label={f.url ? '复制下载链接' : '待上传：暂无下载链接'}
+                              disabled={!f.url}
+                              title={f.url ? undefined : '上传真实文件后才会生成下载链接'}
+                              onClick={() => {
+                                if (!f.url) return show('该文件尚未上传，没有可用的下载链接')
+                                void copyText(shareHref(f.url)).then((ok) => show(ok ? '下载链接已复制' : '浏览器不允许写入剪贴板，请手动复制'))
+                              }}
+                            >
+                              <Copy size={11} />
+                            </IconButton>
+                            <IconButton
+                              label="编辑"
+                              disabled={!real}
+                              title={real ? '编辑名称 / 分类 / 大小 / 可见性 / 状态' : '未配置服务端：不可编辑'}
+                              onClick={() => openEdit(f)}
+                            >
+                              <Pencil size={11} />
                             </IconButton>
                             <IconButton
                               label="分享"
@@ -773,6 +853,139 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
           )}
         </div>
       </AdminModal>
+
+      <AdminModal
+        open={editing !== null}
+        onClose={() => {
+          if (saving) return
+          setEditing(null)
+        }}
+        title="编辑文件记录"
+        desc={real ? '修改名称 / 分类 / 大小 / 可见性 / 状态；前台资源中心同步生效' : DEMO_NOTE}
+        footer={
+          <>
+            <AButton disabled={saving} onClick={() => setEditing(null)}>
+              取消
+            </AButton>
+            <AButton
+              variant="primary"
+              disabled={saving || !real}
+              title={real ? '' : '未配置服务端：不能保存'}
+              onClick={() => void saveEdit()}
+              icon={saving ? <Loader2 size={12} className="animate-spin" /> : undefined}
+            >
+              {saving ? '保存中…' : '保存修改'}
+            </AButton>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Field label="文件名" hint="改名会同步更新扩展名图标">
+            <Input value={editDraft.name} disabled={saving} onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })} />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="分类">
+              <Select value={editDraft.category} disabled={saving} onChange={(e) => setEditDraft({ ...editDraft, category: e.target.value })}>
+                {[...new Set([...KNOWN_CATEGORY, editDraft.category].filter(Boolean))].map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="大小" hint="仅展示用，真实体积以服务端存储为准">
+              <Input value={editDraft.size} disabled={saving} onChange={(e) => setEditDraft({ ...editDraft, size: e.target.value })} placeholder="如 8.4 MB" />
+            </Field>
+            <Field label="可见性">
+              <Select value={editDraft.visibility} disabled={saving} onChange={(e) => setEditDraft({ ...editDraft, visibility: e.target.value })}>
+                <option>公开</option>
+                <option>私密</option>
+              </Select>
+            </Field>
+            <Field label="状态" hint="只有上传过真实文件的记录才能发布下载">
+              <Select value={editDraft.status} disabled={saving} onChange={(e) => setEditDraft({ ...editDraft, status: e.target.value })}>
+                {['published', 'pending'].map((s) => (
+                  <option key={s} value={s}>
+                    {FILE_STATUS_LABEL[s]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          {editing && !editing.url && editDraft.status === 'published' && (
+            <p className="rounded-lg border border-dashed border-ink/20 px-3 py-2 text-[10.5px] leading-relaxed text-admin-muted">
+              注意：该条目还没有存储实体，即使标为「已发布」，服务端下载接口仍会如实返回「尚未上传」，前台不会得到可用链接。
+            </p>
+          )}
+          {formError && (
+            <p role="alert" className="text-[11px] text-admin-danger">
+              {formError}
+            </p>
+          )}
+        </div>
+      </AdminModal>
+
+      <AdminModal
+        open={recordOpen}
+        onClose={() => {
+          if (saving) return
+          setRecordOpen(false)
+        }}
+        title="新建文件记录"
+        desc={real ? '先登记元数据占位，状态为「待上传」；上传真实文件前不会产生下载地址' : DEMO_NOTE}
+        footer={
+          <>
+            <AButton disabled={saving} onClick={() => setRecordOpen(false)}>
+              取消
+            </AButton>
+            <AButton
+              variant="primary"
+              disabled={saving || !real}
+              title={real ? '' : '未配置服务端：不能新建'}
+              onClick={() => void saveRecord()}
+              icon={saving ? <Loader2 size={12} className="animate-spin" /> : undefined}
+            >
+              {saving ? '创建中…' : '创建记录'}
+            </AButton>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Field label="文件名" hint="含扩展名，图标按扩展名自动映射">
+            <Input value={recordDraft.name} disabled={saving} onChange={(e) => setRecordDraft({ ...recordDraft, name: e.target.value })} placeholder="如：评测集 v2.xlsx" />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="分类">
+              <Select value={recordDraft.category} disabled={saving} onChange={(e) => setRecordDraft({ ...recordDraft, category: e.target.value })}>
+                {KNOWN_CATEGORY.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="预估大小" hint="可选，仅展示用">
+              <Input value={recordDraft.size} disabled={saving} onChange={(e) => setRecordDraft({ ...recordDraft, size: e.target.value })} placeholder="如 12 MB" />
+            </Field>
+          </div>
+          {recordDraft.name.trim() && <FileCellPreview name={recordDraft.name.trim()} />}
+          {formError && (
+            <p role="alert" className="text-[11px] text-admin-danger">
+              {formError}
+            </p>
+          )}
+        </div>
+      </AdminModal>
+    </div>
+  )
+}
+
+/** 新建记录时的图标预览：确认扩展名映射效果，避免建完才发现图标不对 */
+function FileCellPreview({ name }: { name: string }) {
+  const dot = name.lastIndexOf('.')
+  const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-ink/15 bg-paper px-3 py-2">
+      <FileIcon ext={ext} size={20} />
+      <span className="text-[11px] text-admin-muted">
+        图标预览：{ext ? `${ext.toUpperCase()} 类型` : '未识别到扩展名，将使用通用样式'}
+      </span>
     </div>
   )
 }

@@ -352,10 +352,12 @@ active     → translate(0,0) + shadow-1（按下有回弹感）
 export type ResourceFile = {
   id: string
   name: string
-  ext: 'pdf' | 'md' | 'zip' | 'fig' | 'py' | 'pptx' | 'xlsx' | 'docx' | 'csv'
+  /** 统一小写、不带点；图标与配色由 FileIcon 按扩展名自动映射，未知类型回退通用样式 */
+  ext: string
   size: string
   date: string
-  category: '简历与作品集' | '课程与讲义' | '数据集' | '模板' | '源码'
+  /** 已知分类见资源中心筛选栏；服务端可能返回其它分类，类型保持放宽 */
+  category: string
   desc: string
   downloads: number
   starred?: boolean

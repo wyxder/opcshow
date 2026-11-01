@@ -1,6 +1,7 @@
-import { Download, FileArchive, FileCode2, FileSpreadsheet, FileText, FolderOpen, LayoutGrid, List, Lock, Search, Star } from 'lucide-react'
+import { Download, FolderOpen, LayoutGrid, List, Lock, Search, Star } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import FileIcon from '@/components/ui/FileIcon'
 import { PageHead } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
 import { resourceFiles, type ResourceFile } from '@/data/work'
@@ -9,18 +10,6 @@ import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
 import { useSeo } from '@/lib/seo'
 import { resolveDownload, listFiles } from '@/services/files'
 import { serverConfig } from '@/services/config'
-
-const extMeta: Record<ResourceFile['ext'], { color: string; icon: typeof FileText; label: string }> = {
-  pdf: { color: 'rgb(var(--c-coral))', icon: FileText, label: 'PDF' },
-  md: { color: 'rgb(var(--c-blue))', icon: FileText, label: 'MD' },
-  docx: { color: 'rgb(var(--c-blue))', icon: FileText, label: 'DOCX' },
-  csv: { color: 'rgb(var(--c-teal))', icon: FileSpreadsheet, label: 'CSV' },
-  zip: { color: 'rgb(var(--c-grape))', icon: FileArchive, label: 'ZIP' },
-  fig: { color: 'rgb(var(--c-rose))', icon: LayoutGrid, label: 'FIG' },
-  py: { color: 'rgb(var(--c-lime))', icon: FileCode2, label: 'PY' },
-  pptx: { color: 'rgb(var(--c-coral))', icon: FileText, label: 'PPT' },
-  xlsx: { color: 'rgb(var(--c-teal))', icon: FileSpreadsheet, label: 'XLS' },
-}
 
 const categories = ['全部', '简历与作品集', '课程与讲义', '数据集', '模板', '源码'] as const
 
@@ -70,17 +59,17 @@ export default function Files() {
     let alive = true
     listFiles('public').then((list) => {
       if (!alive) return
-      const known = new Set<ResourceFile['ext']>(['pdf', 'md', 'docx', 'csv', 'zip', 'fig', 'py', 'pptx', 'xlsx'])
+      // 保留真实扩展名与分类：图标由 FileIcon 自动映射，未知类型也不伪装成 md
       setServerFiles(
         list
           .filter((f) => f.url)
           .map((f) => ({
             id: f.id,
             name: f.name,
-            ext: (known.has(f.ext as ResourceFile['ext']) ? f.ext : 'md') as ResourceFile['ext'],
+            ext: (f.ext || '').toLowerCase(),
             size: f.size,
             date: f.date,
-            category: '数据集',
+            category: f.category || '未分类',
             desc: '服务端公开文件',
             downloads: f.downloads,
             url: f.url,
@@ -192,43 +181,34 @@ export default function Files() {
         </div>
       ) : view === 'grid' ? (
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
-          {list.map((f) => {
-            const meta = extMeta[f.ext]
-            const Icon = meta.icon
-            return (
-              <div key={f.id} className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream transition-all duration-300 hover:-translate-y-1 hover:shadow-hard">
-                <div className="flex items-start gap-2 p-2.5 sm:gap-3 sm:p-4">
-                  <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink sm:h-10 sm:w-10 sm:rounded-xl"
-                    style={{ background: `color-mix(in srgb, ${meta.color} 40%, transparent)` }}
-                  >
-                    <Icon size={16} className="size-[13px] shrink-0 sm:size-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-1">
-                      <h3 className="line-clamp-3 text-[11px] font-bold leading-snug sm:line-clamp-none sm:text-[12.5px]">{f.name}</h3>
-                      <button onClick={() => toggleStar(f.id)} aria-label="收藏文件" className="shrink-0 p-0.5">
-                        <Star size={13} className={cn(stars.includes(f.id) ? 'fill-ink text-ink' : 'text-ink/20 hover:text-ink/50')} />
-                      </button>
-                    </div>
-                    <p className="mt-0.5 font-mono text-[8px] leading-snug text-ink/35 sm:text-[9px]">
-                      {f.ext.toUpperCase()} · {f.size} · {f.date}
-                    </p>
+          {list.map((f) => (
+            <div key={f.id} className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream transition-all duration-300 hover:-translate-y-1 hover:shadow-hard">
+              <div className="flex items-start gap-2 p-2.5 sm:gap-3 sm:p-4">
+                <FileIcon ext={f.ext} size={34} className="shrink-0 transition-transform duration-300 group-hover:-rotate-3 sm:size-[42px]" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-1">
+                    <h3 className="line-clamp-3 text-[11px] font-bold leading-snug sm:line-clamp-none sm:text-[12.5px]">{f.name}</h3>
+                    <button onClick={() => toggleStar(f.id)} aria-label="收藏文件" className="shrink-0 p-0.5">
+                      <Star size={13} className={cn(stars.includes(f.id) ? 'fill-ink text-ink' : 'text-ink/20 hover:text-ink/50')} />
+                    </button>
                   </div>
-                </div>
-                <p className="mb-2 line-clamp-2 px-2.5 text-[10px] leading-relaxed text-ink/50 sm:mb-0 sm:px-4 sm:text-[11px]">{f.desc}</p>
-                {f.pending && (
-                  <p className="mx-2.5 mt-1.5 flex items-start gap-1.5 rounded-lg bg-paper px-2 py-1.5 text-[9px] leading-relaxed text-ink/45 sm:mx-4 sm:mt-2 sm:text-[10px]">
-                    <Lock size={10} className="mt-[2px] shrink-0" /> {f.pending}
+                  <p className="mt-0.5 font-mono text-[8px] leading-snug text-ink/35 sm:text-[9px]">
+                    {f.ext.toUpperCase()} · {f.size} · {f.date}
                   </p>
-                )}
-                <div className="mt-auto flex items-center justify-between gap-1.5 border-t border-ink/10 px-2.5 py-2 sm:px-4 sm:py-2.5">
-                  <span className="min-w-0 flex-1 font-mono text-[8px] leading-snug text-ink/35 sm:text-[9px]">{f.downloads} 次下载 · {f.category}</span>
-                  <DownloadLink f={f} />
                 </div>
               </div>
-            )
-          })}
+              <p className="mb-2 line-clamp-2 px-2.5 text-[10px] leading-relaxed text-ink/50 sm:mb-0 sm:px-4 sm:text-[11px]">{f.desc}</p>
+              {f.pending && (
+                <p className="mx-2.5 mt-1.5 flex items-start gap-1.5 rounded-lg bg-paper px-2 py-1.5 text-[9px] leading-relaxed text-ink/45 sm:mx-4 sm:mt-2 sm:text-[10px]">
+                  <Lock size={10} className="mt-[2px] shrink-0" /> {f.pending}
+                </p>
+              )}
+              <div className="mt-auto flex items-center justify-between gap-1.5 border-t border-ink/10 px-2.5 py-2 sm:px-4 sm:py-2.5">
+                <span className="min-w-0 flex-1 font-mono text-[8px] leading-snug text-ink/35 sm:text-[9px]">{f.downloads} 次下载 · {f.category}</span>
+                <DownloadLink f={f} />
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border-1.5 border-ink bg-cream">
@@ -239,30 +219,27 @@ export default function Files() {
             <span>更新时间</span>
             <span className="text-right">操作</span>
           </div>
-          {list.map((f) => {
-            const meta = extMeta[f.ext]
-            return (
-              <div
-                key={f.id}
-                className="flex flex-col gap-1 border-b border-ink/8 px-4 py-2.5 transition hover:bg-lime/20 last:border-0 sm:grid sm:grid-cols-[1fr_120px_100px_110px_90px] sm:items-center sm:gap-3"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="h-6 w-1 shrink-0 rounded" style={{ background: meta.color }} />
-                  <span className="truncate text-[12px] font-medium">{f.name}</span>
-                  <span className="font-mono text-[9.5px] text-ink/30">{meta.label}</span>
-                </div>
-                <span className="truncate text-[10.5px] text-ink/45">{f.category}</span>
-                <span className="font-mono text-[10px] text-ink/45">{f.size}</span>
-                <span className="font-mono text-[10px] text-ink/45">{f.date}</span>
-                <span className="flex items-center justify-end gap-1.5">
-                  <button onClick={() => toggleStar(f.id)} aria-label="收藏" className="p-0.5">
-                    <Star size={12} className={cn(stars.includes(f.id) ? 'fill-ink text-ink' : 'text-ink/20')} />
-                  </button>
-                  <DownloadLink f={f} row />
-                </span>
+          {list.map((f) => (
+            <div
+              key={f.id}
+              className="flex flex-col gap-1 border-b border-ink/8 px-4 py-2.5 transition hover:bg-lime/20 last:border-0 sm:grid sm:grid-cols-[1fr_120px_100px_110px_90px] sm:items-center sm:gap-3"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <FileIcon ext={f.ext} size={16} className="shrink-0" />
+                <span className="truncate text-[12px] font-medium">{f.name}</span>
+                <span className="font-mono text-[9.5px] text-ink/30">{f.ext.toUpperCase()}</span>
               </div>
-            )
-          })}
+              <span className="truncate text-[10.5px] text-ink/45">{f.category}</span>
+              <span className="font-mono text-[10px] text-ink/45">{f.size}</span>
+              <span className="font-mono text-[10px] text-ink/45">{f.date}</span>
+              <span className="flex items-center justify-end gap-1.5">
+                <button onClick={() => toggleStar(f.id)} aria-label="收藏" className="p-0.5">
+                  <Star size={12} className={cn(stars.includes(f.id) ? 'fill-ink text-ink' : 'text-ink/20')} />
+                </button>
+                <DownloadLink f={f} row />
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
