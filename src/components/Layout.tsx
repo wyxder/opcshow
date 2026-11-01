@@ -231,9 +231,9 @@ function Header() {
               </Link>
             </nav>
 
-            {/* desktop nav */}
+            {/* desktop nav：一级项间距拉开（gap 5 / xl 7），下拉面板仍对准各自项 */}
             <nav
-              className="hidden items-center gap-1 lg:flex"
+              className="hidden items-center gap-x-5 px-1 lg:flex xl:gap-x-7"
               onMouseLeave={scheduleClose}
               onBlur={(e) => {
                 // 焦点离开整个导航容器才收起；在一级/二级之间移动不会关
@@ -329,20 +329,23 @@ function Header() {
                   </div>
                 </div>
               ))}
+
             </nav>
 
-            {/* actions */}
+            {/* actions：搜索 + 主题钮紧靠成组（小间距），主题钮已缩短为纯图标胶囊 */}
             <div className="flex items-center gap-1.5">
-              <ThemeSwitcher className="hidden lg:block" />
-              <button
-                onClick={() => setPaletteOpen(true)}
-                className="hidden items-center gap-2 rounded-full border-1.5 border-ink/15 bg-paper px-2.5 py-1.5 font-mono text-[10px] text-ink/50 transition hover:border-ink/40 hover:text-ink sm:flex"
-                aria-label="搜索"
-              >
-                <Search size={13} />
-                <span>搜索</span>
-                <kbd className="rounded border border-ink/20 bg-cream px-1 py-0.5 text-[9px]">⌘K</kbd>
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPaletteOpen(true)}
+                  className="hidden items-center gap-2 rounded-full border-1.5 border-ink/15 bg-paper px-2.5 py-1.5 font-mono text-[10px] text-ink/50 transition hover:border-ink/40 hover:text-ink sm:flex"
+                  aria-label="搜索"
+                >
+                  <Search size={13} />
+                  <span>搜索</span>
+                  <kbd className="rounded border border-ink/20 bg-cream px-1 py-0.5 text-[9px]">⌘K</kbd>
+                </button>
+                <ThemeSwitcher className="hidden lg:block" />
+              </div>
               <Link
                 to="/admin"
                 className="hidden h-8 w-8 items-center justify-center rounded-full border-1.5 border-ink/15 bg-paper text-ink/55 transition hover:border-ink hover:text-ink sm:flex"
@@ -350,9 +353,10 @@ function Header() {
               >
                 <Settings size={14} />
               </Link>
+              {/* 桌面端「交个朋友」：回到原来的位置，放在后台按钮后面 */}
               <button
                 onClick={() => setConnectOpen(true)}
-                className="hidden items-center gap-1.5 rounded-full border-1.5 border-ink bg-ink px-3.5 py-2 text-[12px] font-medium text-paper transition hover:-translate-y-0.5 hover:shadow-hard-sm md:flex"
+                className="hidden shrink-0 items-center gap-1.5 rounded-full border-1.5 border-ink bg-ink px-3.5 py-1.5 text-[12px] font-medium text-paper transition hover:-translate-y-0.5 hover:shadow-hard-sm sm:flex"
               >
                 <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime" />
                 交个朋友

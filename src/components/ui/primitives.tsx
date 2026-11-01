@@ -37,6 +37,7 @@ export function Marquee({
   className,
   separator = '✦',
   itemClassName,
+  fill,
 }: {
   items: ReactNode[]
   speed?: number
@@ -44,9 +45,39 @@ export function Marquee({
   className?: string
   separator?: string
   itemClassName?: string
+  /** 铺满模式：把内容重复到至少一屏宽，避免条数太少时右侧出现空白 */
+  fill?: boolean
 }) {
-  const row = (
-    <div className="flex shrink-0 items-center">
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const blockRef = useRef<HTMLDivElement>(null)
+  const [copies, setCopies] = useState(1)
+
+  // 测量容器与单块内容宽度，算出每侧需要重复几块才能盖满可视区
+  useEffect(() => {
+    if (!fill) {
+      setCopies(1)
+      return
+    }
+    const compute = () => {
+      const wrap = wrapRef.current
+      const blk = blockRef.current
+      if (!wrap || !blk) return
+      const cw = wrap.clientWidth
+      const bw = blk.getBoundingClientRect().width
+      if (!cw || !bw) return
+      setCopies(Math.max(1, Math.ceil(cw / bw)))
+    }
+    compute()
+    const timer = window.setTimeout(compute, 300) // 字体/图片加载后再量一次
+    window.addEventListener('resize', compute)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('resize', compute)
+    }
+  }, [fill, items.length])
+
+  const block = (key: string, measure = false) => (
+    <div key={key} ref={measure ? blockRef : undefined} className="flex shrink-0 items-center">
       {items.map((item, i) => (
         <span key={i} className={cn('flex items-center gap-6 whitespace-nowrap px-6', itemClassName)}>
           {item}
@@ -56,8 +87,15 @@ export function Marquee({
     </div>
   )
 
+  // 轨道渲染偶数块（每侧 copies 块），-50% 位移正好走满一侧，循环无缝且不留空白
+  const blocks: ReactNode[] = []
+  for (let side = 0; side < 2; side++) {
+    for (let c = 0; c < copies; c++) blocks.push(block(`${side}-${c}`, side === 0 && c === 0))
+  }
+
   return (
     <div
+      ref={wrapRef}
       className={cn('group flex overflow-hidden', className)}
       data-marquee
     >
@@ -68,8 +106,7 @@ export function Marquee({
           animationDirection: reverse ? 'reverse' : 'normal',
         }}
       >
-        {row}
-        {row}
+        {blocks}
       </div>
     </div>
   )

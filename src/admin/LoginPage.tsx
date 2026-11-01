@@ -80,8 +80,8 @@ export default function LoginPage({ onDone }: { onDone: () => void }) {
           <aside className="hidden flex-col justify-between gap-8 border-r-1.5 border-ink bg-ink p-7 text-paper md:flex">
             <div>
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 -rotate-3 items-center justify-center rounded-[11px] border-1.5 border-lime/70 bg-lime text-[15px] font-extrabold text-ink shadow-hard-sm">
-                  W
+                <span className="flex h-10 w-10 -rotate-3 items-center justify-center overflow-hidden rounded-[11px] border-1.5 border-lime/70 bg-cream shadow-hard-sm">
+                  <img src="/image/logo.png" alt="WYX.ADMIN 标志" className="h-full w-full object-cover" />
                 </span>
                 <span className="leading-none">
                   <span className="block font-display text-[14px] font-extrabold tracking-[0.02em]">WYX.ADMIN</span>
@@ -120,8 +120,8 @@ export default function LoginPage({ onDone }: { onDone: () => void }) {
           {/* 右侧表单 */}
           <form onSubmit={submit} noValidate className="p-5 sm:p-7">
             <div className="flex items-center gap-2.5 md:hidden">
-              <span className="flex h-9 w-9 -rotate-3 items-center justify-center rounded-[10px] border-1.5 border-ink bg-ink text-[14px] font-extrabold text-lime">
-                W
+              <span className="flex h-9 w-9 -rotate-3 items-center justify-center overflow-hidden rounded-[10px] border-1.5 border-ink bg-cream">
+                <img src="/image/logo.png" alt="WYX.ADMIN 标志" className="h-full w-full object-cover" />
               </span>
               <div className="leading-none">
                 <p className="font-display text-[13px] font-extrabold">WYX.ADMIN</p>

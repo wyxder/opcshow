@@ -1,7 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  ArrowLeft,
-  ArrowRight,
   Check,
   ChevronRight,
   Clock,
@@ -19,7 +17,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Modal } from '@/components/ui/Modal'
-import { Plate, Pill } from '@/components/ui/primitives'
+import { Pill } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
 import { setAssistantContext } from '@/lib/assistant'
 import { articleById, articles, type Block } from '@/data/articles'
@@ -145,75 +143,6 @@ function BlockView({ block }: { block: Block }) {
   }
 }
 
-const coverMotifs = ['orbit', 'stack', 'bars', 'grid', 'wave', 'rings'] as const
-const coverAccents = [
-  'rgb(var(--c-blue))',
-  'rgb(var(--c-grape))',
-  'rgb(var(--c-coral))',
-  'rgb(var(--c-lime))',
-  'rgb(var(--c-sky))',
-  'rgb(var(--c-rose))',
-]
-
-/** 上一篇 / 下一篇卡片：带上与知识库列表同款的封面图，不再只有纯文字 */
-function NavCard({
-  to,
-  article,
-  coverIndex,
-  dir,
-}: {
-  to: string
-  article: (typeof articles)[number]
-  coverIndex: number
-  dir: 'prev' | 'next'
-}) {
-  const motif = coverMotifs[((coverIndex % coverMotifs.length) + coverMotifs.length) % coverMotifs.length]
-  const accent = coverAccents[((coverIndex % coverAccents.length) + coverAccents.length) % coverAccents.length]
-  const isNext = dir === 'next'
-  return (
-    <Link
-      to={to}
-      className={cn(
-        'group flex flex-col overflow-hidden rounded-xl border-1.5 border-ink/15 bg-cream transition hover:border-ink hover:shadow-hard-sm',
-        isNext && 'sm:col-start-2',
-      )}
-    >
-      <div className="relative h-[74px] w-full shrink-0 overflow-hidden border-b border-ink/12 sm:h-[92px]">
-        <Plate motif={motif} accent={accent} className="absolute inset-0" />
-        <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/25 via-transparent to-transparent" />
-        <span
-          className={cn(
-            'absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border border-ink/20 bg-cream/90 px-2 py-0.5 font-mono text-[8.5px] tracking-widest text-ink/60 backdrop-blur',
-            isNext && 'left-auto right-2',
-          )}
-        >
-          {isNext ? (
-            <>
-              下一篇 <ArrowRight size={10} />
-            </>
-          ) : (
-            <>
-              <ArrowLeft size={10} /> 上一篇
-            </>
-          )}
-        </span>
-        <span className="absolute bottom-2 left-2 truncate rounded border border-ink/15 bg-cream/85 px-1.5 py-0.5 font-mono text-[8.5px] text-ink/60">
-          {article.category}
-        </span>
-      </div>
-      <div className={cn('flex-1 p-3 sm:p-4', isNext && 'text-right')}>
-        <p className={cn('line-clamp-2 text-[11.5px] font-semibold group-hover:underline sm:text-[12.5px]', isNext && 'sm:text-right')}>{article.title}</p>
-        <p className="mt-1.5 flex items-center gap-2 font-mono text-[9px] text-ink/40">
-          <span className={cn('flex items-center gap-1', isNext && 'sm:ml-auto')}>
-            <Clock size={10} /> {article.readMin} min
-          </span>
-          <span>{article.date}</span>
-        </p>
-      </div>
-    </Link>
-  )
-}
-
 export default function Reader() {
   const { id } = useParams()
   const article = articleById(id)
@@ -316,10 +245,6 @@ export default function Reader() {
       </div>
     )
   }
-
-  const index = articles.findIndex((a) => a.id === article.id)
-  const prev = articles[index - 1]
-  const next = articles[index + 1]
 
   const fontLabel = { sm: '小', md: '中', lg: '大' }[fontSize]
   const cycleFont = () => setFontSize((s) => (s === 'sm' ? 'md' : s === 'md' ? 'lg' : 'sm'))
@@ -468,13 +393,6 @@ export default function Reader() {
           </div>
 
           <ArticleComments articleId={article.id} />
-
-          {(prev || next) && (
-            <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
-              {prev && <NavCard to={`/learn/${prev.id}`} article={prev} coverIndex={index - 1} dir="prev" />}
-              {next && <NavCard to={`/learn/${next.id}`} article={next} coverIndex={index + 1} dir="next" />}
-            </div>
-          )}
         </article>
       </div>
 

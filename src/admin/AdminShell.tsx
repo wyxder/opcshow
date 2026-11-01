@@ -185,7 +185,9 @@ export default function AdminShell({
       {/* sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[228px] flex-col border-r-1.5 border-ink/15 bg-paper px-3 py-4 lg:flex">
         <Link to="/" className="flex items-center gap-2.5 px-1.5">
-          <span className="flex h-9 w-9 -rotate-3 items-center justify-center rounded-[10px] border-1.5 border-ink bg-ink text-[14px] font-extrabold text-lime shadow-hard-sm">W</span>
+          <span className="flex h-9 w-9 -rotate-3 items-center justify-center overflow-hidden rounded-[10px] border-1.5 border-ink bg-cream shadow-hard-sm">
+            <img src="/image/logo.png" alt="WYX.ADMIN 标志" className="h-full w-full object-cover" />
+          </span>
           <span className="leading-none">
             <span className="block font-display text-[13px] font-extrabold tracking-[0.02em] text-ink">WYX.ADMIN</span>
             <span className="mt-1 block font-mono text-[8.5px] tracking-[0.2em] text-admin-muted">CONTROL ROOM</span>
@@ -259,7 +261,9 @@ export default function AdminShell({
             >
               <div className="flex items-center justify-between px-1.5">
                 <span className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 -rotate-3 items-center justify-center rounded-lg border-1.5 border-ink bg-ink text-[12px] font-extrabold text-lime">W</span>
+                  <span className="flex h-8 w-8 -rotate-3 items-center justify-center overflow-hidden rounded-lg border-1.5 border-ink bg-cream">
+                    <img src="/image/logo.png" alt="WYX.ADMIN 标志" className="h-full w-full object-cover" />
+                  </span>
                   <span className="font-display text-[12px] font-extrabold">WYX.ADMIN</span>
                 </span>
                 <button onClick={() => setDrawer(false)} aria-label="关闭导航" className="text-admin-muted">

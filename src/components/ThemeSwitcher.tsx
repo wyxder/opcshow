@@ -85,6 +85,7 @@ export function ThemeSwitcher({
           />
         </button>
       ) : (
+        /* 桌面端：缩短为图标 + 色板胶囊（不再显示主题名，名称在展开面板里仍可见），方便紧靠搜索钮摆放 */
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -92,10 +93,7 @@ export function ThemeSwitcher({
           className="flex h-8 items-center gap-1.5 rounded-full border-1.5 border-ink/20 bg-paper px-2 text-ink/65 transition hover:border-ink/45 hover:text-ink"
         >
           <Palette size={13} className="shrink-0" />
-          <span className="hidden shrink-0 font-mono text-[10px] tracking-wide xl:inline">
-            {current.no} {current.name}
-          </span>
-          <ThemeSwatch id={current.id} className="h-3.5 w-[46px]" />
+          <ThemeSwatch id={current.id} className="h-3.5 w-[30px]" />
           <ChevronDown size={11} className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
         </button>
       )}

@@ -424,7 +424,28 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
                             <span className="shrink-0 font-mono text-[9px] text-ink/55">{p.period}</span>
                           </span>
                         </div>
-                        <h3 className="mt-3 text-[clamp(20px,2.6vw,27px)] font-extrabold leading-[1.12]">{p.title}</h3>
+                        {/* 标题行：项目名称 + 「立即体验」胶囊按钮（有 demo 链接时显示，点击直达体验页） */}
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                          <h3 className="text-[clamp(20px,2.6vw,27px)] font-extrabold leading-[1.12]">{p.title}</h3>
+                          {p.demo && (
+                            <a
+                              href={p.demo}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => {
+                                // 卡片本体绑了 click 开弹窗，这里阻断冒泡，只跳转
+                                e.stopPropagation()
+                              }}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              draggable={false}
+                              className="inline-flex shrink-0 items-center gap-1 rounded-full border-1.5 border-ink bg-lime px-3 py-1 text-[11.5px] font-semibold text-ink shadow-hard-sm transition hover:-translate-y-0.5 hover:shadow-hard active:translate-y-0"
+                              aria-label={`立即体验 ${p.title}`}
+                            >
+                              立即体验
+                              <ArrowUpRight size={12} />
+                            </a>
+                          )}
+                        </div>
                         <p className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed text-ink/60">{p.summary}</p>
 
                         <div className="mt-5 grid grid-cols-3 gap-3">

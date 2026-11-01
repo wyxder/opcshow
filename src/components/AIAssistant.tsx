@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUp, Bot, ExternalLink, Loader2, Minus, RotateCcw, Sparkles, Square, X } from 'lucide-react'
+import { ArrowUp, ExternalLink, Loader2, Minus, RotateCcw, Square, X } from 'lucide-react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
 import { useFocusTrap } from '@/lib/a11y'
@@ -22,6 +22,8 @@ type Msg = {
   degraded?: boolean
   /** FE-14：用户主动停止/关闭时保留已生成内容并标注 */
   stopped?: boolean
+  /** 本会话内流式生成的回答才打打字机；问候语与历史恢复直接显示 */
+  streamed?: boolean
 }
 
 const sourceLabel = (source: AnswerSource, degraded?: boolean) => {
@@ -30,16 +32,113 @@ const sourceLabel = (source: AnswerSource, degraded?: boolean) => {
   return '预置问答 · 作者手写'
 }
 
+/** AI 分身的头像：回复气泡、浮标、面板头部共用 */
+const AVATAR_SRC = '/image/toux.jpg'
+
+function BotAvatar({ className }: { className?: string }) {
+  return (
+    <img
+      src={AVATAR_SRC}
+      alt="晓叶的 AI 分身头像"
+      width={28}
+      height={28}
+      loading="lazy"
+      className={cn('shrink-0 rounded-full border-1.5 border-ink object-cover', className)}
+    />
+  )
+}
+
+/**
+ * 打字机效果：服务端流式每推一段，这里用定时器把目标文本逐字“吐”出来，
+ * 视觉上比直接渲染 delta 更连贯亲切；reduce 偏好或一次性到达的完整文本则直接显示。
+ */
+function useTypewriter(target: string, animate: boolean) {
+  const [shown, setShown] = useState(animate ? '' : target)
+  const targetRef = useRef(target)
+  targetRef.current = target
+
+  useEffect(() => {
+    if (!animate) {
+      setShown(target)
+      return
+    }
+    setShown((cur) => (target.startsWith(cur) ? cur : ''))
+    let timer = 0
+    const tick = () => {
+      setShown((cur) => {
+        const full = targetRef.current
+        if (cur.length >= full.length) return cur
+        const next = full.slice(0, cur.length + 2)
+        if (next.length < full.length) timer = window.setTimeout(tick, 22)
+        return next
+      })
+    }
+    timer = window.setTimeout(tick, 60)
+    return () => window.clearTimeout(timer)
+  }, [animate])
+
+  return shown
+}
+
+/** 机器人回复气泡：左侧分身头像 + 打字机流式文本 */
+function BotBubble({
+  msg,
+  animate,
+  typing,
+  isLast,
+}: {
+  msg: Msg
+  animate: boolean
+  typing: boolean
+  isLast: boolean
+}) {
+  const shown = useTypewriter(msg.text, animate)
+  const stillTyping = animate && shown.length < msg.text.length
+  return (
+    <div className="flex items-end gap-2">
+      <BotAvatar className="h-7 w-7 shadow-hard-sm" />
+      <div className="max-w-[86%] whitespace-pre-line rounded-2xl rounded-bl-md border border-ink/12 bg-paper px-3 py-2 text-[12px] leading-relaxed text-ink/80">
+        {shown}
+        {(stillTyping || (typing && isLast && shown === '')) && <span className="animate-blink">▍</span>}
+        {msg.role === 'bot' && !animate && msg.text === '' && <span className="animate-blink">▍</span>}
+        {msg.stopped && (
+          <span className="ml-1 font-mono text-[9px] text-coral">已停止 · 可重试</span>
+        )}
+        {msg.text !== '' && !(animate && stillTyping) && msg.source && (
+          <span className="mt-1.5 flex items-center gap-1 border-t border-dashed border-ink/10 pt-1 font-mono text-[9px] text-ink/35">
+            {sourceLabel(msg.source, msg.degraded)}
+          </span>
+        )}
+        {/* AI3：引用锚点。RAG 接通后服务端返回 references，这里直接渲染 */}
+        {!!msg.references?.length && !animate && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {msg.references.map((r) => (
+              <Link
+                key={`${r.docId}-${r.section}`}
+                to={r.path}
+                className="flex items-center gap-1 rounded border border-ink/15 bg-cream px-1.5 py-0.5 font-mono text-[9px] text-ink/55 transition hover:border-ink hover:text-ink"
+                title={r.snippet ?? r.section}
+              >
+                <ExternalLink size={8} /> {r.section}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const greeting = (mode: AiMode): Msg => ({
   id: newId('greet'),
   role: 'bot',
   source: mode === 'preset' ? 'preset' : mode === 'retrieval' ? 'retrieval' : 'model',
   text:
     mode === 'model'
-      ? '你好，我是这个站的 AI 助手，回答来自服务端代理的模型（密钥不在浏览器里）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇。'
+      ? '嗨，我是晓叶的 AI 分身呀 👋 回答来自服务端代理的模型（密钥不在浏览器里）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇，都在行～'
       : mode === 'retrieval'
-        ? '你好，我是这个站的 AI 助手。服务端当前没有配置模型，回答会从站内文章里检索摘录（带引用、不编造）。\n\n可以问我 RAG、Agent 评测、项目细节。'
-        : '你好，我是这个站的 AI 助手。当前没有接入模型服务，回答来自作者手写的预置问答（离线可用）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇。',
+        ? '嗨，我是晓叶的 AI 分身 👋 服务端当前没有配置模型，回答会从站内文章里帮你检索摘录（带引用、不编造）。\n\n可以问我 RAG、Agent 评测、项目细节～'
+        : '嗨，我是晓叶的 AI 分身 👋 当前没有接入模型服务，回答来自作者手写的预置问答（离线可用）。\n\n可以问我 RAG、Agent 评测、项目细节，或者让我推荐先读哪篇～',
 })
 
 export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) {
@@ -148,7 +247,7 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
     setTyping(true)
     setFailed(false)
     setLastAsk(input)
-    setMsgs((m) => [...m, { id, role: 'bot', text: '' }])
+    setMsgs((m) => [...m, { id, role: 'bot', text: '', streamed: true }])
 
     cancelRef.current = askSite(
       {
@@ -208,11 +307,11 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
             onClick={() => setOpen(true)}
             className="group fixed bottom-[calc(88px_+_env(safe-area-inset-bottom))] right-4 z-[60] flex items-center gap-2.5 rounded-full border-1.5 border-ink bg-lime px-4 py-3 shadow-hard transition hover:-translate-y-0.5 lg:bottom-5 lg:right-5"
           >
-            <span className="relative flex h-7 w-7 items-center justify-center rounded-full border-1.5 border-ink bg-ink text-lime">
-              <Bot size={15} />
+            <span className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-1.5 border-ink bg-ink">
+              <BotAvatar className="h-full w-full border-0" />
               <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-ink bg-coral" />
             </span>
-            <span className="text-[12.5px] font-semibold">问问 AI 助手</span>
+            <span className="text-[12.5px] font-semibold">问问 AI 分身</span>
           </motion.button>
         ) : (
           <motion.div
@@ -225,15 +324,13 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
             className="fixed bottom-[calc(84px_+_env(safe-area-inset-bottom))] right-4 z-[65] flex h-[min(560px,78vh)] w-[min(380px,calc(100vw_-_2rem))] flex-col overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream shadow-hard-lg lg:bottom-4"
             role="dialog"
             aria-modal="true"
-            aria-label="AI 学习助手"
+            aria-label="AI 分身学习助手"
           >
             <div className="flex items-center justify-between gap-2 border-b-1.5 border-ink bg-ink px-3.5 py-2.5 text-paper">
               <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-lime/60 bg-lime/15 text-lime">
-                  <Sparkles size={14} />
-                </span>
+                <BotAvatar className="h-7 w-7 border-lime/60" />
                 <div className="leading-tight">
-                  <p className="text-[12px] font-semibold">晓叶的 AI 助手</p>
+                  <p className="text-[12px] font-semibold">晓叶的 AI 分身</p>
                   <p className="font-mono text-[9.5px] tracking-[0.14em] text-paper/40">
                     {mode === 'model' ? 'LIVE MODEL' : mode === 'retrieval' ? 'SITE RETRIEVAL' : 'PRESET ANSWERS'}
                   </p>
@@ -266,46 +363,22 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
               aria-relevant="additions text"
               aria-busy={typing}
             >
-              {msgs.map((m) => (
-                <div key={m.id} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-                  <div
-                    className={cn(
-                      'max-w-[86%] whitespace-pre-line rounded-2xl px-3 py-2 text-[12px] leading-relaxed',
-                      m.role === 'user'
-                        ? 'rounded-br-md border-1.5 border-ink bg-lime text-ink'
-                        : 'rounded-bl-md border border-ink/12 bg-paper text-ink/80',
-                    )}
-                  >
-                    {m.text}
-                    {m.role === 'bot' && m.text === '' && <span className="animate-blink">▍</span>}
-                    {m.role === 'bot' && m.stopped && (
-                      <span className="ml-1 font-mono text-[9px] text-coral">已停止 · 可重试</span>
-                    )}
-                    {m.role === 'bot' && m.text !== '' && m.source && (
-                      <span className="mt-1.5 flex items-center gap-1 border-t border-dashed border-ink/10 pt-1 font-mono text-[9px] text-ink/35">
-                        {sourceLabel(m.source, m.degraded)}
-                      </span>
-                    )}
-                    {/* AI3：引用锚点。RAG 接通后服务端返回 references，这里直接渲染 */}
-                    {!!m.references?.length && (
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {m.references.map((r) => (
-                          <Link
-                            key={`${r.docId}-${r.section}`}
-                            to={r.path}
-                            className="flex items-center gap-1 rounded border border-ink/15 bg-cream px-1.5 py-0.5 font-mono text-[9px] text-ink/55 transition hover:border-ink hover:text-ink"
-                            title={r.snippet ?? r.section}
-                          >
-                            <ExternalLink size={8} /> {r.section}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
+              {msgs.map((m, i) => {
+                const isLast = i === msgs.length - 1
+                if (m.role === 'bot')
+                  return (
+                    <BotBubble key={m.id} msg={m} typing={typing} isLast={isLast} animate={!!m.streamed && !reduce} />
+                  )
+                return (
+                  <div key={m.id} className="flex justify-end">
+                    <div className="max-w-[86%] whitespace-pre-line rounded-2xl rounded-br-md border-1.5 border-ink bg-lime px-3 py-2 text-[12px] leading-relaxed text-ink">
+                      {m.text}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
               {typing && (
-                <div className="flex items-center gap-2 text-[11px] text-ink/40">
+                <div className="flex items-center gap-2 pl-9 text-[11px] text-ink/40">
                   <Loader2 size={12} className="animate-spin" /> 正在翻我的笔记…
                   <button onClick={stop} className="ml-auto flex items-center gap-1 rounded-full border border-ink/20 px-2 py-0.5 text-[10px] text-ink/60 hover:border-ink hover:text-ink">
                     <Square size={9} /> 停止
@@ -347,7 +420,7 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
                   }}
                   placeholder="问点什么…（Enter 发送）"
                   className="max-h-24 flex-1 resize-none bg-transparent px-1.5 py-1 text-[12px] outline-none placeholder:text-ink/35"
-                  aria-label="给 AI 助手的问题"
+                  aria-label="给 AI 分身的问题"
                 />
                 <button
                   onClick={() => send()}

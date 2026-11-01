@@ -83,12 +83,17 @@ export default function Friends() {
       </div>
 
       <div className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_1fr]">
-        <div className="rounded-2xl border-1.5 border-ink bg-ink p-5 text-paper">
-          <div className="flex items-center gap-2">
-            <HeartHandshake size={16} className="text-lime" />
-            <h2 className="text-[15px] font-extrabold">交换友链</h2>
+        <div className="rounded-2xl border-1.5 border-ink bg-gradient-to-br from-cream to-sand p-5 text-ink shadow-hard-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border-1.5 border-ink bg-lime">
+              <HeartHandshake size={17} />
+            </span>
+            <div>
+              <h2 className="text-[15px] font-extrabold">交换友链</h2>
+              <p className="font-mono text-[8.5px] tracking-[0.18em] text-ink/40">LET'S TRADE LINKS</p>
+            </div>
           </div>
-          <p className="mt-2 text-[11.5px] leading-relaxed text-paper/55">
+          <p className="mt-3 text-[11.5px] leading-relaxed text-ink/60">
             只要是认真在写东西的个人站都欢迎。不要求流量，但希望你有 3 篇以上原创内容，并且站点不是纯 AI 生成。
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -98,9 +103,9 @@ export default function Friends() {
               ['地址', 'wyx.space'],
               ['头像 / 图标', '魏（酸性绿底）'],
             ].map(([k, v]) => (
-              <div key={k} className="rounded-lg border border-paper/15 px-2.5 py-2">
-                <p className="font-mono text-[9px] tracking-widest text-paper/35">{k}</p>
-                <p className="mt-0.5 text-[11px] text-paper/80">{v}</p>
+              <div key={k} className="rounded-lg border border-ink/12 bg-paper px-2.5 py-2">
+                <p className="font-mono text-[9px] tracking-widest text-ink/40">{k}</p>
+                <p className="mt-0.5 text-[11px] text-ink/80">{v}</p>
               </div>
             ))}
           </div>
@@ -109,31 +114,31 @@ export default function Friends() {
           </a>
 
           {/* BE-14：服务端在线时可直接提交，进 pending 等审核 */}
-          <form onSubmit={apply} className="mt-4 space-y-2 border-t border-paper/15 pt-3">
+          <form onSubmit={apply} className="mt-4 space-y-2 border-t border-dashed border-ink/15 pt-3">
             <div className="grid gap-2 sm:grid-cols-2">
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="站点名称"
-                className="rounded-lg border border-paper/20 bg-paper/5 px-2.5 py-2 text-[11px] text-paper placeholder:text-paper/30 outline-none focus:border-lime"
+                className="rounded-lg border border-ink/15 bg-paper px-2.5 py-2 text-[11px] text-ink placeholder:text-ink/35 outline-none focus:border-ink"
               />
               <input
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
                 placeholder="https://…"
-                className="rounded-lg border border-paper/20 bg-paper/5 px-2.5 py-2 text-[11px] text-paper placeholder:text-paper/30 outline-none focus:border-lime"
+                className="rounded-lg border border-ink/15 bg-paper px-2.5 py-2 text-[11px] text-ink placeholder:text-ink/35 outline-none focus:border-ink"
               />
             </div>
             <input
               value={form.desc}
               onChange={(e) => setForm({ ...form, desc: e.target.value })}
               placeholder="一句介绍（可选）"
-              className="w-full rounded-lg border border-paper/20 bg-paper/5 px-2.5 py-2 text-[11px] text-paper placeholder:text-paper/30 outline-none focus:border-lime"
+              className="w-full rounded-lg border border-ink/15 bg-paper px-2.5 py-2 text-[11px] text-ink placeholder:text-ink/35 outline-none focus:border-ink"
             />
             <button
               type="submit"
               disabled={busy || !serverConfig.enabled}
-              className="w-full rounded-lg border border-lime/50 bg-lime/15 py-2 text-[11.5px] font-semibold text-lime transition hover:bg-lime/25 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full rounded-lg border-1.5 border-ink bg-lime py-2 text-[11.5px] font-semibold text-ink transition hover:-translate-y-0.5 hover:shadow-hard-sm disabled:cursor-not-allowed disabled:opacity-40"
             >
               {busy ? '提交中…' : serverConfig.enabled ? '提交友链申请（进审核队列）' : '未接服务端：请用上方邮件申请'}
             </button>

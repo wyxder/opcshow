@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Flag, MessageSquare, Send, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Marquee, PageHead } from '@/components/ui/primitives'
+import { danmakuSeeds } from '@/data/me'
 import { useToast } from '@/components/ui/Toast'
 import { cn, readableInk, useLocalStorage } from '@/lib/utils'
 import { STORAGE_KEYS, isStringArray } from '@/lib/storage'
@@ -46,7 +47,7 @@ export default function Guestbook() {
     }
   }, [])
 
-  /** 内置示例（preset）留言默认不渲染到弹幕墙，只展示真实（本机 / 服务端）留言 */
+  /** 真实（本机 / 服务端）留言：排在弹幕墙上层，带来源标签 */
   const real = useMemo(() => items.filter((m) => m.source !== 'preset'), [items])
 
   const rows = useMemo(() => {
@@ -54,6 +55,19 @@ export default function Guestbook() {
     real.forEach((m, i) => r[i % 4].push(m))
     return r
   }, [real])
+
+  /** 内置示例（preset）留言：垫在墙底层常驻飞行，让墙面永远不空；按内容 hash 稳定分四行。
+   * 服务端模式下接口不返回种子，这里兜底直接读 danmakuSeeds */
+  const presetRows = useMemo(() => {
+    const presets: GuestMessage[] = items.filter((m) => m.source === 'preset')
+    const seeds: GuestMessage[] = presets.length > 0 ? presets : danmakuSeeds.map((d) => ({ ...d, time: '来访', source: 'preset' }))
+    const r: GuestMessage[][] = [[], [], [], []]
+    seeds.forEach((m, i) => {
+      const slot = [...m.id].reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % 4
+      r[(slot + i % 4) % 4].push(m)
+    })
+    return r
+  }, [items])
 
   const submit = async () => {
     if (sending) return
@@ -103,6 +117,14 @@ export default function Guestbook() {
     show(ok ? '已举报，累计 3 次会重新进入审核' : '举报失败：服务端暂时不可用')
   }
 
+  /** 弹幕胶囊样式：真实 / 预置两层共用，仅尺寸与标签不同 */
+  const chipClass = (preset: boolean) =>
+    cn(
+      'whitespace-nowrap rounded-full border',
+      preset ? 'border-paper/15 px-2.5 py-1 text-[10.5px] opacity-70' : 'border-paper/25 px-3 py-1.5 text-[11.5px]',
+    )
+  const chipStyle = (m: GuestMessage) => ({ background: m.color, color: readableInk(m.color) })
+
   return (
     <div className="shell">
       <PageHead
@@ -136,26 +158,45 @@ export default function Guestbook() {
           )}
           {!loading &&
             real.length > 0 &&
-            rows.map((row, i) => (
-            <Marquee
-              key={i}
-              speed={26 + i * 7}
-              reverse={i % 2 === 1}
-              separator=""
-              items={row.map((m) => (
-                <span
-                  key={m.id}
-                  className="whitespace-nowrap rounded-full border border-paper/25 px-3 py-1.5 text-[11.5px]"
-                  style={{ background: m.color, color: readableInk(m.color) }}
-                >
-                  <span className="font-semibold">{m.user}</span>
-                  <span className="mx-1.5 opacity-30">/</span>
-                  {m.text}
-                  <span className="ml-2 rounded bg-ink/10 px-1 font-mono text-[9px] opacity-60">{sourceLabel[m.source]}</span>
-                </span>
-              ))}
-            />
-          ))}
+            rows
+              .filter((row) => row.length > 0)
+              .map((row, i) => (
+              <Marquee
+                key={i}
+                speed={26 + i * 7}
+                reverse={i % 2 === 1}
+                separator=""
+                fill
+                items={row.map((m) => (
+                  <span key={m.id} className={chipClass(false)} style={chipStyle(m)}>
+                    <span className="font-semibold">{m.user}</span>
+                    <span className="mx-1.5 opacity-30">/</span>
+                    {m.text}
+                    <span className="ml-2 rounded bg-ink/10 px-1 font-mono text-[9px] opacity-60">{sourceLabel[m.source]}</span>
+                  </span>
+                ))}
+              />
+            ))}
+          {/* 内置示例弹幕：垫在真实留言下方常驻飞行，铺满整屏，保证墙面不空、观感完整 */}
+          {!loading &&
+            presetRows.map((row, i) =>
+              row.length > 0 ? (
+                <Marquee
+                  key={`p${i}`}
+                  speed={34 + i * 8}
+                  reverse={i % 2 === 0}
+                  separator=""
+                  fill
+                  items={row.map((m) => (
+                    <span key={m.id} className={chipClass(true)} style={chipStyle(m)}>
+                      <span className="font-semibold">{m.user}</span>
+                      <span className="mx-1 opacity-30">/</span>
+                      {m.text}
+                    </span>
+                  ))}
+                />
+              ) : null,
+            )}
         </div>
         <p className="relative mt-4 px-5 text-center font-hand text-[19px] text-paper/35">写点什么都行，我不会截图发群里。</p>
       </div>

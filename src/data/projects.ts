@@ -14,6 +14,8 @@ export type Project = {
   accent: string
   motif: 'grid' | 'orbit' | 'wave' | 'bars' | 'stack' | 'rings'
   featured?: boolean
+  /** 在线体验地址：有值时首页卡片显示「立即体验」按钮并跳转 */
+  demo?: string
 }
 
 export const projects: Project[] = [
@@ -46,6 +48,7 @@ export const projects: Project[] = [
     accent: 'rgb(var(--c-coral))',
     motif: 'wave',
     featured: true,
+    demo: 'https://commerce.wyx.space',
   },
   {
     id: 'douyin-rag',
@@ -76,6 +79,7 @@ export const projects: Project[] = [
     accent: 'rgb(var(--c-blue))',
     motif: 'orbit',
     featured: true,
+    demo: 'https://ragdesk.wyx.space',
   },
   {
     id: 'eval-rsi',
@@ -106,6 +110,7 @@ export const projects: Project[] = [
     accent: 'rgb(var(--c-grape))',
     motif: 'bars',
     featured: true,
+    demo: 'https://eval-lab.wyx.space',
   },
   {
     id: 'harness-research',
@@ -135,6 +140,7 @@ export const projects: Project[] = [
     tags: ['科研提效', 'MCP', '知识图谱'],
     accent: 'rgb(var(--c-ink))',
     motif: 'grid',
+    demo: 'https://research-harness.wyx.space',
   },
   {
     id: 'coder-platform',
