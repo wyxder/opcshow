@@ -10,6 +10,7 @@ import { flushStay, trackPageview } from '@/services/analytics'
  * 预渲染 HTML 已包含首页正文，chunk 到达前不会白屏。
  * ------------------------------------------------------------------------- */
 const Home = lazy(() => import('@/pages/Home'))
+const Avatar = lazy(() => import('@/features/ai-avatar/pages/AICharacter'))
 const Learn = lazy(() => import('@/pages/Learn'))
 const Reader = lazy(() => import('@/pages/Reader'))
 const Resume = lazy(() => import('@/pages/Resume'))
@@ -40,6 +41,7 @@ function AnimatedOutlet() {
           <Routes location={location}>
             <Route element={<Layout />}>
               <Route index element={<Home />} />
+              <Route path="ai" element={<Avatar />} />
               <Route path="learn" element={<Learn />} />
               <Route path="learn/:id" element={<Reader />} />
               <Route path="work" element={<Navigate to="/work/resume" replace />} />

@@ -124,6 +124,10 @@ export default {
           '0%,100%': { transform: 'rotate(-2deg)' },
           '50%': { transform: 'rotate(2deg)' },
         },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
       },
       animation: {
         marquee: 'marquee 26s linear infinite',
@@ -133,6 +137,7 @@ export default {
         blink: 'blink 1.6s ease-in-out infinite',
         shimmer: 'shimmer 4s linear infinite',
         wiggle: 'wiggle 1.8s ease-in-out infinite',
+        'fade-in': 'fadeIn 0.3s ease-out both',
       },
     },
   },

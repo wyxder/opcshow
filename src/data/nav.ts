@@ -27,10 +27,22 @@ export const navItems: NavItem[] = [
     ],
   },
   {
+    key: 'ai',
+    label: 'AI分身',
+    en: 'AVATAR',
+    index: '02',
+    to: '/ai',
+    children: [
+      { label: '声音克隆', desc: '30 秒复刻你的音色', to: '/ai?tab=voice', icon: 'mic' },
+      { label: '形象复刻', desc: '一张照片生成数字形象', to: '/ai?tab=avatar', icon: 'wand' },
+      { label: '数字人对话', desc: '和专属分身聊两句 · 默认入口', to: '/ai?tab=chat', icon: 'bot' },
+    ],
+  },
+  {
     key: 'learn',
     label: '学习',
     en: 'LEARN',
-    index: '02',
+    index: '03',
     to: '/learn',
     children: [
       { label: '知识库', desc: 'RAG / Agent / 工程手记', to: '/learn', icon: 'book' },
@@ -43,7 +55,7 @@ export const navItems: NavItem[] = [
     key: 'work',
     label: '工作',
     en: 'WORK',
-    index: '03',
+    index: '04',
     to: '/work/resume',
     children: [
       { label: '简历', desc: '一页纸的完整履历', to: '/work/resume', icon: 'file' },
@@ -55,7 +67,7 @@ export const navItems: NavItem[] = [
     key: 'life',
     label: '生活',
     en: 'LIFE',
-    index: '04',
+    index: '05',
     // 默认入口 = 朋友圈（菜单第一项），/life 会在 App 路由里重定向到这里
     to: '/life/moments',
     children: [
@@ -69,7 +81,7 @@ export const navItems: NavItem[] = [
     key: 'me',
     label: '我的',
     en: 'ME',
-    index: '05',
+    index: '06',
     to: '/me',
     children: [
       { label: '自我介绍', desc: '四张卡片认识我', to: '/me', icon: 'user' },

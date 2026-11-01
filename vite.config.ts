@@ -70,13 +70,51 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        // AI 分身模块内置的 Live2D Framework / Core
+        '@framework': path.resolve(__dirname, './src/features/ai-avatar/lib/live2d/Framework/src'),
+        '@live2dCore': path.resolve(__dirname, './src/features/ai-avatar/lib/live2d/Core'),
       },
+    },
+    // AI 分身引入的重依赖预构建：避免首次进入 /ai 时才触发依赖重优化，
+    // 导致正在进行的路由懒加载 chunk 请求失败（Failed to fetch dynamically imported module）
+    optimizeDeps: {
+      include: [
+        'three',
+        '@react-three/fiber',
+        '@react-three/drei',
+        'echarts',
+        'echarts-for-react',
+        'html2canvas',
+        'qrcode',
+        'zustand',
+        '@supabase/supabase-js',
+      ],
     },
     server: {
       port: 5273,
       host: true,
       // 本地开发建议 VITE_API_BASE=/api：同源代理到后端，HttpOnly Cookie 才能稳定携带
       proxy: {
+        // AI 分身：DeepSeek 网关（浏览器跨域受限，统一走同源代理）
+        '/api/dxkp': {
+          target: 'https://ai.dxkp.com',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (p) => p.replace(/^\/api\/dxkp/, ''),
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq) => {
+              proxyReq.setHeader('Origin', 'https://ai.dxkp.com')
+              proxyReq.setHeader('Referer', 'https://ai.dxkp.com/')
+            })
+          },
+        },
+        // AI 分身：ModelScope 图像（形象复刻）
+        '/api/modelscope': {
+          target: 'https://api-inference.modelscope.cn',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (p) => p.replace(/^\/api\/modelscope/, ''),
+        },
         '/api': {
           target: env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8787',
           changeOrigin: false,

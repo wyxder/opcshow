@@ -18,7 +18,9 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@framework/*": ["src/features/ai-avatar/lib/live2d/Framework/src/*"],
+      "@live2dCore/*": ["src/features/ai-avatar/lib/live2d/Core/*"]
     },
     "types": ["node"]
   },

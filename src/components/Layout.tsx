@@ -20,6 +20,7 @@ import {
   Mail,
   Map,
   MessageCircle,
+  Mic,
   Music,
   Search,
   Send,
@@ -28,6 +29,7 @@ import {
   Sparkles,
   Trophy,
   User,
+  Wand2,
   type LucideIcon,
 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
@@ -69,6 +71,8 @@ const icons: Record<string, LucideIcon> = {
   timeline: GitBranch,
   send: Send,
   link: Link2,
+  mic: Mic,
+  wand: Wand2,
 }
 
 /* ------------------------------ scroll helpers ----------------------------- */
@@ -233,7 +237,7 @@ function Header() {
 
             {/* desktop nav：一级项间距拉开（gap 5 / xl 7），下拉面板仍对准各自项 */}
             <nav
-              className="hidden items-center gap-x-5 px-1 lg:flex xl:gap-x-7"
+              className="hidden shrink-0 items-center gap-x-3 px-1 lg:flex xl:gap-x-7"
               onMouseLeave={scheduleClose}
               onBlur={(e) => {
                 // 焦点离开整个导航容器才收起；在一级/二级之间移动不会关
@@ -261,7 +265,8 @@ function Header() {
                     aria-expanded={openKey === item.key}
                     onClick={() => setOpenKey(openKey === item.key ? null : item.key)}
                     className={cn(
-                      'relative flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-medium transition-colors',
+                      // whitespace-nowrap：6 个菜单项后导航变挤，禁止「首页」被折成两行
+                      'relative flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-2 text-[12px] font-medium transition-colors xl:px-3.5 xl:text-[13px]',
                       isActive(item) ? 'text-ink' : 'text-ink/60 hover:text-ink',
                     )}
                   >
@@ -272,7 +277,7 @@ function Header() {
                         transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                       />
                     )}
-                    <span className="font-mono text-[9px] opacity-40">{item.index}</span>
+                    <span className="hidden font-mono text-[9px] opacity-40 xl:inline">{item.index}</span>
                     {item.label}
                     <ChevronDown size={11} className={cn('transition-transform', openKey === item.key && 'rotate-180')} />
                   </Link>
@@ -516,10 +521,10 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 /* ------------------------------ mobile tab bar ----------------------------- */
-/* 移动端底部菜单栏：首页 / 学习 / 工作 / 生活 / 我的（lg 以下显示）。
-   子菜单已移到顶栏，这里只保留 5 个主入口，避免底部堆两层。
+/* 移动端底部菜单栏：首页 / AI分身 / 学习 / 工作 / 生活 / 我的（lg 以下显示）。
+   子菜单已移到顶栏，这里只保留 6 个主入口，避免底部堆两层。
    用 portal 挂到 body：即使页面切换动画给祖先加了 transform，fixed 也始终贴着视口底部。 */
-const tabIcons: Record<string, LucideIcon> = { home: Home, learn: BookOpen, work: FileText, life: Heart, me: User }
+const tabIcons: Record<string, LucideIcon> = { home: Home, ai: Sparkles, learn: BookOpen, work: FileText, life: Heart, me: User }
 
 function MobileTabBar() {
   const { pathname } = useLocation()
@@ -552,7 +557,7 @@ function MobileTabBar() {
                   />
                 )}
                 <Icon size={16} strokeWidth={active ? 2.4 : 2} />
-                <span className="text-[10px] font-bold leading-none">{item.label}</span>
+                <span className="text-[9.5px] font-bold leading-none">{item.label}</span>
               </Link>
             )
           })}
@@ -704,8 +709,8 @@ function Footer() {
               <FooterNavSection key={item.key} item={item} compact />
             ))}
           </div>
-          {/* 桌面端 5 个分组各占一列，避免「05 我的」被挤到 04 生活右侧 / 换行错位 */}
-          <div className="hidden grid-cols-5 gap-5 lg:grid lg:col-span-3">
+          {/* 桌面端 6 个分组各占一列，避免「06 我的」被挤到上一列右侧 / 换行错位 */}
+          <div className="hidden grid-cols-6 gap-4 lg:grid lg:col-span-3">
             {navItems.map((item) => (
               <FooterNavSection key={item.key} item={item} />
             ))}
@@ -738,6 +743,9 @@ function GlobalAssistant() {
     if (new URLSearchParams(search).get('assistant') === '1') openAssistant()
   }, [pathname, search])
 
+  // AI 分身页本身就是一个完整对话界面，不再叠加右下角助手，避免功能与视觉重复
+  if (pathname.startsWith('/ai')) return null
+
   return (
     <Suspense fallback={null}>
       <AIAssistant />
@@ -747,6 +755,20 @@ function GlobalAssistant() {
 
 /* --------------------------------- layout --------------------------------- */
 export default function Layout() {
+  const { pathname } = useLocation()
+  // AI 分身是沉浸式全屏页面：不渲染页脚，页面自身占满顶栏以下的可用高度
+  const isAvatarPage = pathname.startsWith('/ai')
+
+  // 锁定页面级滚动：AI 分身页内容自行滚动，避免向下滑动时露出首页式页脚/底部区域
+  useEffect(() => {
+    if (!isAvatarPage) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [isAvatarPage])
+
   return (
     <div className="relative min-h-screen">
       {/* fx.md A2：键盘用户第一个可聚焦元素就是「跳到主内容」 */}
@@ -756,10 +778,18 @@ export default function Layout() {
       <ScrollProgress />
       <Header />
       <ScrollToTop />
-      <main id="main" tabIndex={-1} className="relative z-10 pt-[88px] outline-none">
+      <main
+        id="main"
+        tabIndex={-1}
+        className={cn(
+          'relative z-10 outline-none',
+          // AI 分身是沉浸式全屏页：不再预留顶栏高度，背景由页面自身铺满整屏
+          isAvatarPage ? 'pt-0' : 'pt-[88px]',
+        )}
+      >
         <Outlet />
       </main>
-      <Footer />
+      {!isAvatarPage && <Footer />}
       <MobileTabBar />
       <BackToTop />
       <GlobalAssistant />
