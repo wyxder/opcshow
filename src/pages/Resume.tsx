@@ -1,9 +1,9 @@
-import { ArrowUpRight, Download, FileText, Mail, MapPin, Phone, Printer, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Download, FileText, Printer, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { ProjectModal } from '@/components/ProjectModal'
 import { PageHead } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/Toast'
-import { awards, education, figures, profile, research, skillGroups, stats } from '@/data/site'
+import { awards, education, figures, profile, research } from '@/data/site'
 import { projects, type Project } from '@/data/projects'
 import { resumeSnapshot } from '@/data/work'
 import { cn } from '@/lib/utils'
@@ -50,73 +50,8 @@ export default function Resume() {
       />
 
       <div className="grid gap-5 lg:grid-cols-12">
-        {/* left rail */}
-        <aside className="space-y-3 lg:col-span-4 lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-2xl border-1.5 border-ink bg-cream p-5 shadow-hard">
-            <div className="flex items-center gap-3">
-              <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border-1.5 border-ink bg-lime">
-                <div className="absolute inset-0 halftone opacity-25" />
-                <span className="relative font-display text-xl font-extrabold">魏</span>
-              </div>
-              <div>
-                <h1 className="text-[22px] font-extrabold leading-none">晓叶</h1>
-                <p className="mt-1 font-mono text-[9px] tracking-[0.18em] text-ink/40">AI FULLSTACK · 2028 届</p>
-              </div>
-            </div>
-            <p className="mt-3 text-[12px] leading-relaxed text-ink/60">
-              AI 全栈 / 智能体开发实习 · 6 个月以上 · 5 天/周 · 随时到岗
-            </p>
-            <div className="mt-4 space-y-2 border-t border-dashed border-ink/20 pt-3.5 text-[11.5px]">
-              {[
-                { icon: Mail, v: profile.email },
-                { icon: Phone, v: profile.phone },
-                { icon: MapPin, v: '西安 · 可接受远程 / 出差' },
-              ].map((c) => (
-                <p key={c.v} className="flex items-center gap-2 text-ink/65">
-                  <c.icon size={12} className="text-ink/35" /> {c.v}
-                </p>
-              ))}
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {stats.slice(0, 4).map((s) => (
-                <div key={s.label} className="rounded-lg bg-paper px-2.5 py-2">
-                  <p className="font-display text-[17px] font-extrabold leading-none">
-                    {s.value}
-                    <span className="text-[10px] text-coral">{s.suffix}</span>
-                  </p>
-                  <p className="mt-1 text-[9.5px] text-ink/45">{s.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border-1.5 border-ink bg-cream p-5">
-            <SectionTitle no="A" title="技能" en="SKILLS" />
-            <div className="space-y-2.5">
-              {skillGroups.map((s) => (
-                <div key={s.key}>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-medium">{s.title}</span>
-                    <span className="font-mono text-[9px] text-ink/35">{s.level}</span>
-                  </div>
-                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-ink/10">
-                    <div className="h-full rounded-full bg-ink" style={{ width: `${s.level}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 flex flex-wrap gap-1">
-              {['Python', 'Java', 'React', 'Vue', 'FastAPI', 'Spring Boot', 'Redis', 'LangGraph', 'MCP', 'Three.js'].map((t) => (
-                <span key={t} className="rounded border border-ink/15 bg-paper px-1.5 py-0.5 font-mono text-[9px] text-ink/55">
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-        </aside>
-
         {/* main */}
-        <div className="space-y-4 lg:col-span-8">
+        <div className="space-y-4 lg:col-span-12">
           <div className="rounded-2xl border-1.5 border-ink bg-lime/40 p-5">
             <p className="flex items-center gap-1.5 font-mono text-[9.5px] tracking-[0.18em] text-ink/50">
               <Sparkles size={11} /> HIGHLIGHTS · 一句话版

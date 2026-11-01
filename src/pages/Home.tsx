@@ -50,6 +50,68 @@ const colorMap: Record<string, string> = {
 
 const hobbyIcons = [Utensils, Bike, Coffee, Camera, Film, BookOpen]
 
+/* -------------------------------- typewriter ------------------------------- */
+/** 身份句随机切换的候选短语——每次从「不是当前这条」里随机挑一个，避免连着重复 */
+const heroRoles = [
+  'AI 应用与智能体开发者',
+  'RAG 工程化实践者',
+  '把 Agent 做成产品的人',
+  '多模态 AI 方向研究生',
+  'AI 商业产品创造者',
+]
+
+/**
+ * 打字机特效：逐字打出 → 停顿 → 逐字删除 → 换下一条随机短语。
+ * reduced-motion 下静止显示第一条，不跑逐帧定时器。
+ */
+function Typewriter({ words }: { words: string[] }) {
+  const reduce = usePrefersReducedMotion()
+  const [wi, setWi] = useState(0)
+  const [text, setText] = useState('')
+  const [phase, setPhase] = useState<'typing' | 'pausing' | 'deleting'>('typing')
+
+  // 随机挑选下一条（与当前不同）
+  const nextWord = () => setWi((cur) => {
+    if (words.length <= 1) return cur
+    let n = cur
+    while (n === cur) n = Math.floor(Math.random() * words.length)
+    return n
+  })
+
+  useEffect(() => {
+    if (reduce) {
+      setText(words[0])
+      return
+    }
+    const full = words[wi]
+    let timer: number
+    if (phase === 'typing') {
+      if (text.length < full.length) {
+        timer = window.setTimeout(() => setText(full.slice(0, text.length + 1)), 110)
+      } else {
+        timer = window.setTimeout(() => setPhase('deleting'), 2200)
+      }
+    } else if (phase === 'deleting') {
+      if (text.length > 0) {
+        timer = window.setTimeout(() => setText(full.slice(0, text.length - 1)), 45)
+      } else {
+        nextWord()
+        setPhase('typing')
+      }
+    }
+    return () => window.clearTimeout(timer)
+  }, [text, phase, wi, words, reduce])
+
+  return (
+    <span className="text-coral" aria-label={words.join('，')}>
+      <span aria-hidden>{text}</span>
+      {!reduce && (
+        <span className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-blink bg-coral align-middle" aria-hidden />
+      )}
+    </span>
+  )
+}
+
 /* ---------------------------------- hero ---------------------------------- */
 /**
  * 首页第一面（2026 改版）：暖色编辑排版。
@@ -93,7 +155,7 @@ function Hero({ onContact }: { onContact: () => void }) {
           <h1 className="mt-6 sm:mt-8">
             <span className="block text-[clamp(32px,5vw,52px)] font-black leading-[1.06] tracking-[-0.04em] text-ink/85">你好，我是</span>
             <span className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-2 sm:mt-2">
-              <span className="hero-name whitespace-nowrap text-[clamp(42px,7vw,76px)] font-black leading-[1.08] tracking-[-0.05em]">魏云潇</span>
+              <span className="hero-name whitespace-nowrap text-[clamp(42px,7vw,76px)] font-black leading-[1.08] tracking-[-0.05em]">晓叶</span>
               <span aria-hidden className="animate-wiggle text-[clamp(26px,4vw,42px)] leading-none">👋</span>
             </span>
           </h1>
@@ -101,7 +163,7 @@ function Hero({ onContact }: { onContact: () => void }) {
 
         <Reveal delay={0.12}>
           <p className="mt-5 text-[clamp(17px,2vw,20px)] font-bold text-ink/80">
-            我是一名 <span className="text-coral">AI 应用与智能体开发者</span>
+            我是一名 <Typewriter words={heroRoles} />
           </p>
           <p className="mt-4 max-w-[620px] text-[13.5px] leading-[1.9] text-ink-soft sm:text-[14.5px]">
             陕西科技大学多模态 AI 方向硕士在读，CCF-A 学生一作在投，{figures.products} 款 AI 商业产品上线者，{figures.mainPlatformFollowers} 粉 AI 自媒体博主。信奉「把 Agent 做成产品，把产品做成事业」。
@@ -318,67 +380,68 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
                     )}
                   >
                     <div
-                      className="relative overflow-hidden rounded-[22px] border-1.5 border-lime/70 bg-ink p-5 text-paper sm:p-7"
+                      className="relative overflow-hidden rounded-[22px] border border-ink/12 bg-cream/55 p-5 text-ink backdrop-blur-xl sm:p-7"
                       style={{
+                        // 阴影统一染成项目主色的柔光，不用灰色投影；两侧卡更轻
                         boxShadow: isMain
-                          ? `0 0 0 1px color-mix(in srgb, ${p.accent} 55%, transparent), 0 32px 70px -34px color-mix(in srgb, ${p.accent} 60%, transparent)`
-                          : undefined,
+                          ? `0 0 0 1px color-mix(in srgb, ${p.accent} 45%, transparent), 0 30px 64px -34px color-mix(in srgb, ${p.accent} 50%, transparent)`
+                          : `0 24px 56px -40px color-mix(in srgb, ${p.accent} 40%, transparent)`,
                       }}
                     >
                       <div
-                        className="pointer-events-none absolute inset-0 opacity-[0.18]"
+                        className="pointer-events-none absolute inset-0 opacity-[0.12]"
                         style={{ background: `radial-gradient(120% 100% at 100% 0%, ${p.accent} 0%, transparent 62%)` }}
                       />
-                      <div className="pointer-events-none absolute inset-0 grid-paper opacity-[0.06]" />
+                      <div className="pointer-events-none absolute inset-0 grid-paper opacity-[0.05]" />
 
                       <div className="relative flex flex-col">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-[10px] tracking-[0.18em] text-paper/45">
+                          <span className="font-mono text-[10px] tracking-[0.18em] text-ink/45">
                             {pad2(i + 1)} / {pad2(n)} · {p.role}
                           </span>
                           {p.award && (
-                            <span className="inline-flex max-w-[62%] items-center gap-1 truncate rounded-full border border-lime/60 bg-lime/10 px-2 py-0.5 text-[9.5px] font-medium text-lime">
+                            <span className="inline-flex max-w-[62%] items-center gap-1 truncate rounded-full border border-ink/15 bg-lime/60 px-2 py-0.5 text-[9.5px] font-medium text-ink">
                               <Award size={9} className="shrink-0" />
                               <span className="truncate">{p.award}</span>
                             </span>
                           )}
                         </div>
                         {/* 封面：Plate 主题图形，随主题色 / 项目类型变化 */}
-                        <div className="relative mt-3.5 h-28 overflow-hidden rounded-[14px] border border-paper/15 sm:h-36">
+                        <div className="relative mt-3.5 h-28 overflow-hidden rounded-[14px] border border-ink/12 sm:h-36">
                           <Plate motif={p.motif} accent={p.accent} className="absolute inset-0" />
-                          <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-transparent" />
-                          <span className="absolute left-2.5 top-2.5 rounded-full border border-paper/25 bg-ink/70 px-2 py-0.5 font-mono text-[8.5px] tracking-[0.14em] text-paper/80">
+                          <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-cream/70 via-transparent to-transparent" />
+                          <span className="absolute left-2.5 top-2.5 rounded-full border border-ink/15 bg-cream/85 px-2 py-0.5 font-mono text-[8.5px] tracking-[0.14em] text-ink/65 backdrop-blur-sm">
                             COVER / {p.category}
                           </span>
                           <span className="absolute inset-x-3 bottom-2.5 flex items-end justify-between gap-2">
-                            <span className="truncate font-mono text-[9px] tracking-[0.16em] text-paper/85">{p.en}</span>
-                            <span className="shrink-0 font-mono text-[9px] text-paper/60">{p.period}</span>
+                            <span className="truncate font-mono text-[9px] tracking-[0.16em] text-ink/75">{p.en}</span>
+                            <span className="shrink-0 font-mono text-[9px] text-ink/55">{p.period}</span>
                           </span>
                         </div>
                         <h3 className="mt-3 text-[clamp(20px,2.6vw,27px)] font-extrabold leading-[1.12]">{p.title}</h3>
-                        <p className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed text-paper/65">{p.summary}</p>
+                        <p className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed text-ink/60">{p.summary}</p>
 
                         <div className="mt-5 grid grid-cols-3 gap-3">
                           {p.metrics.slice(0, 3).map((m) => (
                             <div key={m.label}>
-                              <p className="break-words text-[clamp(16px,2vw,22px)] font-extrabold leading-tight text-lime">{m.value}</p>
+                              <p className="break-words text-[clamp(16px,2vw,22px)] font-extrabold leading-tight text-coral">{m.value}</p>
                               <span className="mt-1 block h-[3px] w-6 rounded-full" style={{ background: p.accent }} />
-                              <p className="mt-1 truncate font-mono text-[9px] tracking-wide text-paper/45">{m.label}</p>
+                              <p className="mt-1 truncate font-mono text-[9px] tracking-wide text-ink/45">{m.label}</p>
                             </div>
                           ))}
                         </div>
 
                         <div className="mt-5 flex flex-wrap gap-1.5">
                           {p.tags.slice(0, 3).map((t) => (
-                            <span key={t} className="rounded-full border border-paper/20 bg-paper/5 px-2 py-0.5 font-mono text-[9.5px] text-paper/70">
+                            <span key={t} className="rounded-full border border-ink/12 bg-cream/50 px-2 py-0.5 font-mono text-[9.5px] text-ink/60">
                               {t}
                             </span>
                           ))}
                         </div>
 
-                        <div className="mt-5 flex items-center justify-between gap-2 border-t border-paper/15 pt-4">
-                          <span className="font-mono text-[9px] tracking-wide text-paper/45">{p.period}</span>
-                          <span className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.14em] text-lime">
+                        <div className="mt-5 flex items-center justify-between gap-2 border-t border-ink/10 pt-4">
+                          <span className="font-mono text-[9px] tracking-wide text-ink/45">{p.period}</span>
+                          <span className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.14em] text-coral">
                             ONLINE · {p.category} <ArrowUpRight size={12} />
                           </span>
                         </div>
@@ -580,7 +643,7 @@ function Honors() {
         }
       />
       <div className="grid gap-6 lg:grid-cols-12">
-        <div className="order-2 min-w-0 lg:col-span-8">
+        <div className="order-2 min-w-0 lg:order-2 lg:col-span-8">
           {/* 轻量分段控件：按类型筛选 */}
           <div className="mb-3 flex flex-wrap gap-1.5" role="tablist" aria-label="奖项筛选">
             {filters.map((f) => (
@@ -628,12 +691,13 @@ function Honors() {
           </div>
         </div>
 
-        <div className="order-1 lg:col-span-4">
-          <div className="flex h-full flex-col gap-2.5">
+        <div className="order-1 lg:order-1 lg:col-span-4">
+          {/* 两卡等高：左侧栏总高由右侧奖项列表撑开，1fr/1fr 均分避免一高一矮 */}
+          <div className="grid h-full grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
             {/* 年度战绩卡：深色底 + 计数动画，与其他区块样式区分 */}
-            <div className="relative overflow-hidden rounded-2xl border-1.5 border-ink bg-ink p-5 text-paper">
+            <div className="relative flex flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-ink p-5 text-paper">
               <div className="absolute inset-0 halftone opacity-[0.14]" />
-              <div className="relative">
+              <div className="relative flex flex-1 flex-col justify-center">
                 <div className="flex items-center justify-between">
                   <p className="font-mono text-[9px] tracking-[0.2em] text-lime">ANNUAL RECORD · 2026</p>
                   <Trophy size={13} className="text-lime" />
@@ -652,7 +716,7 @@ function Honors() {
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl border-1.5 border-ink bg-lime p-5">
+            <div className="relative flex flex-col justify-center overflow-hidden rounded-2xl border-1.5 border-ink bg-lime p-5">
               <Quote size={22} />
               <p className="mt-2 font-display text-[19px] font-extrabold leading-snug">
                 黑客松不是比赛，
@@ -854,28 +918,31 @@ function LifeTeaser() {
   return (
     <section>
       <SectionHead index="04" title="生活切片" en="OFF SCREEN" desc="工作之外的那部分，才让这个网站像个人。" action={<Link to="/life/moments" className="inline-flex min-h-[32px] items-center rounded-full px-2 font-mono text-[10px] tracking-widest text-ink/45 transition hover:bg-lime/25 hover:text-ink">进入生活频道 →</Link>} />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 移动端一行 2 个：四张卡在一屏内就能扫完 */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         {blocks.map((b, i) => {
           const Icon = b.icon
           return (
             <Reveal key={b.to} delay={i * 0.06}>
               <Link
                 to={b.to}
-                className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard"
+                className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard sm:p-5"
               >
                 <div
-                  className="absolute -right-8 -top-8 h-24 w-24 rounded-full border-1.5 border-ink/20 transition-transform duration-500 group-hover:scale-125"
+                  className="absolute -right-6 -top-6 h-16 w-16 rounded-full border-1.5 border-ink/20 transition-transform duration-500 group-hover:scale-125 sm:-right-8 sm:-top-8 sm:h-24 sm:w-24"
                   style={{ background: b.color }}
                 />
-                <div className="relative flex items-center justify-between">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg border-1.5 border-ink bg-paper">
+                <div className="relative flex items-center justify-between gap-1">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink bg-paper sm:h-9 sm:w-9">
                     <Icon size={15} />
                   </span>
-                  <span className="font-mono text-[9px] tracking-widest text-ink/40">{b.tag}</span>
+                  <span className="min-w-0 truncate font-mono text-[8px] tracking-wide text-ink/40 sm:text-[9px] sm:tracking-widest">
+                    {b.tag}
+                  </span>
                 </div>
-                <h3 className="relative mt-4 text-[17px] font-extrabold">{b.title}</h3>
-                <p className="relative mt-1.5 text-[11.5px] leading-relaxed text-ink/50">{b.desc}</p>
-                <span className="relative mt-4 inline-flex items-center gap-1 font-mono text-[9.5px] tracking-widest text-ink/45 group-hover:text-ink">
+                <h3 className="relative mt-2.5 text-[13.5px] font-extrabold sm:mt-4 sm:text-[17px]">{b.title}</h3>
+                <p className="relative mt-1 text-[10px] leading-relaxed text-ink/50 sm:mt-1.5 sm:text-[11.5px]">{b.desc}</p>
+                <span className="relative mt-2.5 inline-flex items-center gap-1 font-mono text-[9px] tracking-wide text-ink/45 group-hover:text-ink sm:mt-4 sm:text-[9.5px] sm:tracking-widest">
                   去看看 <ArrowUpRight size={11} className="transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                 </span>
               </Link>
@@ -961,9 +1028,9 @@ function HomeCTA() {
         <div>
           <p className="font-mono text-[9.5px] tracking-[0.22em] text-lime">NEXT STEP</p>
           <h2 className="mt-3 max-w-xl font-display text-[clamp(26px,4.6vw,46px)] font-extrabold leading-[1.02]">
-            我需要一份实习，
+            把 Agent 做成产品，
             <br />
-            你们需要一个能做事的人。
+            把产品做成事业。
           </h2>
           <p className="mt-4 max-w-lg text-[13px] leading-relaxed text-paper/60">
             研二在读，可以 6 个月以上、每周 5 天，随时到岗。接受加班，也接受被质疑方案——只要最后东西能跑起来。
@@ -1015,7 +1082,8 @@ export default function Home() {
     <div className="shell">
       <Hero onContact={() => setCardOpen(true)} />
 
-      <div className="relative my-10 overflow-hidden border-y-1.5 border-ink bg-lime py-2.5">
+      {/* 奖项跑马灯：负 margin 抵消 shell 左右 gutter，整行占满视口宽度 */}
+      <div className="relative my-10 mx-[calc(50%_-_50vw)] overflow-hidden border-y-1.5 border-ink bg-lime py-2.5">
         <Marquee
           speed={32}
           items={awards.slice(0, 8).map((a) => (

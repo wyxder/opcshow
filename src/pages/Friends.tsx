@@ -44,7 +44,8 @@ export default function Friends() {
         right={<span className="font-mono text-[9.5px] text-ink/45">{friends.length} 个友链 · 持续更新</span>}
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* 友链卡片：移动端一行 2 个 */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
         {friends.map((f) => {
           const Tag = f.url ? 'a' : 'div'
           return (
@@ -53,27 +54,28 @@ export default function Friends() {
               {...(f.url
                 ? { href: f.url, target: '_blank', rel: 'noopener noreferrer' }
                 : { 'aria-label': `${f.name}（链接暂未公开）` })}
-              className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard"
+              className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard sm:p-5"
             >
-            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full border-1.5 border-ink/10" style={{ background: `color-mix(in srgb, ${f.color} 44%, transparent)` }} />
-            <div className="relative flex items-start gap-3">
+            <div className="absolute -right-5 -top-5 h-14 w-14 rounded-full border-1.5 border-ink/10 sm:-right-6 sm:-top-6 sm:h-20 sm:w-20" style={{ background: `color-mix(in srgb, ${f.color} 44%, transparent)` }} />
+            <div className="relative flex items-start gap-1.5 sm:gap-3">
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-1.5 border-ink font-display text-[15px] font-extrabold"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink font-display text-[11px] font-extrabold sm:h-11 sm:w-11 sm:rounded-xl sm:text-[15px]"
                 style={{ background: f.color }}
               >
                 {f.avatar}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-extrabold">{f.name}</p>
-                <span className="mt-0.5 inline-block rounded-full border border-ink/15 bg-paper px-1.5 py-0.5 font-mono text-[9.5px] text-ink/50">
+                <p className="truncate text-[11.5px] font-extrabold sm:text-[14px]">{f.name}</p>
+                <span className="mt-0.5 inline-block max-w-full truncate rounded-full border border-ink/15 bg-paper px-1 py-0.5 font-mono text-[8px] text-ink/50 sm:px-1.5 sm:text-[9.5px]">
                   {f.tag}
                 </span>
               </div>
-              <ArrowUpRight size={14} className="shrink-0 text-ink/25 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ink" />
+              <ArrowUpRight size={14} className="hidden shrink-0 text-ink/25 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ink sm:block" />
             </div>
-            <p className="relative mt-3 flex-1 text-[11.5px] leading-relaxed text-ink/55">{f.desc}</p>
-              <p className="relative mt-3 flex items-center gap-1 border-t border-dashed border-ink/12 pt-2 font-mono text-[9px] text-ink/35">
-                <Link2 size={9} /> {f.url ?? '链接暂未公开'}
+            <p className="relative mt-2 line-clamp-3 flex-1 text-[10px] leading-relaxed text-ink/55 sm:mt-3 sm:line-clamp-none sm:text-[11.5px]">{f.desc}</p>
+              <p className="relative mt-2 flex items-center gap-1 border-t border-dashed border-ink/12 pt-2 font-mono text-[8px] text-ink/35 sm:mt-3 sm:text-[9px]">
+                <Link2 size={9} className="shrink-0" />
+                <span className="truncate">{f.url ?? '链接暂未公开'}</span>
               </p>
             </Tag>
           )

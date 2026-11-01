@@ -210,9 +210,6 @@ export default function About() {
             <a href={`mailto:${profile.email}`} className="btn-ink !py-2 !text-[12px]">
               邮件聊聊
             </a>
-            <Link to="/me/timeline" onClick={() => setOpenKey(null)} className="btn !py-2 !text-[12px]">
-              看成长时间轴
-            </Link>
           </div>
         </div>
       </Modal>

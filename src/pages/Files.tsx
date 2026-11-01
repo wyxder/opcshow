@@ -33,8 +33,8 @@ function DownloadLink({ f, row }: { f: ResourceFile; row?: boolean }) {
         href={state.href}
         download={f.name}
         className={cn(
-          'flex items-center gap-1 rounded-full border border-ink/20 bg-paper transition hover:border-ink hover:bg-lime',
-          row ? 'px-2 py-0.5 text-[9px]' : 'px-2 py-1 text-[9.5px]',
+          'flex shrink-0 items-center gap-1 rounded-full border border-ink/20 bg-paper transition hover:border-ink hover:bg-lime',
+          row ? 'px-2 py-0.5 text-[9px]' : 'px-1.5 py-0.5 text-[9px] sm:px-2 sm:py-1 sm:text-[9.5px]',
         )}
         title={`下载 ${f.name}（${f.size}）`}
       >
@@ -45,7 +45,7 @@ function DownloadLink({ f, row }: { f: ResourceFile; row?: boolean }) {
   return (
     <span
       className={cn(
-        'flex cursor-not-allowed items-center gap-1 rounded-full border border-dashed border-ink/25 px-2 py-1 text-[9.5px] text-ink/35',
+        'flex cursor-not-allowed shrink-0 items-center gap-1 rounded-full border border-dashed border-ink/25 px-1.5 py-0.5 text-[9px] text-ink/35 sm:px-2 sm:py-1 sm:text-[9.5px]',
         row && 'px-2 py-0.5 text-[9px]',
       )}
       title={f.pending ?? '文件待上传'}
@@ -191,39 +191,39 @@ export default function Files() {
           <p className="mt-2 font-hand text-2xl text-ink/40">没有匹配的文件。</p>
         </div>
       ) : view === 'grid' ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
           {list.map((f) => {
             const meta = extMeta[f.ext]
             const Icon = meta.icon
             return (
-              <div key={f.id} className="group relative overflow-hidden rounded-2xl border-1.5 border-ink bg-cream transition-all duration-300 hover:-translate-y-1 hover:shadow-hard">
-                <div className="flex items-start gap-3 p-4">
+              <div key={f.id} className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream transition-all duration-300 hover:-translate-y-1 hover:shadow-hard">
+                <div className="flex items-start gap-2 p-2.5 sm:gap-3 sm:p-4">
                   <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-1.5 border-ink"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink sm:h-10 sm:w-10 sm:rounded-xl"
                     style={{ background: `color-mix(in srgb, ${meta.color} 40%, transparent)` }}
                   >
-                    <Icon size={16} />
+                    <Icon size={16} className="size-[13px] shrink-0 sm:size-4" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-1">
-                      <h3 className="text-[12.5px] font-bold leading-snug">{f.name}</h3>
+                      <h3 className="line-clamp-3 text-[11px] font-bold leading-snug sm:line-clamp-none sm:text-[12.5px]">{f.name}</h3>
                       <button onClick={() => toggleStar(f.id)} aria-label="收藏文件" className="shrink-0 p-0.5">
                         <Star size={13} className={cn(stars.includes(f.id) ? 'fill-ink text-ink' : 'text-ink/20 hover:text-ink/50')} />
                       </button>
                     </div>
-                    <p className="mt-0.5 font-mono text-[9px] text-ink/35">
+                    <p className="mt-0.5 font-mono text-[8px] leading-snug text-ink/35 sm:text-[9px]">
                       {f.ext.toUpperCase()} · {f.size} · {f.date}
                     </p>
                   </div>
                 </div>
-                <p className="px-4 text-[11px] leading-relaxed text-ink/50">{f.desc}</p>
+                <p className="mb-2 line-clamp-2 px-2.5 text-[10px] leading-relaxed text-ink/50 sm:mb-0 sm:px-4 sm:text-[11px]">{f.desc}</p>
                 {f.pending && (
-                  <p className="mx-4 mt-2 flex items-start gap-1.5 rounded-lg bg-paper px-2 py-1.5 text-[10px] leading-relaxed text-ink/45">
+                  <p className="mx-2.5 mt-1.5 flex items-start gap-1.5 rounded-lg bg-paper px-2 py-1.5 text-[9px] leading-relaxed text-ink/45 sm:mx-4 sm:mt-2 sm:text-[10px]">
                     <Lock size={10} className="mt-[2px] shrink-0" /> {f.pending}
                   </p>
                 )}
-                <div className="mt-3 flex items-center justify-between border-t border-ink/10 px-4 py-2.5">
-                  <span className="font-mono text-[9px] text-ink/35">{f.downloads} 次下载 · {f.category}</span>
+                <div className="mt-auto flex items-center justify-between gap-1.5 border-t border-ink/10 px-2.5 py-2 sm:px-4 sm:py-2.5">
+                  <span className="min-w-0 flex-1 font-mono text-[8px] leading-snug text-ink/35 sm:text-[9px]">{f.downloads} 次下载 · {f.category}</span>
                   <DownloadLink f={f} />
                 </div>
               </div>

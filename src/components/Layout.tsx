@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useScroll, useSpring } from 'framer-motion'
 import {
+  ArrowUp,
   ArrowUpRight,
   BookOpen,
   Bot,
@@ -18,7 +19,6 @@ import {
   Link2,
   Mail,
   Map,
-  Menu,
   MessageCircle,
   Music,
   Rss,
@@ -29,10 +29,10 @@ import {
   Sparkles,
   Trophy,
   User,
-  X,
   type LucideIcon,
 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { navItems, type NavChild } from '@/data/nav'
 import { projects } from '@/data/projects'
@@ -43,7 +43,8 @@ import { openAssistant, setAssistantContext } from '@/lib/assistant'
 import { highlightParts, matchScore, pushRecentSearch, readRecentSearches } from '@/lib/search'
 import { Marquee } from '@/components/ui/primitives'
 import { Modal } from '@/components/ui/Modal'
-import { ThemePicker, ThemeSwitcher } from '@/components/ThemeSwitcher'
+import { ConnectModal } from '@/components/ConnectModal'
+import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 
 // 右下角 AI 助手：所有页面都要有，但组件本体懒加载，不进首屏包
 const AIAssistant = lazy(() => import('@/components/AIAssistant').then((m) => ({ default: m.AIAssistant })))
@@ -108,8 +109,8 @@ function ScrollProgress() {
 /* ---------------------------------- header -------------------------------- */
 function Header() {
   const [openKey, setOpenKey] = useState<string | null>(null)
-  const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [connectOpen, setConnectOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { pathname } = useLocation()
   const reduce = usePrefersReducedMotion()
@@ -134,7 +135,6 @@ function Header() {
   }, [])
 
   useEffect(() => {
-    setMobileOpen(false)
     setOpenKey(null)
   }, [pathname])
 
@@ -161,6 +161,8 @@ function Header() {
     item.to === '/'
       ? pathname === '/'
       : pathname.startsWith('/' + item.key) || item.children.some(isChildActive)
+  // 移动端顶部的分栏入口：跟随当前所在的 01—05 分组
+  const currentSection = navItems.find((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key)))
 
   return (
     <>
@@ -172,8 +174,8 @@ function Header() {
               scrolled ? 'shadow-hard-sm' : 'shadow-none',
             )}
           >
-            {/* logo */}
-            <Link to="/" className="group flex items-center gap-2.5" onMouseEnter={() => setOpenKey(null)}>
+            {/* logo：移动端隐藏，把空间让给分栏子菜单 */}
+            <Link to="/" className="group hidden items-center gap-2.5 lg:flex" onMouseEnter={() => setOpenKey(null)}>
               <span className="relative block h-9 w-9 shrink-0 -rotate-3 overflow-hidden rounded-[11px] border-1.5 border-ink bg-cream shadow-hard-sm transition-transform duration-300 group-hover:rotate-0">
                 <img
                   src="/image/logo-144.png"
@@ -188,6 +190,47 @@ function Header() {
                 <span className="mt-1 block font-mono text-[9px] tracking-[0.18em] text-ink/45">WYX.SPACE / 2026</span>
               </span>
             </Link>
+
+            {/* 移动端分栏子菜单：原来挂在底部菜单栏上方，现在移到顶栏。
+                右上角让位给主题切换钮，所以「交个朋友 / 后台」两个动作也并到这一行的末尾。 */}
+            <nav
+              aria-label="分栏导航"
+              className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-0.5 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden"
+            >
+              {currentSection?.children.map((c) => {
+                const Icon = icons[c.icon ?? 'sparkles'] ?? Sparkles
+                const base = c.to.split(/[?#]/)[0]
+                const active = base !== '/' && pathname === base
+                return (
+                  <Link
+                    key={c.to}
+                    to={c.to}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10.5px] transition-colors',
+                      active ? 'border-ink bg-lime text-ink' : 'border-ink/15 bg-paper text-ink/60',
+                    )}
+                  >
+                    <Icon size={10.5} className="shrink-0 opacity-60" />
+                    {c.label}
+                  </Link>
+                )
+              })}
+              <button
+                onClick={() => setConnectOpen(true)}
+                className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border-1.5 border-ink bg-ink px-2 py-1 text-[10.5px] text-paper"
+              >
+                <MessageCircle size={10.5} className="shrink-0" />
+                交朋友
+              </button>
+              <Link
+                to="/admin"
+                className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-ink/15 bg-paper px-2 py-1 text-[10.5px] text-ink/60"
+              >
+                <Settings size={10.5} className="shrink-0" />
+                后台
+              </Link>
+            </nav>
 
             {/* desktop nav */}
             <nav
@@ -308,90 +351,22 @@ function Header() {
               >
                 <Settings size={14} />
               </Link>
-              <a
-                href={`mailto:${profile.email}`}
+              <button
+                onClick={() => setConnectOpen(true)}
                 className="hidden items-center gap-1.5 rounded-full border-1.5 border-ink bg-ink px-3.5 py-2 text-[12px] font-medium text-paper transition hover:-translate-y-0.5 hover:shadow-hard-sm md:flex"
               >
                 <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime" />
-                约个面试
-              </a>
-              <button
-                className="flex h-9 w-9 items-center justify-center rounded-full border-1.5 border-ink bg-lime lg:hidden"
-                onClick={() => setMobileOpen(true)}
-                aria-label="打开菜单"
-              >
-                <Menu size={16} />
+                交个朋友
               </button>
+              {/* 移动端右上角：主题切换（展开按钮已下线，导航由顶栏分栏 + 底部菜单栏接管） */}
+              <ThemeSwitcher variant="dot" className="lg:hidden" />
             </div>
           </div>
         </div>
       </header>
 
-      {/* mobile sheet */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            className="fixed inset-0 z-[85] bg-ink text-paper lg:hidden"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.25 }}
-          >
-            <div className="flex h-full flex-col overflow-y-auto px-6 pb-10 pt-6 no-scrollbar">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] tracking-[0.2em] text-lime">MENU / 2026</span>
-                <button
-                  onClick={() => setMobileOpen(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border-1.5 border-paper/40"
-                  aria-label="关闭菜单"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="mt-8 space-y-6">
-                {navItems.map((item) => (
-                  <div key={item.key}>
-                    <Link to={item.to} className="flex items-baseline gap-3">
-                      <span className="font-mono text-[10px] text-lime/70">{item.index}</span>
-                      <span className="text-3xl font-extrabold">{item.label}</span>
-                      <span className="font-mono text-[9px] tracking-[0.2em] text-paper/35">{item.en}</span>
-                    </Link>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      {item.children.map((c) => (
-                        <Link
-                          key={c.to}
-                          to={c.to}
-                          aria-current={pathname === c.to ? 'page' : undefined}
-                          className={cn(
-                            'rounded-xl border px-3 py-2.5 text-[12px] active:bg-lime active:text-ink',
-                            pathname === c.to ? 'border-lime bg-lime/15 text-lime' : 'border-paper/15 text-paper/75',
-                          )}
-                        >
-                          {c.label}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* 移动端主题入口 */}
-              <div className="mt-7 border-t border-paper/15 pt-6">
-                <ThemePicker />
-              </div>
-
-              <div className="mt-auto pt-10">
-                <Link to="/admin" className="flex items-center justify-between rounded-xl border border-lime/60 px-4 py-3 text-sm text-lime">
-                  后台管理系统 <ArrowUpRight size={16} />
-                </Link>
-                <p className="mt-5 font-hand text-xl text-paper/50">随时到岗，欢迎随时找我聊聊。</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <ConnectModal open={connectOpen} onClose={() => setConnectOpen(false)} />
     </>
   )
 }
@@ -538,43 +513,20 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 /* ------------------------------ mobile tab bar ----------------------------- */
-/* 移动端底部菜单栏：首页 / 学习 / 工作 / 生活 / 我的（lg 以下显示） */
+/* 移动端底部菜单栏：首页 / 学习 / 工作 / 生活 / 我的（lg 以下显示）。
+   子菜单已移到顶栏，这里只保留 5 个主入口，避免底部堆两层。
+   用 portal 挂到 body：即使页面切换动画给祖先加了 transform，fixed 也始终贴着视口底部。 */
 const tabIcons: Record<string, LucideIcon> = { home: Home, learn: BookOpen, work: FileText, life: Heart, me: User }
 
 function MobileTabBar() {
   const { pathname } = useLocation()
-  const current = navItems.find((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key)))
-  // 首页不挂子菜单；学习 / 工作 / 生活 / 我的 在底部条上方直接列出子项，点一下就切换
-  const section = current && current.key !== 'home' ? current : null
-  return (
+  if (typeof document === 'undefined') return null
+  return createPortal(
     <nav
       aria-label="底部导航"
-      className="fixed inset-x-0 bottom-0 z-[75] px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-[80] px-3 pb-[calc(10px_+_env(safe-area-inset-bottom))] pt-2 lg:hidden"
     >
       <div className="mx-auto max-w-md">
-        {section && (
-          <div className="mb-1.5 flex gap-1.5 overflow-x-auto rounded-[18px] border-1.5 border-ink bg-cream/95 p-1.5 shadow-hard-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {section.children.map((c) => {
-              const Icon = icons[c.icon ?? 'sparkles'] ?? Sparkles
-              const base = c.to.split(/[?#]/)[0]
-              const childActive = base !== '/' && pathname === base
-              return (
-                <Link
-                  key={c.to}
-                  to={c.to}
-                  aria-current={childActive ? 'page' : undefined}
-                  className={cn(
-                    'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-[10.5px] transition-colors',
-                    childActive ? 'border-ink bg-lime text-ink' : 'border-ink/15 bg-paper text-ink/60',
-                  )}
-                >
-                  <Icon size={11} className="shrink-0 opacity-60" />
-                  {c.label}
-                </Link>
-              )
-            })}
-          </div>
-        )}
         <div className="flex items-stretch gap-0.5 rounded-[20px] border-1.5 border-ink bg-cream/95 p-1.5 shadow-hard">
           {navItems.map((item) => {
             const Icon = tabIcons[item.key] ?? Sparkles
@@ -603,7 +555,52 @@ function MobileTabBar() {
           })}
         </div>
       </div>
-    </nav>
+    </nav>,
+    document.body,
+  )
+}
+
+/* ------------------------------- back to top ------------------------------- */
+/* 首页滚到底才出现的「回到顶部」：右下角、避开 AI 助手，移动端也在底栏之上 */
+function BackToTop() {
+  const { pathname } = useLocation()
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    if (pathname !== '/') {
+      setShow(false)
+      return
+    }
+    const check = () => {
+      const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 96
+      setShow(window.scrollY > 240 && nearBottom)
+    }
+    check()
+    window.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
+    return () => {
+      window.removeEventListener('scroll', check)
+      window.removeEventListener('resize', check)
+    }
+  }, [pathname])
+
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.button
+          initial={{ opacity: 0, y: 12, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.9 }}
+          transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="回到顶部"
+          className="fixed bottom-[calc(150px_+_env(safe-area-inset-bottom))] right-4 z-[70] flex h-11 items-center gap-1.5 rounded-full border-1.5 border-ink bg-cream px-3 shadow-hard-sm transition-colors hover:bg-lime lg:bottom-24 lg:right-5"
+        >
+          <ArrowUp size={15} />
+          <span className="font-mono text-[10px] tracking-[0.12em]">TOP</span>
+        </motion.button>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -768,6 +765,7 @@ export default function Layout() {
       </main>
       <Footer />
       <MobileTabBar />
+      <BackToTop />
       <GlobalAssistant />
     </div>
   )

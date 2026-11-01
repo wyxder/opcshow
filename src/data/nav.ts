@@ -74,7 +74,6 @@ export const navItems: NavItem[] = [
     children: [
       { label: '自我介绍', desc: '四张卡片认识我', to: '/me', icon: 'user' },
       { label: '自媒体矩阵', desc: `${formatWan(totalFollowers)} 粉丝的 ${platforms.length} 个平台`, to: '/me/media', icon: 'share' },
-      { label: '成长时间轴', desc: '2018 → 2026', to: '/me/timeline', icon: 'timeline' },
       { label: '留言弹幕墙', desc: '说点什么，它会飞过去', to: '/me/guestbook', icon: 'send' },
       { label: '友链', desc: '同频的人与站', to: '/me/friends', icon: 'link' },
     ],

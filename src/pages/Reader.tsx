@@ -1,27 +1,32 @@
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowLeft,
   ArrowRight,
-  Bot,
   Check,
   ChevronRight,
   Clock,
   Copy,
   Eye,
+  Heart,
   ListTree,
+  MessageSquareQuote,
+  Pencil,
+  Send,
   Share2,
+  Trash2,
   Type,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Modal } from '@/components/ui/Modal'
-import { Pill } from '@/components/ui/primitives'
+import { Plate, Pill } from '@/components/ui/primitives'
+import { useToast } from '@/components/ui/Toast'
 import { setAssistantContext } from '@/lib/assistant'
 import { articleById, articles, type Block } from '@/data/articles'
 import { profile } from '@/data/site'
-import { cn } from '@/lib/utils'
+import { cn, readableInk, usePrefersReducedMotion } from '@/lib/utils'
 import { articleJsonLd, useSeo } from '@/lib/seo'
-import { STORAGE_KEYS, isRecordOf, readStored, writeStored } from '@/lib/storage'
+import { STORAGE_KEYS, arrayOf, isRecordOf, readStored, writeStored } from '@/lib/storage'
 import { languageLabel, splitTokenLines, tokenize } from '@/lib/highlight'
 
 function CodeBlock({ block }: { block: Extract<Block, { t: 'code' }> }) {
@@ -41,7 +46,7 @@ function CodeBlock({ block }: { block: Extract<Block, { t: 'code' }> }) {
 
   return (
     <div className="my-5 overflow-hidden rounded-xl border border-ink/15 bg-[#0d1117] shadow-[0_10px_30px_-24px_rgba(0,0,0,0.6)]">
-      <div className="flex h-10 items-center justify-between gap-3 border-b border-white/[0.08] bg-white/[0.03] px-3">
+      <div className="flex h-9 items-center justify-between gap-3 border-b border-white/[0.08] bg-white/[0.03] px-3 sm:h-10">
         <span className="flex min-w-0 items-center gap-2">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#79c0ff]" />
           <span className="truncate font-mono text-[9.5px] font-medium uppercase tracking-[0.14em] text-white/50">
@@ -59,11 +64,11 @@ function CodeBlock({ block }: { block: Extract<Block, { t: 'code' }> }) {
       </div>
 
       <div className="code-scroll overflow-x-auto overscroll-x-contain">
-        <pre className="m-0 min-w-max py-3.5 font-mono text-[12px] leading-[1.8] text-[#e6edf3] [font-variant-ligatures:none] sm:text-[12.5px]">
+        <pre className="m-0 min-w-max py-3 font-mono text-[11px] leading-[1.8] text-[#e6edf3] [font-variant-ligatures:none] sm:py-3.5 sm:text-[12.5px]">
           <code className="block">
             {lines.map((tokens, i) => (
               <span key={i} className="flex min-h-[1.8em]">
-                <span className="w-9 shrink-0 select-none pr-3 text-right text-[10px] leading-[inherit] text-white/20">
+                <span className="w-7 shrink-0 select-none pr-2 text-right text-[10px] leading-[inherit] text-white/20 sm:w-9 sm:pr-3">
                   {i + 1}
                 </span>
                 <span className="whitespace-pre pr-5">
@@ -94,16 +99,16 @@ function BlockView({ block }: { block: Block }) {
       return (
         <ul className="my-4 space-y-1.5 pl-1">
           {block.items.map((item) => (
-            <li key={item} className="flex gap-2.5">
+            <li key={item} className="flex gap-2 sm:gap-2.5">
               <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rotate-45 bg-lime" />
-              <span className="text-[14px] leading-[1.85] text-ink-soft">{item}</span>
+              <span className="text-[13.5px] leading-[1.85] text-ink-soft sm:text-[14px]">{item}</span>
             </li>
           ))}
         </ul>
       )
     case 'note':
       return (
-        <div className="my-5 rounded-xl border-1.5 border-ink/15 border-l-[5px] border-l-coral bg-cream px-4 py-3 [&_p]:mb-0">
+        <div className="my-5 rounded-xl border-1.5 border-ink/15 border-l-[5px] border-l-coral bg-cream px-3 py-3 sm:px-4 [&_p]:mb-0">
           <p className="font-mono text-[9px] tracking-[0.16em] text-coral">{block.title.toUpperCase()}</p>
           <p className="mt-1 text-[13px] leading-relaxed text-ink/75">{block.v}</p>
         </div>
@@ -111,11 +116,11 @@ function BlockView({ block }: { block: Block }) {
     case 'table':
       return (
         <div className="my-5 overflow-x-auto rounded-xl border-1.5 border-ink/15">
-          <table className="w-full border-collapse text-left text-[12px]">
+          <table className="w-full border-collapse text-left text-[11.5px] sm:text-[12px]">
             <thead>
               <tr className="bg-ink text-paper">
                 {block.head.map((h) => (
-                  <th key={h} className="px-3 py-2 font-mono text-[9.5px] font-medium tracking-wide">
+                  <th key={h} className="whitespace-nowrap px-2.5 py-2 font-mono text-[9.5px] font-medium tracking-wide sm:px-3">
                     {h}
                   </th>
                 ))}
@@ -125,7 +130,7 @@ function BlockView({ block }: { block: Block }) {
               {block.rows.map((row, i) => (
                 <tr key={i} className={cn(i % 2 === 1 && 'bg-paper/60')}>
                   {row.map((c, j) => (
-                    <td key={j} className={cn('px-3 py-2', j === 0 && 'font-medium')}>
+                    <td key={j} className={cn('px-2.5 py-2 sm:px-3', j === 0 && 'font-medium')}>
                       {c}
                     </td>
                   ))}
@@ -138,6 +143,75 @@ function BlockView({ block }: { block: Block }) {
     default:
       return null
   }
+}
+
+const coverMotifs = ['orbit', 'stack', 'bars', 'grid', 'wave', 'rings'] as const
+const coverAccents = [
+  'rgb(var(--c-blue))',
+  'rgb(var(--c-grape))',
+  'rgb(var(--c-coral))',
+  'rgb(var(--c-lime))',
+  'rgb(var(--c-sky))',
+  'rgb(var(--c-rose))',
+]
+
+/** 上一篇 / 下一篇卡片：带上与知识库列表同款的封面图，不再只有纯文字 */
+function NavCard({
+  to,
+  article,
+  coverIndex,
+  dir,
+}: {
+  to: string
+  article: (typeof articles)[number]
+  coverIndex: number
+  dir: 'prev' | 'next'
+}) {
+  const motif = coverMotifs[((coverIndex % coverMotifs.length) + coverMotifs.length) % coverMotifs.length]
+  const accent = coverAccents[((coverIndex % coverAccents.length) + coverAccents.length) % coverAccents.length]
+  const isNext = dir === 'next'
+  return (
+    <Link
+      to={to}
+      className={cn(
+        'group flex flex-col overflow-hidden rounded-xl border-1.5 border-ink/15 bg-cream transition hover:border-ink hover:shadow-hard-sm',
+        isNext && 'sm:col-start-2',
+      )}
+    >
+      <div className="relative h-[74px] w-full shrink-0 overflow-hidden border-b border-ink/12 sm:h-[92px]">
+        <Plate motif={motif} accent={accent} className="absolute inset-0" />
+        <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/25 via-transparent to-transparent" />
+        <span
+          className={cn(
+            'absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border border-ink/20 bg-cream/90 px-2 py-0.5 font-mono text-[8.5px] tracking-widest text-ink/60 backdrop-blur',
+            isNext && 'left-auto right-2',
+          )}
+        >
+          {isNext ? (
+            <>
+              下一篇 <ArrowRight size={10} />
+            </>
+          ) : (
+            <>
+              <ArrowLeft size={10} /> 上一篇
+            </>
+          )}
+        </span>
+        <span className="absolute bottom-2 left-2 truncate rounded border border-ink/15 bg-cream/85 px-1.5 py-0.5 font-mono text-[8.5px] text-ink/60">
+          {article.category}
+        </span>
+      </div>
+      <div className={cn('flex-1 p-3 sm:p-4', isNext && 'text-right')}>
+        <p className={cn('line-clamp-2 text-[11.5px] font-semibold group-hover:underline sm:text-[12.5px]', isNext && 'sm:text-right')}>{article.title}</p>
+        <p className="mt-1.5 flex items-center gap-2 font-mono text-[9px] text-ink/40">
+          <span className={cn('flex items-center gap-1', isNext && 'sm:ml-auto')}>
+            <Clock size={10} /> {article.readMin} min
+          </span>
+          <span>{article.date}</span>
+        </p>
+      </div>
+    </Link>
+  )
 }
 
 export default function Reader() {
@@ -191,18 +265,8 @@ export default function Reader() {
     setActive('')
   }, [article?.id])
 
-  // F-06 阅读位置：进入文章时若有记录且没有锚点，恢复到上次读到的小节
-  useEffect(() => {
-    if (!article || window.location.hash) return
-    const saved = readStored<Record<string, string>>(STORAGE_KEYS.readingPos, {}, isRecordOf((v) => typeof v === 'string'))[article.id]
-    if (!saved) return
-    const timer = window.setTimeout(() => {
-      document.getElementById(saved)?.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'start' })
-    }, 320)
-    return () => window.clearTimeout(timer)
-  }, [article])
-
-  // 记住当前小节；IntersectionObserver 已节流，写入频率不会失控
+  // F-06：进入文章不再自动滚到上次阅读位置（避免“点进来就自己往下跳”的观感）；
+  // 仅保留当前小节写入，方便日后做“继续阅读”入口，但不主动 scrollIntoView。
   useEffect(() => {
     if (!article || !active) return
     const map = readStored<Record<string, string>>(STORAGE_KEYS.readingPos, {}, isRecordOf((v) => typeof v === 'string'))
@@ -257,14 +321,6 @@ export default function Reader() {
   const prev = articles[index - 1]
   const next = articles[index + 1]
 
-  // F-06 相关推荐：按共享 tag 数排序，最多 3 篇
-  const related = articles
-    .filter((a) => a.id !== article.id)
-    .map((a) => ({ article: a, shared: a.tags.filter((t) => article.tags.includes(t)) }))
-    .filter((x) => x.shared.length > 0)
-    .sort((a, b) => b.shared.length - a.shared.length)
-    .slice(0, 3)
-
   const fontLabel = { sm: '小', md: '中', lg: '大' }[fontSize]
   const cycleFont = () => setFontSize((s) => (s === 'sm' ? 'md' : s === 'md' ? 'lg' : 'sm'))
 
@@ -312,18 +368,19 @@ export default function Reader() {
 
   return (
     <div className="shell">
-      {/* breadcrumb */}
-      <div className="mb-4 flex flex-wrap items-center gap-1.5 font-mono text-[9.5px] tracking-wide text-ink/40">
-        <Link to="/learn" className="hover:text-ink">
+      {/* breadcrumb：窄屏下标题截断，不把面包屑顶成两行乱序 */}
+      <div className="mb-4 flex flex-nowrap items-center gap-1.5 overflow-hidden font-mono text-[9.5px] tracking-wide text-ink/40">
+        <Link to="/learn" className="shrink-0 hover:text-ink">
           学习
         </Link>
-        <ChevronRight size={10} />
-        <span>{article.category}</span>
-        <ChevronRight size={10} />
-        <span className="text-ink/70">{article.title}</span>
+        <ChevronRight size={10} className="shrink-0" />
+        <span className="hidden shrink-0 sm:inline">{article.category}</span>
+        <ChevronRight size={10} className="hidden shrink-0 sm:inline" />
+        <span className="min-w-0 truncate text-ink/70">{article.title}</span>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[236px_minmax(0,1fr)_200px] lg:gap-7">
+      {/* grid-cols-1：移动端列宽锁到 minmax(0,1fr)，否则代码块的 min-w-max 会把整页撑宽 */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[236px_minmax(0,1fr)] lg:gap-7">
         {/* TOC desktop */}
         <aside className="hidden lg:block">
           <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pb-6 no-scrollbar">
@@ -333,8 +390,8 @@ export default function Reader() {
         </aside>
 
         {/* article */}
-        <article>
-          <header className="relative overflow-hidden rounded-[24px] border-1.5 border-ink bg-cream p-6 shadow-hard sm:p-8">
+        <article className="min-w-0">
+          <header className="relative overflow-hidden rounded-[18px] border-1.5 border-ink bg-cream p-4 shadow-hard sm:rounded-[24px] sm:p-8">
             <div className="pointer-events-none absolute inset-0 grid-paper opacity-50" />
             <div className="relative">
               <div className="flex flex-wrap items-center gap-2">
@@ -345,9 +402,9 @@ export default function Reader() {
                   <Pill key={t}># {t}</Pill>
                 ))}
               </div>
-              <h1 className="mt-4 text-[clamp(26px,4vw,40px)] font-extrabold leading-[1.08]">{article.title}</h1>
-              <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-ink-soft">{article.subtitle}</p>
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-ink/15 pt-4">
+              <h1 className="mt-3 text-[clamp(21px,6vw,40px)] font-extrabold leading-[1.15] sm:mt-4 sm:leading-[1.08]">{article.title}</h1>
+              <p className="mt-2.5 max-w-2xl text-[13px] leading-relaxed text-ink-soft sm:mt-3 sm:text-[14px]">{article.subtitle}</p>
+              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-dashed border-ink/15 pt-3.5 sm:mt-5 sm:pt-4">
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-8 w-8 items-center justify-center rounded-full border-1.5 border-ink bg-lime text-[11px] font-bold">魏</span>
                   <div className="leading-tight">
@@ -355,7 +412,7 @@ export default function Reader() {
                     <p className="font-mono text-[9.5px] tracking-widest text-ink/35">AI 全栈 / 智能体开发</p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 font-mono text-[9.5px] text-ink/45">
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 font-mono text-[9px] text-ink/45 sm:gap-x-3 sm:text-[9.5px]">
                   <span>{article.date}</span>
                   <span className="flex items-center gap-1">
                     <Clock size={10} /> {article.readMin} min
@@ -381,7 +438,7 @@ export default function Reader() {
             </div>
           </header>
 
-          <div className="mt-5 rounded-2xl border border-ink/12 bg-lime/20 px-5 py-4">
+          <div className="mt-4 rounded-2xl border border-ink/12 bg-lime/20 px-4 py-3.5 sm:mt-5 sm:px-5 sm:py-4">
             <p className="font-mono text-[9px] tracking-[0.16em] text-ink/40">TL;DR</p>
             <p className="mt-1.5 text-[13px] leading-relaxed text-ink/75">{article.abstract}</p>
           </div>
@@ -410,105 +467,21 @@ export default function Reader() {
             ))}
           </div>
 
-          <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl border-1.5 border-ink bg-cream p-5">
-            <p className="max-w-sm font-hand text-[20px] leading-snug text-ink/60">
-              读到这儿了，说明你和我关心的是同一类问题。欢迎邮件聊聊。
-            </p>
-            <a href={`mailto:${profile.email}`} className="btn-ink !text-[12px]">
-              发邮件给晓叶 <ArrowRight size={13} />
-            </a>
-          </div>
+          <ArticleComments articleId={article.id} />
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {prev && (
-              <Link to={`/learn/${prev.id}`} className="group rounded-xl border-1.5 border-ink/15 bg-cream p-4 transition hover:border-ink hover:shadow-hard-sm">
-                <p className="flex items-center gap-1 font-mono text-[9px] tracking-widest text-ink/35">
-                  <ArrowLeft size={10} /> 上一篇
-                </p>
-                <p className="mt-1.5 line-clamp-2 text-[12.5px] font-semibold group-hover:underline">{prev.title}</p>
-              </Link>
-            )}
-            {next && (
-              <Link to={`/learn/${next.id}`} className="group rounded-xl border-1.5 border-ink/15 bg-cream p-4 text-right transition hover:border-ink hover:shadow-hard-sm sm:col-start-2">
-                <p className="flex items-center justify-end gap-1 font-mono text-[9px] tracking-widest text-ink/35">
-                  下一篇 <ArrowRight size={10} />
-                </p>
-                <p className="mt-1.5 line-clamp-2 text-[12.5px] font-semibold group-hover:underline">{next.title}</p>
-              </Link>
-            )}
-          </div>
-
-          {related.length > 0 && (
-            <section className="mt-8">
-              <p className="font-mono text-[9px] tracking-[0.2em] text-ink/35">RELATED · 相关阅读</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                {related.map(({ article: item, shared }) => (
-                  <Link
-                    key={item.id}
-                    to={`/learn/${item.id}`}
-                    className="group rounded-xl border-1.5 border-ink/15 bg-cream p-3.5 transition hover:border-ink hover:shadow-hard-sm"
-                  >
-                    <span className="font-mono text-[9px] tracking-wide text-ink/40">{item.category}</span>
-                    <p className="mt-1.5 line-clamp-2 text-[12.5px] font-semibold leading-snug group-hover:underline">{item.title}</p>
-                    <p className="mt-2 font-mono text-[9px] text-ink/30">#{shared.join(' · ')}</p>
-                  </Link>
-                ))}
-              </div>
-            </section>
+          {(prev || next) && (
+            <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
+              {prev && <NavCard to={`/learn/${prev.id}`} article={prev} coverIndex={index - 1} dir="prev" />}
+              {next && <NavCard to={`/learn/${next.id}`} article={next} coverIndex={index + 1} dir="next" />}
+            </div>
           )}
         </article>
-
-        {/* right rail */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-24 space-y-3">
-            <div className="rounded-xl border-1.5 border-ink bg-cream p-3">
-              <div className="flex items-center justify-between">
-                <p className="font-mono text-[9px] tracking-[0.16em] text-ink/35">PROGRESS</p>
-                <span className="font-mono text-[10px] font-bold">{progress}%</span>
-              </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink/10">
-                <motion.div className="h-full rounded-full bg-ink" animate={{ width: `${progress}%` }} transition={{ duration: 0.2 }} />
-              </div>
-            </div>
-
-            <div className="rounded-xl border-1.5 border-ink bg-cream p-3">
-              <p className="font-mono text-[9px] tracking-[0.16em] text-ink/35">SECTIONS</p>
-              <div className="mt-2 space-y-1">
-                {article.sections.map((s, i) => (
-                  <a
-                    key={s.id}
-                    href={`#${s.id}`}
-                    className={cn(
-                      'block rounded-md px-1.5 py-1 text-[10.5px] leading-snug transition',
-                      active === s.id || s.subs.some((x) => x.id === active) ? 'bg-lime/50 font-medium text-ink' : 'text-ink/45 hover:bg-paper',
-                    )}
-                  >
-                    {String(i + 1).padStart(2, '0')} {s.title.replace(/^\d+\s/, '')}
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-assistant'))}
-              className="flex w-full items-center gap-2 rounded-xl border-1.5 border-ink bg-ink p-3 text-left text-paper transition hover:-translate-y-0.5"
-            >
-              <Bot size={15} className="text-lime" />
-              <span className="flex-1 text-[10.5px] leading-tight">对这篇有疑问？<br />问 AI 助手</span>
-              <ArrowRight size={12} />
-            </button>
-
-            <button onClick={() => setTocOpen(true)} className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-ink/15 px-2 py-2 font-mono text-[9px] tracking-widest text-ink/45 hover:border-ink/40">
-              <ListTree size={11} /> 目录
-            </button>
-          </div>
-        </aside>
       </div>
 
-      {/* mobile toc trigger */}
+      {/* mobile toc trigger：抬到底部菜单栏与 AI 助手同一水平线，不再被底栏压住 */}
       <button
         onClick={() => setTocOpen(true)}
-        className="fixed bottom-5 left-5 z-[55] flex items-center gap-2 rounded-full border-1.5 border-ink bg-cream px-3.5 py-2.5 text-[11.5px] font-medium shadow-hard lg:hidden"
+        className="fixed bottom-[calc(88px+env(safe-area-inset-bottom))] left-4 z-[55] flex items-center gap-2 rounded-full border-1.5 border-ink bg-cream px-3.5 py-2.5 text-[11.5px] font-medium shadow-hard lg:hidden"
       >
         <ListTree size={13} /> 目录 · {progress}%
       </button>
@@ -520,5 +493,238 @@ export default function Reader() {
       </Modal>
 
     </div>
+  )
+}
+
+/* ------------------------------- article comments ------------------------------- */
+/**
+ * 文章末尾评论区（本机存储）。
+ * - 数据按文章 id 归档在 localStorage（STORAGE_KEYS.articleComments），读写走 storage.ts 统一入口；
+ * - 只做「输入 → 落到本机 → 渲染」的最小闭环，不冒充真实社区（明确「仅本机可见」提示）；
+ * - 颜色、边框、阴影全部沿用站点主题 token，五套主题与对比度门禁继续生效。
+ */
+type ArticleComment = {
+  id: string
+  articleId: string
+  name: string
+  text: string
+  time: string
+  color: string
+  likes: number
+}
+
+const commentPalette = [
+  'rgb(var(--c-lime))',
+  'rgb(var(--c-coral))',
+  'rgb(var(--c-sky))',
+  'rgb(var(--c-grape))',
+  'rgb(var(--c-rose))',
+  'rgb(var(--c-surface))',
+]
+
+const isArticleComment = (v: unknown): v is ArticleComment =>
+  !!v && typeof v === 'object' && typeof (v as ArticleComment).id === 'string' && typeof (v as ArticleComment).text === 'string'
+
+const commentTimeLabel = () => {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+function ArticleComments({ articleId }: { articleId: string }) {
+  const [all, setAll] = useState<ArticleComment[]>(() =>
+    readStored<ArticleComment[]>(STORAGE_KEYS.articleComments, [], arrayOf<ArticleComment>(isArticleComment)),
+  )
+  const [name, setName] = useState('')
+  const [text, setText] = useState('')
+  const [color, setColor] = useState(commentPalette[0])
+  const [liked, setLiked] = useState<string[]>([])
+  const [sending, setSending] = useState(false)
+  const reduce = usePrefersReducedMotion()
+  const { show, node } = useToast()
+
+  useEffect(() => {
+    writeStored(STORAGE_KEYS.articleComments, all)
+  }, [all])
+
+  const list = useMemo(() => all.filter((c) => c.articleId === articleId), [all, articleId])
+
+  const submit = () => {
+    if (sending) return
+    const body = text.trim()
+    if (!body) {
+      show('先写点什么吧')
+      return
+    }
+    setSending(true)
+    const c: ArticleComment = {
+      id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      articleId,
+      name: name.trim() || '匿名读者',
+      text: body.slice(0, 200),
+      time: commentTimeLabel(),
+      color,
+      likes: 0,
+    }
+    setAll((l) => [c, ...l])
+    setText('')
+    show('评论已留在本机，只你自己看得到')
+    setSending(false)
+  }
+
+  const like = (id: string) => {
+    const already = liked.includes(id)
+    setLiked((l) => (already ? l.filter((x) => x !== id) : [...l, id]))
+    setAll((a) => a.map((c) => (c.id === id ? { ...c, likes: Math.max(0, c.likes + (already ? -1 : 1)) } : c)))
+  }
+
+  const remove = (id: string) => setAll((a) => a.filter((c) => c.id !== id))
+
+  return (
+    <section aria-label="文章评论" className="mt-10 overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream shadow-hard-sm">
+      {/* 头部条 */}
+      <div className="relative flex items-center justify-between gap-3 border-b border-ink/12 bg-gradient-to-r from-lime/40 via-cream to-sky/25 px-5 py-4">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl border-1.5 border-ink bg-paper">
+            <MessageSquareQuote size={17} />
+          </span>
+          <div>
+            <h2 className="text-[15px] font-extrabold leading-none">评论区</h2>
+            <p className="mt-1 font-mono text-[9px] tracking-[0.16em] text-ink/45">{list.length} 条 · LOCAL ONLY</p>
+          </div>
+        </div>
+        <span className="hidden max-w-[46%] text-right font-hand text-[15px] leading-snug text-ink/55 sm:block">
+          有共鸣、有疑问，都可以说两句。
+        </span>
+      </div>
+
+      {/* 输入区 */}
+      <div className="px-5 pt-4">
+        <div className="rounded-2xl border border-ink/12 bg-paper p-3.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-1.5 border-ink font-display text-[13px] font-extrabold"
+              style={{ background: color, color: readableInk(color) }}
+              aria-hidden
+            >
+              {(name.trim() || '读').slice(0, 1)}
+            </span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={12}
+              placeholder="怎么称呼你？（可留空）"
+              aria-label="你的名字"
+              className="min-w-[120px] flex-1 rounded-lg border border-ink/15 bg-cream px-3 py-1.5 text-[12px] outline-none transition focus:border-ink"
+            />
+            <div className="flex items-center gap-1.5" role="group" aria-label="评论颜色">
+              {commentPalette.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  aria-label={`选择颜色 ${c}`}
+                  aria-pressed={color === c}
+                  className={cn('h-5 w-5 rounded-full border-1.5 transition', color === c ? 'scale-110 border-ink' : 'border-ink/20 hover:border-ink/50')}
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            maxLength={200}
+            rows={3}
+            placeholder="这篇里最戳你的是哪一段？或者，你想反问什么？"
+            aria-label="评论内容"
+            className="mt-2.5 w-full resize-none rounded-xl border border-ink/15 bg-cream px-3 py-2.5 text-[12.5px] leading-relaxed outline-none transition focus:border-ink"
+          />
+
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <p className="flex items-center gap-1 font-mono text-[9px] text-ink/35">
+              <Pencil size={10} /> 仅存本机 · {text.length}/200
+            </p>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={sending}
+              className="btn-ink inline-flex items-center gap-1.5 !py-2 !text-[12px] disabled:opacity-50"
+            >
+              <Send size={13} /> 留下评论
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 列表 */}
+      <div className="px-5 pb-5 pt-4">
+        {list.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-ink/20 bg-paper/50 px-4 py-8 text-center">
+            <p className="font-hand text-[18px] text-ink/45">还没有人说话，来做第一个吧。</p>
+          </div>
+        ) : (
+          <ul className="space-y-2.5">
+            <AnimatePresence initial={false}>
+              {list.map((c) => {
+                const isLiked = liked.includes(c.id)
+                return (
+                  <motion.li
+                    key={c.id}
+                    layout={!reduce}
+                    initial={reduce ? false : { opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{ duration: 0.24, ease: 'easeOut' }}
+                    className="group flex items-start gap-3 rounded-2xl border border-ink/12 bg-paper px-3.5 py-3 transition-colors hover:border-ink/30"
+                  >
+                    <span
+                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-1.5 border-ink font-display text-[13px] font-extrabold"
+                      style={{ background: c.color, color: readableInk(c.color) }}
+                      aria-hidden
+                    >
+                      {c.name.slice(0, 1)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className="text-[12.5px] font-bold">{c.name}</span>
+                        <span className="font-mono text-[9.5px] text-ink/35">{c.time}</span>
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-ink/70">{c.text}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-center gap-1 sm:flex-row sm:gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => like(c.id)}
+                        aria-pressed={isLiked}
+                        aria-label="点赞评论"
+                        className={cn(
+                          'inline-flex min-h-[28px] items-center gap-1 rounded-full border px-2 font-mono text-[10px] transition',
+                          isLiked ? 'border-coral bg-coral/15 text-coral' : 'border-ink/15 text-ink/45 hover:border-ink/40 hover:text-ink',
+                        )}
+                      >
+                        <Heart size={11} className={cn(isLiked && 'fill-current')} />
+                        {c.likes}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remove(c.id)}
+                        aria-label="删除评论"
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-ink/25 transition hover:bg-coral/10 hover:text-coral"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </motion.li>
+                )
+              })}
+            </AnimatePresence>
+          </ul>
+        )}
+      </div>
+
+      {node}
+    </section>
   )
 }

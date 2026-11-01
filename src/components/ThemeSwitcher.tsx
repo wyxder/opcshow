@@ -23,8 +23,17 @@ export function ThemeSwatch({ id, className }: { id: ThemeId; className?: string
   )
 }
 
-/* ------------------------------ 桌面：下拉选择 ------------------------------ */
-export function ThemeSwitcher({ align = 'right', className }: { align?: 'left' | 'right'; className?: string }) {
+/* -------------------- 桌面：横条下拉 / 移动端：色板圆钮下拉 -------------------- */
+export function ThemeSwitcher({
+  align = 'right',
+  variant = 'bar',
+  className,
+}: {
+  align?: 'left' | 'right'
+  /** bar = 桌面端带主题名的横条；dot = 移动端顶栏的圆形色板按钮 */
+  variant?: 'bar' | 'dot'
+  className?: string
+}) {
   const { theme, setTheme, themes } = useTheme()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -46,24 +55,50 @@ export function ThemeSwitcher({ align = 'right', className }: { align?: 'left' |
     }
   }, [open])
 
+  const triggerA11y = {
+    'aria-haspopup': 'listbox' as const,
+    'aria-expanded': open,
+    'aria-label': `切换主题，当前 ${current.name}`,
+    title: `主题 · ${current.name}`,
+  }
+
   return (
     <div ref={wrapRef} className={cn('relative', className)}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={`切换主题，当前 ${current.name}`}
-        title={`主题 · ${current.name}`}
-        className="flex h-8 items-center gap-1.5 rounded-full border-1.5 border-ink/20 bg-paper px-2 text-ink/65 transition hover:border-ink/45 hover:text-ink"
-      >
-        <Palette size={13} className="shrink-0" />
-        <span className="hidden shrink-0 font-mono text-[10px] tracking-wide xl:inline">
-          {current.no} {current.name}
-        </span>
-        <ThemeSwatch id={current.id} className="h-3.5 w-[46px]" />
-        <ChevronDown size={11} className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
-      </button>
+      {variant === 'dot' ? (
+        /* 移动端：一颗装着当前主题五色的圆钮，展开时微微旋转让色条立起来 */
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          {...triggerA11y}
+          className={cn(
+            'group flex h-9 w-9 items-center justify-center rounded-full border-1.5 border-ink bg-cream shadow-hard-sm transition-all duration-300',
+            'hover:-translate-y-0.5 active:translate-y-0 active:scale-95',
+            open && '-translate-y-0.5',
+          )}
+        >
+          <ThemeSwatch
+            id={current.id}
+            className={cn(
+              'h-[22px] w-[22px] rounded-full border-ink/30 transition-transform duration-300',
+              open ? 'rotate-90 scale-90' : 'group-hover:rotate-12',
+            )}
+          />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          {...triggerA11y}
+          className="flex h-8 items-center gap-1.5 rounded-full border-1.5 border-ink/20 bg-paper px-2 text-ink/65 transition hover:border-ink/45 hover:text-ink"
+        >
+          <Palette size={13} className="shrink-0" />
+          <span className="hidden shrink-0 font-mono text-[10px] tracking-wide xl:inline">
+            {current.no} {current.name}
+          </span>
+          <ThemeSwatch id={current.id} className="h-3.5 w-[46px]" />
+          <ChevronDown size={11} className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
+        </button>
+      )}
 
       <AnimatePresence>
         {open && (
@@ -73,12 +108,13 @@ export function ThemeSwitcher({ align = 'right', className }: { align?: 'left' |
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.16, ease: 'easeOut' }}
             className={cn(
-              'absolute top-[calc(100%+8px)] z-[80] w-[288px] max-w-[calc(100vw-28px)] overflow-hidden rounded-[18px] border-1.5 border-ink bg-cream p-1.5 shadow-hard',
+              'absolute top-[calc(100%+8px)] z-[80] overflow-hidden rounded-[18px] border-1.5 border-ink bg-cream p-1.5 shadow-hard',
+              variant === 'dot' ? 'w-[228px] max-w-[calc(100vw-24px)]' : 'w-[288px] max-w-[calc(100vw-28px)]',
               align === 'right' ? 'right-0' : 'left-0',
             )}
           >
             <div className="flex items-center justify-between px-2 pb-1.5 pt-1">
-              <span className="font-mono text-[9px] tracking-[0.2em] text-ink/40">THEME / 5</span>
+              <span className="font-mono text-[9px] tracking-[0.2em] text-ink/40">THEME / {themes.length}</span>
               <span className="font-mono text-[9px] text-ink/40">{current.no}</span>
             </div>
 
@@ -120,46 +156,6 @@ export function ThemeSwitcher({ align = 'right', className }: { align?: 'left' |
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  )
-}
-
-/* --------------------------- 移动端：菜单内宫格 --------------------------- */
-export function ThemePicker() {
-  const { theme, setTheme, themes } = useTheme()
-
-  return (
-    <div>
-      <div className="mb-2.5 flex items-baseline justify-between">
-        <p className="font-mono text-[9px] tracking-[0.22em] text-paper/45">THEME / 5</p>
-        <p className="font-mono text-[9px] text-paper/35">{themes.find((t) => t.id === theme)?.no} 已启用</p>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        {themes.map((t) => {
-          const on = t.id === theme
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTheme(t.id)}
-              aria-pressed={on}
-              /* fx.md A4：选中态不能只靠颜色+图标区分，给读屏器一句完整描述 */
-              aria-label={`主题 ${t.no} ${t.name}${on ? '，当前已启用' : ''}`}
-              className={cn(
-                'rounded-xl border px-2.5 py-2 text-left transition-colors',
-                on ? 'border-lime bg-lime/15' : 'border-paper/20 active:bg-paper/10',
-              )}
-            >
-              <div className="flex items-center justify-between gap-1">
-                <span className="font-mono text-[9px] text-paper/45">{t.no}</span>
-                {on && <Check size={11} className="text-lime" />}
-              </div>
-              <p className="mt-1 truncate text-[12px] font-semibold text-paper">{t.name}</p>
-              <ThemeSwatch id={t.id} className="mt-1.5 h-3 w-full" />
-            </button>
-          )
-        })}
-      </div>
     </div>
   )
 }

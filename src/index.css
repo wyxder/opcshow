@@ -602,14 +602,18 @@
     transform-origin: left;
   }
 
+  /* 阅读正文：移动端窄屏下一档字号/间距，避免一行只装下十几个字 */
+  .prose-read {
+    @apply break-words;
+  }
   .prose-read p {
-    @apply mb-5 text-[15.5px] leading-[1.95] text-ink-soft;
+    @apply mb-4 text-[14.5px] leading-[1.9] text-ink-soft sm:mb-5 sm:text-[15.5px] sm:leading-[1.95];
   }
   .prose-read h2 {
-    @apply mt-12 mb-4 text-[26px] font-bold text-ink;
+    @apply mt-9 mb-3 text-[21px] font-bold text-ink sm:mt-12 sm:mb-4 sm:text-[26px];
   }
   .prose-read h3 {
-    @apply mt-8 mb-3 text-[19px] font-bold text-ink;
+    @apply mt-7 mb-2.5 text-[16.5px] font-bold text-ink sm:mt-8 sm:mb-3 sm:text-[19px];
   }
   /* 只给正文里的行内代码加底色；代码块里的 <pre><code> 由深色面板自己接管，
      之前这里无差别命中，导致代码块内部出现一块灰色矩形。 */
@@ -617,13 +621,13 @@
   .prose-read li code,
   .prose-read blockquote code,
   .prose-read td code {
-    @apply rounded-md border border-ink/10 bg-sand/60 px-1.5 py-0.5 font-mono text-[13px] text-ink;
+    @apply break-words rounded-md border border-ink/10 bg-sand/60 px-1 py-0.5 font-mono text-[12.5px] text-ink sm:px-1.5 sm:text-[13px];
   }
   .prose-read li {
-    @apply mb-2 text-[15.5px] leading-[1.9] text-ink-soft;
+    @apply mb-2 text-[14.5px] leading-[1.85] text-ink-soft sm:text-[15.5px] sm:leading-[1.9];
   }
   .prose-read blockquote {
-    @apply my-6 rounded-r-xl border-l-4 border-coral bg-cream py-3 pl-5 pr-4 text-[15px] italic text-ink/80;
+    @apply my-5 rounded-r-xl border-l-4 border-coral bg-cream py-2.5 pl-4 pr-3 text-[14px] italic text-ink/80 sm:my-6 sm:py-3 sm:pl-5 sm:pr-4 sm:text-[15px];
   }
 
   /* F-06 阅读字号三档：只改正文，不改标题层级 */

@@ -31,6 +31,8 @@ export const STORAGE_KEYS = {
   readingPos: namespaced('reading-pos'),
   /** ⌘K 最近搜索（F-11） */
   recentSearch: namespaced('recent-search'),
+  /** 文章末尾评论（本机存储，按文章 id 归档） */
+  articleComments: namespaced('article-comments'),
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]

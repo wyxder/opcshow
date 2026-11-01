@@ -47,45 +47,63 @@ export default function Media() {
 
       <div className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-8">
-          <div className="grid gap-3 sm:grid-cols-2">
+          {/* 自媒体卡片：移动端一行 2 个，图标与数字同步缩小 */}
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
             {platforms.map((p, i) => (
               <Reveal key={p.id} delay={i * 0.04}>
                 {/* fx.md F4：有公开主页才是链接，没有就渲染成不可点的卡片，不留 href="#" */}
                 <div
-                  className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard"
+                  className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-2.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard sm:p-4"
                   {...(p.url ? {} : { role: 'group', 'aria-label': `${p.name} 站内展示` })}
                 >
                   <span className="absolute inset-x-0 top-0 h-1.5" style={{ background: p.color }} aria-hidden />
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-[14px] font-extrabold">{p.name}</p>
-                      <p className="font-mono text-[9.5px] text-ink/40">{p.handle}</p>
+                  <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+                    <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+                      {/* 平台真实图标：本地 SVG，不依赖外链 */}
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink bg-paper p-1 sm:h-10 sm:w-10 sm:rounded-xl sm:p-1.5">
+                        <img
+                          src={`/icons/platforms/${p.id}.svg`}
+                          alt={`${p.name} 图标`}
+                          width={26}
+                          height={26}
+                          className="size-[18px] object-contain sm:size-[26px]"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-[11.5px] font-extrabold sm:text-[14px]">{p.name}</p>
+                        <p className="truncate font-mono text-[8px] text-ink/40 sm:text-[9.5px]">{p.handle}</p>
+                      </div>
                     </div>
-                    <span className="flex items-center gap-0.5 rounded-full bg-lime/40 px-1.5 py-0.5 font-mono text-[9.5px] text-ink/60">
-                      <TrendingUp size={8} /> {p.growth}
+                    {/* 窄屏只留百分比，把宽度让给平台名与 handle，避免被 ellipsis 吃掉 */}
+                    <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-lime/40 px-1 py-0.5 font-mono text-[8px] text-ink/60 sm:px-1.5 sm:text-[9.5px]">
+                      <TrendingUp size={8} />
+                      <span className="sm:hidden">{p.growth.split(' / ')[0]}</span>
+                      <span className="hidden sm:inline">{p.growth}</span>
                     </span>
                   </div>
-                  <div className="mt-3 flex items-end gap-2">
-                    <p className="font-display text-[30px] font-extrabold leading-none">{p.followers}</p>
-                    <p className="pb-0.5 text-[10px] text-ink/40">粉丝 · {p.posts} 条内容</p>
+                  <div className="mt-2.5 flex items-end gap-1.5 sm:mt-3 sm:gap-2">
+                    <p className="font-display text-[21px] font-extrabold leading-none sm:text-[30px]">{p.followers}</p>
+                    <p className="pb-0.5 text-[8.5px] text-ink/40 sm:text-[10px]">粉丝 · {p.posts} 条内容</p>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink/8">
                     <div className="h-full rounded-full" style={{ width: `${Math.min(100, (followersToNumber(p.followers) / max) * 100)}%`, background: p.color }} />
                   </div>
-                  <p className="mt-2.5 text-[10.5px] leading-relaxed text-ink/50">{p.note}</p>
-                  <div className="mt-2 flex items-center justify-between border-t border-dashed border-ink/12 pt-2">
-                    <span className="font-mono text-[9px] text-ink/35">{p.focus}</span>
+                  <p className="mt-2 line-clamp-2 flex-1 text-[9.5px] leading-relaxed text-ink/50 sm:mt-2.5 sm:line-clamp-none sm:text-[10.5px]">{p.note}</p>
+                  <div className="mt-2 flex items-center justify-between gap-1 border-t border-dashed border-ink/12 pt-2">
+                    <span className="truncate font-mono text-[8px] text-ink/35 sm:text-[9px]">{p.focus}</span>
                     {p.url ? (
                       <a
                         href={p.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 font-mono text-[9px] text-ink/45 transition hover:text-ink"
+                        className="flex shrink-0 items-center gap-1 font-mono text-[8px] text-ink/45 transition hover:text-ink sm:text-[9px]"
                       >
                         主页 <ExternalLink size={10} />
                       </a>
                     ) : (
-                      <span className="flex items-center gap-1 font-mono text-[9px] text-ink/30">
+                      <span className="flex shrink-0 items-center gap-1 font-mono text-[8px] text-ink/30 sm:text-[9px]">
                         站内展示 <ArrowUpRight size={10} className="opacity-40" />
                       </span>
                     )}

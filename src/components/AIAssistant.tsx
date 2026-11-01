@@ -206,7 +206,7 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
             exit={{ scale: 0.85, opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={() => setOpen(true)}
-            className="group fixed bottom-[calc(88px+env(safe-area-inset-bottom))] right-4 z-[60] flex items-center gap-2.5 rounded-full border-1.5 border-ink bg-lime px-4 py-3 shadow-hard transition hover:-translate-y-0.5 lg:bottom-5 lg:right-5"
+            className="group fixed bottom-[calc(88px_+_env(safe-area-inset-bottom))] right-4 z-[60] flex items-center gap-2.5 rounded-full border-1.5 border-ink bg-lime px-4 py-3 shadow-hard transition hover:-translate-y-0.5 lg:bottom-5 lg:right-5"
           >
             <span className="relative flex h-7 w-7 items-center justify-center rounded-full border-1.5 border-ink bg-ink text-lime">
               <Bot size={15} />
@@ -222,7 +222,7 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: reduce ? 0 : 16, scale: reduce ? 1 : 0.97 }}
             transition={reduce ? { duration: 0.18 } : { type: 'spring', stiffness: 320, damping: 30 }}
-            className="fixed bottom-[calc(84px+env(safe-area-inset-bottom))] right-4 z-[65] flex h-[min(560px,78vh)] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream shadow-hard-lg lg:bottom-4"
+            className="fixed bottom-[calc(84px_+_env(safe-area-inset-bottom))] right-4 z-[65] flex h-[min(560px,78vh)] w-[min(380px,calc(100vw_-_2rem))] flex-col overflow-hidden rounded-[22px] border-1.5 border-ink bg-cream shadow-hard-lg lg:bottom-4"
             role="dialog"
             aria-modal="true"
             aria-label="AI 学习助手"

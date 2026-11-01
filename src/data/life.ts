@@ -7,6 +7,8 @@ export type LoveRecord = {
   place: string
   color: string
   icon: 'heart' | 'coffee' | 'plane' | 'gift' | 'sun' | 'music'
+  /** 每条记录的专属封面（public/images/love 下的本地图片，不依赖外链） */
+  cover: string
 }
 
 export const loveMeta = {
@@ -19,6 +21,7 @@ export const loveMeta = {
 export const loveRecords: LoveRecord[] = [
   {
     id: 'l1',
+    cover: '/images/love/l1.jpg',
     date: '2023-05-20',
     title: '图书馆四楼，借走同一本《深度学习》',
     desc: '她先伸手，我把书让了出去，然后要到了微信。那天西安 29 度，我在图书馆门口站了十分钟才敢发第一条消息。',
@@ -29,6 +32,7 @@ export const loveRecords: LoveRecord[] = [
   },
   {
     id: 'l2',
+    cover: '/images/love/l2.jpg',
     date: '2023-09-17',
     title: '第一次一起去吃重庆小面',
     desc: '她吃微辣，我吃特辣，然后她被辣到眼泪汪汪还硬说好吃。后来我才知道她其实不能吃辣。',
@@ -39,6 +43,7 @@ export const loveRecords: LoveRecord[] = [
   },
   {
     id: 'l3',
+    cover: '/images/love/l3.jpg',
     date: '2024-02-14',
     title: '异地第一年，寄了一箱「时间胶囊」',
     desc: '365 张纸条，每天抽一张。她抽到的第一张写着「今天可以要求我唱一首歌」。',
@@ -49,6 +54,7 @@ export const loveRecords: LoveRecord[] = [
   },
   {
     id: 'l4',
+    cover: '/images/love/l4.jpg',
     date: '2024-07-21',
     title: '成都 · 一起看了第一场演唱会',
     desc: '她在副歌的时候哭了，我在旁边偷偷录像，回来剪成了一支 3 分钟的片子。',
@@ -59,6 +65,7 @@ export const loveRecords: LoveRecord[] = [
   },
   {
     id: 'l5',
+    cover: '/images/love/l5.jpg',
     date: '2024-11-03',
     title: '因为「谁该先挂电话」吵了一架',
     desc: '吵完她发来一条消息：「我们不吵隔夜架，你先睡，我明天继续喜欢你。」',
@@ -69,6 +76,7 @@ export const loveRecords: LoveRecord[] = [
   },
   {
     id: 'l6',
+    cover: '/images/love/l6.jpg',
     date: '2025-05-01',
     title: '重庆 · 带她回家吃外婆做的饭',
     desc: '外婆塞给她一大袋腊肉，她一路抱回西安，说这是「通关文牒」。',
@@ -79,6 +87,7 @@ export const loveRecords: LoveRecord[] = [
   },
   {
     id: 'l7',
+    cover: '/images/love/l7.jpg',
     date: '2025-09-10',
     title: '读研开学，她把我的工位贴满便签',
     desc: '每张便签一句「代码写不出来就先吃饭」。现在还在我显示器下面贴着。',
@@ -89,6 +98,7 @@ export const loveRecords: LoveRecord[] = [
   },
   {
     id: 'l8',
+    cover: '/images/love/l8.jpg',
     date: '2026-05-20',
     title: '三周年，用作品集当礼物',
     desc: '把这个网站做出来了。她说比花好，因为「这个能一直更新」。',

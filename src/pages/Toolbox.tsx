@@ -123,34 +123,34 @@ export default function Toolbox() {
           <p className="mt-2 font-hand text-2xl text-ink/40">这里空空的，换个筛选看看。</p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
           {list.map((item, i) => {
             const GroupIcon = groupIcons[item.group] ?? Box
             return (
             <Reveal key={item.id} delay={i * 0.03}>
-              <div className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-start gap-2.5">
+              <div className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-2.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-hard sm:p-4">
+                <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+                  <div className="flex min-w-0 items-start gap-2 sm:gap-2.5">
                     <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-1.5 border-ink"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink sm:h-9 sm:w-9 sm:rounded-xl"
                       style={{ background: `color-mix(in srgb, ${item.color} 42%, transparent)` }}
                       aria-hidden
                     >
-                      <GroupIcon size={15} />
+                      <GroupIcon size={15} className="size-[13px] shrink-0 sm:size-[15px]" />
                     </span>
                     <div className="min-w-0">
-                      <span className="flex items-center gap-1.5 font-mono text-[9px] tracking-wide text-ink/40">
-                        <span className="h-1.5 w-1.5 rounded-sm" style={{ background: item.color }} />
-                        {item.tag}
+                      <span className="flex items-center gap-1.5 font-mono text-[8px] tracking-wide text-ink/40 sm:gap-1.5 sm:text-[9px] sm:tracking-wide">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-sm" style={{ background: item.color }} />
+                        <span className="truncate">{item.tag}</span>
                       </span>
-                      <button onClick={() => setDetail(item)} className="mt-1 block text-left">
-                        <span className="block text-[14px] font-bold leading-snug hover:underline">{item.title}</span>
+                      <button onClick={() => setDetail(item)} className="mt-0.5 block text-left sm:mt-1">
+                        <span className="line-clamp-2 text-[11.5px] font-bold leading-snug hover:underline sm:text-[14px]">{item.title}</span>
                       </button>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {item.hot && (
-                      <span className="flex items-center gap-0.5 rounded-full bg-coral/15 px-1.5 py-0.5 font-mono text-[9px] text-coral">
+                      <span className="hidden items-center gap-0.5 rounded-full bg-coral/15 px-1.5 py-0.5 font-mono text-[9px] text-coral sm:flex">
                         <Flame size={8} /> HOT
                       </span>
                     )}
@@ -160,22 +160,24 @@ export default function Toolbox() {
                   </div>
                 </div>
 
-                <p className="mt-2.5 flex-1 text-[11.5px] leading-relaxed text-ink/50">{item.desc}</p>
+                <p className="mt-1.5 line-clamp-3 flex-1 text-[10px] leading-relaxed text-ink/50 sm:mt-2.5 sm:line-clamp-none sm:text-[11.5px]">
+                  {item.desc}
+                </p>
 
-                <div className="mt-3 flex items-center justify-between border-t border-dashed border-ink/12 pt-2.5">
-                  <span className="font-mono text-[9px] text-ink/35">
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5 border-t border-dashed border-ink/12 pt-2 sm:mt-3 sm:pt-2.5">
+                  <span className="font-mono text-[8px] text-ink/35 sm:text-[9px]">
                     {item.stars} 人收藏 · {item.updated}
                   </span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1 sm:gap-1.5">
                     <button
                       onClick={() => setDetail(item)}
-                      className="rounded-full border border-ink/20 px-2 py-1 text-[9.5px] transition hover:border-ink hover:bg-lime"
+                      className="rounded-full border border-ink/20 px-1.5 py-0.5 text-[9px] transition hover:border-ink hover:bg-lime sm:px-2 sm:py-1 sm:text-[9.5px]"
                     >
                       详情
                     </button>
                     <button
                       onClick={() => take(item)}
-                      className="flex items-center gap-1 rounded-full border border-ink/20 px-2 py-1 text-[9.5px] transition hover:border-ink hover:bg-lime"
+                      className="flex items-center gap-1 rounded-full border border-ink/20 px-1.5 py-0.5 text-[9px] transition hover:border-ink hover:bg-lime sm:px-2 sm:py-1 sm:text-[9.5px]"
                     >
                       <Copy size={10} /> 取用
                     </button>

@@ -21,7 +21,6 @@ const Travel = lazy(() => import('@/pages/Travel'))
 const MusicBox = lazy(() => import('@/pages/MusicBox'))
 const About = lazy(() => import('@/pages/About'))
 const Media = lazy(() => import('@/pages/Media'))
-const Timeline = lazy(() => import('@/pages/Timeline'))
 const Guestbook = lazy(() => import('@/pages/Guestbook'))
 const Friends = lazy(() => import('@/pages/Friends'))
 const Admin = lazy(() => import('@/pages/Admin'))
@@ -54,7 +53,6 @@ function AnimatedOutlet() {
               <Route path="life/music" element={<MusicBox />} />
               <Route path="me" element={<About />} />
               <Route path="me/media" element={<Media />} />
-              <Route path="me/timeline" element={<Timeline />} />
               <Route path="me/guestbook" element={<Guestbook />} />
               <Route path="me/friends" element={<Friends />} />
               <Route path="*" element={<NotFound />} />
