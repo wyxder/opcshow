@@ -75,6 +75,32 @@ const icons: Record<string, LucideIcon> = {
   wand: Wand2,
 }
 
+/* ------------------------------ wechat icon -------------------------------- */
+/* 微信官方图标（双气泡 + 四眼），与 lucide 的通用聊天气泡区分开；颜色走品牌绿令牌 */
+function WeChatIcon({ size = 12, className }: { size?: number; className?: string }) {
+  const maskId = 'wechat-bubble-mask'
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" className={className} aria-hidden="true" focusable="false">
+      <defs>
+        <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+          <rect width="24" height="24" fill="#fff" />
+          <circle cx="6" cy="9.1" r="1.05" fill="#000" />
+          <circle cx="10.3" cy="9.1" r="1.05" fill="#000" />
+          <circle cx="14.7" cy="15.2" r="0.88" fill="#000" />
+          <circle cx="17.7" cy="15.2" r="0.88" fill="#000" />
+        </mask>
+      </defs>
+      <g mask={`url(#${maskId})`}>
+        {/* 大气泡在上，小气泡叠加在右下：遮挡关系与官方标识一致 */}
+        <ellipse cx="8.4" cy="9.4" rx="7" ry="6" />
+        <path d="M4.2 14.1 L2.4 17.8 L6.8 15.8 Z" />
+        <ellipse cx="16.6" cy="15.7" rx="5.5" ry="4.8" />
+        <path d="M19.9 19.4 L21.9 22.2 L17.3 20.7 Z" />
+      </g>
+    </svg>
+  )
+}
+
 /* ------------------------------ scroll helpers ----------------------------- */
 function ScrollToTop() {
   const { pathname, hash } = useLocation()
@@ -694,7 +720,7 @@ function Footer() {
                 <Mail size={12} /> {profile.email}
               </a>
               <span className="tag">
-                <MessageCircle size={12} /> {profile.wechat}
+                <WeChatIcon size={13} className="text-brand-wechat" /> {profile.wechat}
               </span>
               {/* fx.md F4：真实外链 + rel="noopener noreferrer"，不再留 href="#" */}
               <a href={links.github} target="_blank" rel="noopener noreferrer" className="tag hover:bg-lime">

@@ -1,4 +1,3 @@
-import { ragArticleCount } from '@/data/articles.index'
 import { formatWan, platforms, totalFollowers } from '@/data/me'
 import { figures } from '@/data/site'
 
@@ -46,9 +45,6 @@ export const navItems: NavItem[] = [
     to: '/learn',
     children: [
       { label: '知识库', desc: 'RAG / Agent / 工程手记', to: '/learn', icon: 'book' },
-      { label: 'RAG 工程化', desc: `${ragArticleCount} 篇 · 从切片到溯源`, to: '/learn/rag-engineering', icon: 'search' },
-      { label: 'Agent 评测', desc: '22 个指标怎么选', to: '/learn/agent-eval', icon: 'gauge' },
-      { label: 'AI 学习助手', desc: '浮屏问答，随时打断', to: '/learn?assistant=1', icon: 'bot' },
     ],
   },
   {

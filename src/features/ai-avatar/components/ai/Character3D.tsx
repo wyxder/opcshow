@@ -209,10 +209,14 @@ export function Character3D({
   return (
     <div className="h-full w-full relative overflow-hidden" style={getBackgroundStyle()}>
       {(customAvatar?.type === 'live2d' || style === 'cartoon') ? (
-        <Live2DCanvas 
-          currentAvatar={(customAvatar?.type === 'live2d' ? customAvatar : DEFAULT_AI_AVATAR) as any} 
-          isSpeaking={externalIsSpeaking || false} 
-        />
+        // 数字人只在「数字人配置 / 形象选择 / 背景 / 真实 / 历史 / 分享分身」那一行下方展示：
+        // 用一个带上下内边距的盒子把 Live2D 画布收小，避免人物压住顶部控件与底部输入区。
+        <div className="absolute inset-x-0 top-[128px] bottom-[236px] sm:top-[136px] sm:bottom-[248px]">
+          <Live2DCanvas 
+            currentAvatar={(customAvatar?.type === 'live2d' ? customAvatar : DEFAULT_AI_AVATAR) as any} 
+            isSpeaking={externalIsSpeaking || false} 
+          />
+        </div>
       ) : (
         <>
           {customMedia?.type === 'video' && (
@@ -230,11 +234,12 @@ export function Character3D({
           )}
 
           {!customMedia && style !== 'hidden' && (
-            <div className={`absolute inset-0 flex items-center justify-center p-4 ${isMobileVoiceUI ? '-top-38 h-full' : ''}`}>
+            <div className={`absolute inset-0 flex items-start justify-center px-4 pt-[140px] pb-[180px] md:pt-[136px] ${isMobileVoiceUI ? '!top-0' : ''}`}>
               {/* Always show custom avatar if URL is available, otherwise show style-based default */}
               {(customAvatar?.url || style === 'realistic') ? (
                 <motion.div
-                  className="relative w-40 h-60 md:w-60 md:h-[22rem] lg:w-64 lg:h-[26rem] rounded-[40px] md:rounded-[48px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] border-4 border-white/10 md:-mt-30 lg:-mt-34"
+                  className="relative w-36 md:w-44 lg:w-48 rounded-[34px] md:rounded-[40px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] border-4 border-white/10"
+                  style={{ aspectRatio: '3 / 4' }}
                   animate={{
                     y: bodyAnimation.breathing ? [0, -10, 0] : 0,
                     ...getExpressionAnimation()
@@ -269,8 +274,8 @@ export function Character3D({
                 </motion.div>
               ) : (
                 <motion.div
-                  className="relative w-36 h-52 md:w-48 md:h-72 lg:w-56 lg:h-84 rounded-3xl md:-mt-30 lg:-mt-34"
-                  style={getCharacterStyle()}
+                  className="relative w-32 md:w-40 lg:w-44"
+                  style={{ ...getCharacterStyle(), aspectRatio: '3 / 4' }}
                   animate={{
                     y: bodyAnimation.breathing ? [0, -8, 0] : 0,
                     rotateX: headRotation.x,

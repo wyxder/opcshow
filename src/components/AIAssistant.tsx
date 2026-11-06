@@ -51,31 +51,25 @@ function BotAvatar({ className }: { className?: string }) {
 /**
  * 打字机效果：服务端流式每推一段，这里用定时器把目标文本逐字“吐”出来，
  * 视觉上比直接渲染 delta 更连贯亲切；reduce 偏好或一次性到达的完整文本则直接显示。
+ *
+ * 关键：answer 的首个 delta 往往晚于组件挂载（预置问答 700ms、真实模型看网络），
+ * 所以不能只在挂载时启动一次计时器——必须跟着 target 增长继续追字，
+ * 否则开局 target 为空时计时器会自己停掉，回答永远停在空白（「不回答消息」的根因）。
  */
 function useTypewriter(target: string, animate: boolean) {
   const [shown, setShown] = useState(animate ? '' : target)
-  const targetRef = useRef(target)
-  targetRef.current = target
 
   useEffect(() => {
     if (!animate) {
       setShown(target)
       return
     }
-    setShown((cur) => (target.startsWith(cur) ? cur : ''))
-    let timer = 0
-    const tick = () => {
-      setShown((cur) => {
-        const full = targetRef.current
-        if (cur.length >= full.length) return cur
-        const next = full.slice(0, cur.length + 2)
-        if (next.length < full.length) timer = window.setTimeout(tick, 22)
-        return next
-      })
-    }
-    timer = window.setTimeout(tick, 60)
+    if (shown.length >= target.length) return
+    const timer = window.setTimeout(() => {
+      setShown(target.slice(0, Math.min(target.length, shown.length + 2)))
+    }, 24)
     return () => window.clearTimeout(timer)
-  }, [animate])
+  }, [animate, target, shown])
 
   return shown
 }

@@ -898,7 +898,7 @@
         "MCP",
         "知识图谱"
       ],
-      "accent": "rgb(var(--c-ink))",
+      "accent": "rgb(var(--c-amber))",
       "motif": "grid",
       "status": "published",
       "version": 1

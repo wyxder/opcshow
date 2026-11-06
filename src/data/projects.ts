@@ -138,7 +138,7 @@ export const projects: Project[] = [
       { label: 'CI 回归', value: '12 条' },
     ],
     tags: ['科研提效', 'MCP', '知识图谱'],
-    accent: 'rgb(var(--c-ink))',
+    accent: 'rgb(var(--c-amber))',
     motif: 'grid',
     demo: 'https://research-harness.wyx.space',
   },

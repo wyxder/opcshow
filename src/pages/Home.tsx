@@ -24,7 +24,7 @@ import {
   Trophy,
   Utensils,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ProjectModal } from '@/components/ProjectModal'
 import { Modal } from '@/components/ui/Modal'
@@ -113,11 +113,13 @@ function Typewriter({ words }: { words: string[] }) {
 }
 
 /* ---------------------------------- hero ---------------------------------- */
+const pad2 = (x: number) => String(x).padStart(2, '0')
+
 /**
- * 首页第一面（2026 改版）：暖色编辑排版。
- * 状态胶囊 → 描边大字 → 身份句 → 简介 → 双 CTA → 数据行。
- * 仍然只用站点 tokens，所以五套主题、对比度门禁都继续生效；
- * 但不再用边框卡片包住首屏，让内容本身成为视觉主体。
+ * 首页第一面（2026 改版）：整屏编辑排版。
+ * 左列 = 自我介绍主视觉（状态胶囊 → 名字 → 身份句 → 简介 → 双 CTA → 元信息）；
+ * 右列 = 四个数字卡 + QUICK LOOK / FOCUS 面板；底部一条 SCROLL 提示行把高度撑满一屏。
+ * 仍然只用站点 tokens，所以五套主题、对比度门禁都继续生效。
  */
 function Hero({ onContact }: { onContact: () => void }) {
   const heroStats = [
@@ -128,20 +130,24 @@ function Hero({ onContact }: { onContact: () => void }) {
   ]
 
   return (
-    <section id="top" className="relative isolate overflow-hidden pb-8 pt-5 sm:pb-12 sm:pt-7">
-      {/* 背景光晕与装饰：全部 aria-hidden，不参与焦点与读屏 */}
+    <section
+      id="top"
+      className="relative isolate flex min-h-[calc(100svh-88px)] flex-col justify-between overflow-hidden pb-3 pt-6 sm:pt-8"
+    >
+      {/* 背景层：光晕 + 网格 + 几何装饰，全部 aria-hidden，不参与焦点与读屏 */}
       <div className="home-hero-glow pointer-events-none absolute inset-0 -z-10" aria-hidden />
-      <div className="pointer-events-none absolute -left-36 -top-32 -z-10 h-[340px] w-[340px] rounded-full border-[10px] border-coral/25 sm:-left-28 sm:h-[440px] sm:w-[440px]" aria-hidden />
+      <div className="grid-paper pointer-events-none absolute inset-0 -z-10 opacity-40" aria-hidden />
+      <div className="pointer-events-none absolute -left-36 -top-32 -z-10 h-[340px] w-[340px] rounded-full border-[10px] border-coral/25 sm:-left-28 sm:h-[460px] sm:w-[460px]" aria-hidden />
       <div className="pointer-events-none absolute -left-24 -top-16 -z-10 hidden h-[240px] w-[240px] rounded-full border-2 border-coral/20 sm:block" aria-hidden />
-      <Plus size={26} strokeWidth={2.5} className="pointer-events-none absolute right-[9%] top-10 -z-10 hidden animate-float text-coral/40 sm:block" aria-hidden />
-      <Plus size={17} strokeWidth={2.5} className="pointer-events-none absolute bottom-28 right-[20%] -z-10 hidden animate-float text-rose sm:block" style={{ animationDelay: '1.8s' }} aria-hidden />
-      <span className="pointer-events-none absolute right-1 top-1/2 -z-10 hidden -translate-y-1/2 rotate-90 font-mono text-[9px] tracking-[0.32em] text-ink/25 xl:block">PORTFOLIO / 2026 — 01</span>
+      <Plus size={26} strokeWidth={2.5} className="pointer-events-none absolute right-[7%] top-12 -z-10 hidden animate-float text-coral/40 sm:block" aria-hidden />
+      <Plus size={17} strokeWidth={2.5} className="pointer-events-none absolute bottom-24 right-[26%] -z-10 hidden animate-float text-rose sm:block" style={{ animationDelay: '1.8s' }} aria-hidden />
+      <span className="pointer-events-none absolute right-0 top-1/2 -z-10 hidden -translate-y-1/2 rotate-90 font-mono text-[9px] tracking-[0.32em] text-ink/25 xl:block">PORTFOLIO / 2026 — 01</span>
 
-      {/* 左右分栏（≥lg）：左列文字主视觉，右列统计 + QUICK LOOK 紧凑卡；窄屏回退单列居中 */}
-      <div className="relative mx-auto grid w-full max-w-3xl items-center gap-8 lg:max-w-6xl lg:grid-cols-[1.15fr_1fr] lg:gap-10">
-        <div>
-        <Reveal>
-          <div className="flex justify-center lg:justify-start">
+      {/* 主体：≥lg 左右分栏（左文案 / 右数据），窄屏单列居中；宽度跟随 shell，宽屏不留孤岛式留白 */}
+      <div className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 py-4 lg:max-w-none lg:grid lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-12 xl:gap-16">
+        {/* 左列：自我介绍 */}
+        <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+          <Reveal>
             <div className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-cream/95 px-3.5 py-1.5 shadow-soft">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />
@@ -151,92 +157,96 @@ function Hero({ onContact }: { onContact: () => void }) {
                 正在寻找 AI 应用与智能体开发实习 <span className="text-ink/30">·</span> 可实习 6 个月+
               </span>
             </div>
-          </div>
-        </Reveal>
+          </Reveal>
 
-        <Reveal delay={0.06}>
-          <h1 className="mt-5 text-center lg:text-left">
-            <span className="block text-[clamp(24px,4.2vw,38px)] font-black leading-[1.08] tracking-[-0.04em] text-ink/85">你好，我是</span>
-            <span className="mt-1 flex items-baseline justify-center gap-x-3 lg:justify-start">
-              <span className="hero-name whitespace-nowrap text-[clamp(36px,6vw,56px)] font-black leading-[1.08] tracking-[-0.05em]">晓叶</span>
-              <span aria-hidden className="animate-wiggle text-[clamp(22px,3.4vw,32px)] leading-none">👋</span>
-            </span>
-          </h1>
-        </Reveal>
+          <Reveal delay={0.06} className="w-full">
+            <h1 className="mt-7 w-full">
+              <span className="flex items-baseline justify-center gap-2 lg:justify-start">
+                <span className="font-mono text-[9.5px] tracking-[0.28em] text-ink/40">HELLO</span>
+                <span className="h-px w-5 bg-ink/20" aria-hidden />
+                <span className="text-[15px] font-bold tracking-[0.02em] text-ink/55">你好，我是</span>
+              </span>
+              <span className="mt-2 flex items-baseline justify-center gap-x-3 lg:justify-start">
+                <span className="hero-name whitespace-nowrap text-[clamp(56px,8.2vw,128px)] font-black leading-[0.98] tracking-[-0.06em]">晓叶</span>
+                <span aria-hidden className="animate-wiggle text-[clamp(26px,3.6vw,46px)] leading-none">👋</span>
+              </span>
+            </h1>
+          </Reveal>
 
-        <Reveal delay={0.12}>
-          <p className="mt-4 text-center text-[clamp(16px,1.8vw,19px)] font-bold text-ink/80 lg:text-left">
-            我是一名 <Typewriter words={heroRoles} />
-          </p>
-          <p className="mx-auto mt-3 max-w-[560px] text-center text-[13px] leading-[1.85] text-ink-soft sm:text-[13.5px] lg:mx-0 lg:text-left">
-            陕西科技大学多模态 AI 方向硕士在读，CCF-A 学生一作在投，{figures.products} 款 AI 商业产品上线者，{figures.mainPlatformFollowers} 粉 AI 自媒体博主。信奉「把 Agent 做成产品，把产品做成事业」。
-          </p>
-        </Reveal>
+          <Reveal delay={0.12} className="w-full">
+            <p className="mt-6 text-center text-[clamp(18px,2vw,26px)] font-bold leading-snug text-ink/85 lg:mt-7 lg:text-left">
+              我是一名 <Typewriter words={heroRoles} />
+            </p>
+            <p className="mx-auto mt-4 max-w-[620px] text-center text-[13px] leading-[1.9] text-ink-soft sm:text-[14.5px] lg:mx-0 lg:text-left">
+              陕西科技大学多模态 AI 方向硕士在读，CCF-A 学生一作在投，{figures.products} 款 AI 商业产品上线者，{figures.mainPlatformFollowers} 粉 AI 自媒体博主。信奉「把 Agent 做成产品，把产品做成事业」。
+            </p>
+          </Reveal>
 
-        <Reveal delay={0.18}>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
-            <a href="#projects" className="hero-cta-primary group">
-              <Rocket size={16} className="transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-              看看我的项目
-            </a>
-            <button type="button" onClick={onContact} className="hero-cta-secondary">
-              <Mail size={15} /> 联系我
-            </button>
-          </div>
+          <Reveal delay={0.18} className="w-full">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
+              <a href="#projects" className="hero-cta-primary group">
+                <Rocket size={16} className="transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                看看我的项目
+              </a>
+              <button type="button" onClick={onContact} className="hero-cta-secondary">
+                <Mail size={15} /> 联系我
+              </button>
+            </div>
 
-          <div className="mt-3.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-mono text-[9px] tracking-[0.12em] text-ink/40 lg:justify-start">
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin size={10} /> 西安 · 可远程 / 出差
-            </span>
-            <span className="hidden h-3 w-px bg-ink/15 sm:block" />
-            <span>6 个月+ · 5 天/周 · 随时到岗</span>
-            <span className="flex items-center gap-3 font-sans text-[10px] tracking-normal">
-              <Link to="/work/resume" className="link-underline font-medium text-ink/55 transition hover:text-ink">
-                简历 · 一页纸
-              </Link>
-              <Link to="/me/guestbook" className="link-underline font-medium text-ink/55 transition hover:text-ink">
-                留句话
-              </Link>
-            </span>
-          </div>
-        </Reveal>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-mono text-[9px] tracking-[0.12em] text-ink/40 lg:justify-start">
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin size={10} /> 西安 · 可远程 / 出差
+              </span>
+              <span className="hidden h-3 w-px bg-ink/15 sm:block" />
+              <span>6 个月+ · 5 天/周 · 随时到岗</span>
+              <span className="flex items-center gap-3 font-sans text-[10px] tracking-normal">
+                <Link to="/work/resume" className="link-underline font-medium text-ink/55 transition hover:text-ink">
+                  简历 · 一页纸
+                </Link>
+                <Link to="/me/guestbook" className="link-underline font-medium text-ink/55 transition hover:text-ink">
+                  留句话
+                </Link>
+              </span>
+            </div>
+          </Reveal>
         </div>
 
-        {/* 右列：统计 2×2 紧凑卡 + QUICK LOOK / FOCUS 单卡（移动端回退单列时沿用原 2/4 列规则） */}
-        <div className="lg:flex lg:flex-col lg:gap-3">
-        {/* 统计卡片：横向 4 列紧凑小卡（移动端 2 列） */}
-        <Reveal delay={0.24}>
-          <dl className="mt-7 grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:mt-0 lg:grid-cols-2">
-            {heroStats.map((s) => (
-              <div key={s.label} className="rounded-2xl border-1.5 border-ink bg-cream px-3 py-3 text-center shadow-hard-sm">
-                <dt className="sr-only">{s.label}</dt>
-                <dd>
-                  <span className="font-display text-[clamp(22px,2.4vw,28px)] font-extrabold leading-none tracking-[-0.03em]">
-                    <CountUp to={s.value} />
-                    <span className="text-coral">{s.suffix}</span>
-                  </span>
-                  <span className="mt-1.5 block text-[10.5px] font-medium text-ink/55">{s.label}</span>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </Reveal>
+        {/* 右列：数字卡 2×2 + QUICK LOOK / FOCUS 面板 */}
+        <div className="flex w-full flex-col gap-3">
+          <Reveal delay={0.24}>
+            <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-2 lg:gap-3">
+              {heroStats.map((s) => (
+                <div
+                  key={s.label}
+                  className="rounded-2xl border-1.5 border-ink bg-cream px-3.5 py-3.5 text-center shadow-hard-sm transition-transform duration-300 hover:-translate-y-1"
+                >
+                  <dt className="sr-only">{s.label}</dt>
+                  <dd>
+                    <span className="font-display text-[clamp(30px,3.2vw,48px)] font-black leading-none tracking-[-0.04em]">
+                      <CountUp to={s.value} />
+                      <span className="text-coral">{s.suffix}</span>
+                    </span>
+                    <span className="mt-2 block text-[10.5px] font-medium text-ink/55">{s.label}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Reveal>
 
-        {/* QUICK LOOK / 2026 + OPEN TO WORK + FOCUS / NOW：合并为单张紧凑小卡 */}
-        <Reveal delay={0.3}>
-          <div className="mt-3 rounded-2xl border-1.5 border-ink bg-cream p-4 shadow-hard-sm lg:mt-0">
-            <div className="relative">
+          <Reveal delay={0.3}>
+            <div className="rounded-2xl border-1.5 border-ink bg-cream p-4 shadow-hard-sm lg:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-mono text-[9.5px] tracking-[0.2em] text-ink/45">QUICK LOOK / 2026</span>
+                <span className="font-mono text-[10px] tracking-[0.2em] text-ink/45">QUICK LOOK / 2026</span>
                 <span className="tag bg-lime">
                   <Sparkles size={11} /> OPEN TO WORK
                 </span>
               </div>
               <div className="mt-3 border-t border-dashed border-ink/15 pt-3">
                 <p className="font-mono text-[9px] tracking-[0.18em] text-ink/40">FOCUS / NOW</p>
-                <ul className="mt-2 grid gap-1.5 sm:grid-cols-3">
-                  {focusNow.map((f) => (
-                    <li key={f.title} className="flex items-center gap-2 rounded-xl border border-ink/12 bg-paper px-2.5 py-2">
+                <ul className="mt-2.5 grid gap-1.5 sm:grid-cols-3 lg:grid-cols-1">
+                  {focusNow.map((f, i) => (
+                    <li key={f.title} className="flex items-center gap-2.5 rounded-xl border border-ink/12 bg-paper px-2.5 py-2">
+                      <span className="font-mono text-[9px] font-bold text-coral">{pad2(i + 1)}</span>
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-coral" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[11.5px] font-medium">{f.title}</span>
@@ -247,16 +257,24 @@ function Hero({ onContact }: { onContact: () => void }) {
                 </ul>
               </div>
             </div>
-          </div>
-        </Reveal>
+          </Reveal>
         </div>
+      </div>
+
+      {/* 底部提示行：把首屏高度收口，同时给下一个区块一个入口 */}
+      <div className="relative mx-auto mt-6 flex w-full max-w-3xl items-center justify-between gap-4 border-t border-ink/10 pt-3.5 font-mono text-[9px] tracking-[0.18em] text-ink/40 sm:mt-8 lg:max-w-none">
+        <span className="flex items-center gap-2 text-ink/55">
+          SCROLL <ArrowDownRight size={12} className="animate-float" />
+          <span className="hidden sm:inline">继续往下看项目与经历</span>
+        </span>
+        <span className="hidden text-ink/30 md:block">WYX.SPACE / 2026</span>
+        <span>01 — HELLO</span>
       </div>
     </section>
   )
 }
 
 /* -------------------------------- carousel -------------------------------- */
-const pad2 = (x: number) => String(x).padStart(2, '0')
 
 function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; paused?: boolean }) {
   const list = projects
@@ -266,6 +284,8 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
   const [focus, setFocus] = useState(false)
   const reduce = usePrefersReducedMotion()
   const hold = hover || focus || !!paused
+  // 鼠标拖拽结束的瞬间会紧跟一次 click：用时间戳吞掉这次误触，避免「滑完又打开弹窗」
+  const dragEndedAt = useRef(0)
 
   const go = (next: number) => setIndex(((next % n) + n) % n)
 
@@ -285,6 +305,13 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
       e.preventDefault()
       go(index + 1)
     }
+  }
+
+  /** 鼠标 / 触控板左右拖动切换：位移超过卡片宽度的 12% 就翻页，否则回弹 */
+  const handleDragEnd = (offsetX: number) => {
+    dragEndedAt.current = Date.now()
+    if (Math.abs(offsetX) < 40) return
+    go(offsetX < 0 ? index + 1 : index - 1)
   }
 
   // 环形最短偏移：rel 0=主卡，±1=相邻露出，±2=更外层
@@ -372,16 +399,19 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
                       opacity: isMain ? 1 : 0.38,
                     }}
                     transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }}
-                    drag={isMain && !reduce ? 'x' : false}
+                    drag={reduce ? false : 'x'}
                     dragConstraints={{ left: 0, right: 0 }}
                     dragElastic={0.14}
-                    onDragEnd={(_, info) => {
-                      if (info.offset.x < -60) go(index + 1)
-                      if (info.offset.x > 60) go(index - 1)
+                    dragMomentum={false}
+                    onDragEnd={(_, info) => handleDragEnd(info.offset.x)}
+                    onClick={() => {
+                      if (Date.now() - dragEndedAt.current < 220) return
+                      if (isMain) onOpen(p)
+                      else go(i)
                     }}
-                    onClick={() => (isMain ? onOpen(p) : go(i))}
                     className={cn(
-                      'w-full max-w-[640px] cursor-pointer select-none',
+                      'w-full max-w-[640px] select-none',
+                      reduce ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                       isMain && 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime',
                     )}
                   >
