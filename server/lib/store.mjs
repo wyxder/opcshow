@@ -4,7 +4,8 @@
  * 生产建议 PostgreSQL + Prisma；本仓库在没有数据库的环境下用「JSON 文件 + 原子写 + 串行队列」
  * 先让读写真正持久化：刷新、重启都不丢，接口与类型保持同构，后续换库只替换本文件。
  */
-import { mkdir, readFile, rename, rm, writeFile, stat } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, rm, writeFile, stat } from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { env } from './env.mjs'
@@ -42,14 +43,28 @@ export class JsonStore {
   }
 
   async #write(data) {
-    const tmp = `${this.path}.${process.pid}.${Date.now()}.tmp`
+    // 唯一 tmp 名（pid + 时间 + 随机后缀），避免同毫秒并发写撞名
+    const tmp = `${this.path}.${process.pid}.${Date.now()}.${randomBytes(4).toString('hex')}.tmp`
     await writeFile(tmp, JSON.stringify(data, null, 2), 'utf8')
     try {
-      // BE-12：优先直接覆盖 rename（POSIX/Windows 均可），避免 rm 与 rename 之间的崩溃窗口
       await rename(tmp, this.path)
     } catch {
-      await rm(this.path, { force: true })
-      await rename(tmp, this.path)
+      // Windows 覆盖已存在文件可能失败。先用原子 rename 把旧副本挪到 .bak，
+      // 再放新文件；任何一步失败都回滚，绝不先 rm 掉唯一有效数据文件。
+      const bak = `${this.path}.bak`
+      let moved = false
+      try {
+        await rename(this.path, bak)
+        moved = true
+      } catch { /* 旧文件可能还不存在 */ }
+      try {
+        await rename(tmp, this.path)
+      } catch (err) {
+        if (moved) await rename(bak, this.path).catch(() => {})
+        await rm(tmp, { force: true }).catch(() => {})
+        throw err
+      }
+      if (moved) await rm(bak, { force: true }).catch(() => {})
     }
     this.version += 1
     cache.set(this.path, data)
@@ -122,9 +137,35 @@ export async function backupSnapshot() {
   return { createdAt: new Date().toISOString(), snapshot }
 }
 
+/** 启动清理：进程在 writeFile 阶段被中断会留下 0 字节 tmp，这里统一回收 */
+export async function cleanupTmpFiles() {
+  const dir = resolve(env.dataDir)
+  if (!existsSync(dir)) return 0
+  let removed = 0
+  for (const name of await readdir(dir)) {
+    if (!name.endsWith('.tmp')) continue
+    try {
+      await rm(resolve(dir, name), { force: true })
+      removed += 1
+    } catch { /* ignore */ }
+  }
+  return removed
+}
+
+/** 恢复快照前先做结构校验，避免把账号清空导致永久锁死 */
 export async function restoreSnapshot(snapshot) {
   if (!snapshot || typeof snapshot !== 'object') throw Object.assign(new Error('快照格式不正确'), { status: 422, code: 'INVALID_SNAPSHOT' })
+  const users = snapshot.users?.users
+  const content = snapshot.content
+  if (!Array.isArray(users) || !users.length || !content || typeof content !== 'object' || !Array.isArray(content.articles)) {
+    throw Object.assign(new Error('快照缺少有效的 users / content 数据，已拒绝恢复'), { status: 422, code: 'INVALID_SNAPSHOT' })
+  }
   const s = await getStores()
+  // 先在内存里校验所有条目可序列化，再逐个落盘，减少半途失败的不一致面
+  for (const [name, data] of Object.entries(snapshot)) {
+    if (!s[name] || !data || typeof data !== 'object') continue
+    JSON.stringify(data)
+  }
   for (const [name, data] of Object.entries(snapshot)) {
     if (!s[name] || !data || typeof data !== 'object') continue
     await s[name].write(data)

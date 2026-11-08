@@ -349,6 +349,10 @@ function streamFile(req, res, key, name) {
     }
     res.writeHead(200, { ...headersBase, 'Content-Length': s.size })
     createReadStream(full).pipe(res)
+  }).catch(() => {
+    // stat 在 existsSync 之后失败（文件被并发删除）时必须结束响应，否则连接永久挂起
+    if (!res.headersSent) sendError(res, 500, 'FILE_STAT_FAILED', '读取文件信息失败', 'req_file')
+    else res.end()
   })
 }
 

@@ -7,10 +7,16 @@ import { AButton, AdminModal, Badge, EmptyState, Meter, PageTitle, Panel, Segmen
 import { cn } from '@/lib/utils'
 import { serverConfig } from '@/services/config'
 import { generateReport, getOverview, type Overview, type Report } from '@/services/admin'
+import { getRealtime, type RealtimeStats } from '@/services/adminx'
 
 const kpiIcons = [Eye, Users, Sparkles, MessageSquare, BookOpen, Download]
+const errMsg = (err: unknown) => (err instanceof Error ? err.message : String(err))
+const fmtTime = (iso: string) => {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('zh-CN')
+}
 
-/** 未接服务端时的只读回退：明确标注「预置样本」，不冒充真实统计 */
+/** 未接服务端时的只读回退：明确标注「预置演示值」，不冒充真实统计 */
 const demoOverview = (win: '7d' | '30d'): Overview => {
   const t = traffic[win]
   const days = t.labels.map((date, i) => ({ date, pv: t.pv[i], uv: t.uv[i], ai: t.ai[i] }))
@@ -47,6 +53,7 @@ export default function OverviewPage({
 }) {
   const [win, setWin] = useState<'7d' | '30d'>('7d')
   const [data, setData] = useState<Overview | null>(null)
+  const [snapshot, setSnapshot] = useState<RealtimeStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [report, setReport] = useState<Report | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -57,10 +64,17 @@ export default function OverviewPage({
       return
     }
     setLoading(true)
-    const next = await getOverview()
-    setLoading(false)
-    if (next) setData(next)
-    else show('总览接口不可用：保留上一次数据')
+    try {
+      const [next, rt] = await Promise.all([getOverview(), getRealtime()])
+      if (next) setData(next)
+      else show('总览接口不可用：保留上一次数据')
+      if (rt) setSnapshot(rt) // 实时快照失败时保留上一次
+    } catch (err) {
+      // 两个读都是 safe 读；极端异常也不清空已有数据，只提示并保留上次
+      show(`总览接口不可用：保留上一次数据（${errMsg(err)}）`)
+    } finally {
+      setLoading(false)
+    }
   }, [win, show])
 
   useEffect(() => {
@@ -70,11 +84,19 @@ export default function OverviewPage({
   const view = data ?? demoOverview(win)
   const live = serverConfig.enabled && Boolean(data)
   const days = win === '30d' && live ? view.analytics.days.slice(-7) : view.analytics.days
+  const lastDay = days[days.length - 1]
+  /** 真实模式优先用 getRealtime() 实时快照，失败回落 overview.analytics 的最后一天；演示模式保留预置兜底 */
+  const todayRows = [
+    { label: '今日 PV', value: snapshot?.todayPv ?? lastDay?.pv ?? (live ? '—' : realtime.pv), icon: Eye },
+    { label: '今日 UV', value: snapshot?.todayUv ?? lastDay?.uv ?? (live ? '—' : realtime.uv), icon: Users },
+    { label: '今日 AI', value: snapshot?.todayAi ?? view.ai.todayCalls, icon: Sparkles },
+    { label: 'AI 成功率', value: view.ai.successRate === null ? '—' : `${view.ai.successRate}%`, icon: Sparkles },
+  ]
   const kpis = [
-    { label: '近 7 天 PV', value: view.analytics.pv.toLocaleString(), note: live ? '服务端埋点' : '预置样本' },
-    { label: '近 7 天 UV', value: view.analytics.uv.toLocaleString(), note: live ? '会话去重' : '预置样本' },
-    { label: 'AI 轮次', value: view.analytics.ai.toLocaleString(), note: live ? 'kind=ai' : '预置样本' },
-    { label: '待审留言', value: String(view.guestbook.pending), note: live ? '互动审核' : '预置样本' },
+    { label: '近 7 天 PV', value: view.analytics.pv.toLocaleString(), note: live ? '服务端埋点' : '预置演示值' },
+    { label: '近 7 天 UV', value: view.analytics.uv.toLocaleString(), note: live ? '会话去重' : '预置演示值' },
+    { label: 'AI 轮次', value: view.analytics.ai.toLocaleString(), note: live ? 'kind=ai' : '预置演示值' },
+    { label: '待审留言', value: String(view.guestbook.pending), note: live ? '互动审核' : '预置演示值' },
     { label: '非公开内容', value: String(view.content.articles.draft + view.content.projects.draft + view.content.moments.draft), note: '文章/项目/动态' },
     { label: '文件 / 分享', value: `${view.files.total} / ${view.files.shares}`, note: `回收站 ${view.files.trashed}` },
   ]
@@ -94,9 +116,21 @@ export default function OverviewPage({
     try {
       setReport(await generateReport())
     } catch (err) {
-      show(`周报生成失败：${(err as Error).message}`)
+      show(`周报生成失败：${errMsg(err)}`)
     } finally {
       setGenerating(false)
+    }
+  }
+
+  /** 复制正文：await 成功后才提示，失败给出具体原因 */
+  const copyReport = async () => {
+    if (!report) return
+    if (!navigator.clipboard) return show('复制失败：当前环境不支持剪贴板')
+    try {
+      await navigator.clipboard.writeText(report.text)
+      show('周报正文已复制')
+    } catch {
+      show('复制失败：浏览器未授予剪贴板权限')
     }
   }
 
@@ -105,7 +139,7 @@ export default function OverviewPage({
       <PageTitle
         kicker="Dashboard"
         title="首页总览"
-        desc={live ? '数据来自服务端埋点、内容库与任务队列（7 天窗口）。' : '未接服务端：以下为只读预置样本，仅用于预览版式。'}
+        desc={live ? '数据来自服务端埋点、内容库与任务队列（7 天窗口）。' : '未接服务端：以下为只读预置演示值，仅用于预览版式。'}
         right={
           <>
             <Segmented value={win} onChange={setWin} options={[{ key: '7d', label: '近 7 天' }, { key: '30d', label: '近 30 天' }]} />
@@ -120,7 +154,7 @@ export default function OverviewPage({
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={live ? 'teal' : 'amber'}>{live ? '服务端真实数据' : '预置样本 · 只读'}</Badge>
+        <Badge tone={live ? 'teal' : 'amber'}>{live ? '服务端真实数据' : '预置演示值 · 只读'}</Badge>
         <Badge tone={view.env.model === 'configured' ? 'teal' : 'neutral'}>AI：{view.env.model === 'configured' ? '模型已配置' : '检索模式'}</Badge>
         <span className="font-mono text-[9.5px] text-admin-muted">生成于 {new Date(view.generatedAt).toLocaleString('zh-CN')}</span>
       </div>
@@ -145,7 +179,7 @@ export default function OverviewPage({
         <Panel
           kicker="Traffic trend"
           title="访问 / 访客 / AI 会话"
-          desc={live ? '服务端埋点按日聚合' : '预置样本（未接服务端）'}
+          desc={live ? '服务端埋点按日聚合' : '预置演示值（未接服务端）'}
           right={<span className="rounded-full border border-ink/15 px-2.5 py-1 font-mono text-[9.5px] text-admin-muted">{win}</span>}
         >
           {days.length ? (
@@ -218,14 +252,14 @@ export default function OverviewPage({
           )}
         </Panel>
 
-        <Panel dark kicker="Today" title="今日" desc={live ? '服务端记账' : '预置样本'}>
+        <Panel
+          dark
+          kicker="Today"
+          title="今日"
+          desc={live ? (snapshot ? '服务端实时快照 + 内容库记账' : '服务端记账（实时快照暂不可用）') : '预置演示值 · 未接服务端'}
+        >
           <div className="grid grid-cols-2 gap-2.5">
-            {[
-              { label: '今日 PV', value: days[days.length - 1]?.pv ?? realtime.pv, icon: Eye },
-              { label: '今日 UV', value: days[days.length - 1]?.uv ?? realtime.uv, icon: Users },
-              { label: '今日 AI', value: view.ai.todayCalls, icon: Sparkles },
-              { label: 'AI 成功率', value: view.ai.successRate === null ? '—' : `${view.ai.successRate}%`, icon: Sparkles },
-            ].map((r) => (
+            {todayRows.map((r) => (
               <div key={r.label} className="rounded-xl border border-paper/15 bg-paper/5 px-3 py-2.5">
                 <p className="flex items-center gap-1.5 text-[10px] text-paper/70">
                   <r.icon size={11} /> {r.label}
@@ -235,9 +269,15 @@ export default function OverviewPage({
             ))}
           </div>
           <div className="mt-3 flex items-center justify-between border-t border-dashed border-paper/15 pt-2.5 text-[10px] text-paper/70">
+            <span>在线 {snapshot ? snapshot.online : live ? '—' : realtime.online}</span>
             <span>日配额 {view.ai.quota}</span>
             <span>Token {view.ai.todayTokens}</span>
           </div>
+          {snapshot && (
+            <p className="mt-2 font-mono text-[9px] text-paper/50">
+              实时快照于 {fmtTime(snapshot.generatedAt)} · 累计命中 {snapshot.totalHits}
+            </p>
+          )}
         </Panel>
       </div>
 
@@ -250,13 +290,7 @@ export default function OverviewPage({
         footer={
           <>
             <AButton onClick={() => setReport(null)}>关闭</AButton>
-            <AButton
-              variant="primary"
-              onClick={() => {
-                if (!report) return
-                void navigator.clipboard?.writeText(report.text).then(() => show('周报正文已复制'))
-              }}
-            >
+            <AButton variant="primary" onClick={() => void copyReport()}>
               复制正文
             </AButton>
           </>

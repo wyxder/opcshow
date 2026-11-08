@@ -23,6 +23,14 @@ import {
 } from '@/admin/ui'
 import { cn, newId } from '@/lib/utils'
 import { purgeFile } from '@/services/admin'
+import {
+  cleanupFiles,
+  emptyTrash,
+  getDuplicates,
+  getStorageReport,
+  type DuplicateGroup,
+  type StorageReport,
+} from '@/services/adminx'
 import { apiUrl, serverConfig } from '@/services/config'
 import {
   createFileRecord,
@@ -53,7 +61,8 @@ const DEMO_NOTE = '当前未配置服务端（VITE_API_BASE），上传、新建
 const KNOWN_CATEGORY = ['简历与作品集', '课程与讲义', '数据集', '模板', '源码', '未分类'] as const
 
 /** 状态徽标：pending = 只有元数据没传真实文件，与服务端白名单对齐 */
-const FILE_STATUS_LABEL: Record<string, string> = { published: '已发布', pending: '待上传' }
+const FILE_STATUS_LABEL: Record<string, string> = { published: '已发布', pending: '待上传', trashed: '回收站' }
+const CATEGORY_COLORS = ['rgb(var(--c-coral))', 'rgb(var(--c-amber))', 'rgb(var(--c-blue))', 'rgb(var(--c-grape))', 'rgb(var(--c-rose))']
 
 const rowFromServer = (f: ServerFile): Row => ({
   id: f.id,
@@ -109,11 +118,15 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
-  const [shareDraft, setShareDraft] = useState({ file: adminFiles[0]?.name ?? '', password: '', expires: '永久' })
+  const [shareDraft, setShareDraft] = useState({ file: real ? '' : (adminFiles[0]?.name ?? ''), password: '', expires: '永久' })
   const [editing, setEditing] = useState<Row | null>(null)
   const [editDraft, setEditDraft] = useState({ name: '', category: '', size: '', visibility: '公开', status: 'published' })
   const [recordOpen, setRecordOpen] = useState(false)
   const [recordDraft, setRecordDraft] = useState({ name: '', category: '未分类', size: '' })
+  const [report, setReport] = useState<StorageReport | null>(null)
+  const [duplicates, setDuplicates] = useState<{ groups: DuplicateGroup[]; reclaimableBytes: number } | null>(null)
+  const [reportLoading, setReportLoading] = useState(real)
+  const [reportError, setReportError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async (spinner = true) => {
@@ -150,13 +163,53 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
     }
   }, [])
 
+  /** 真实模式读服务端存储报告与重复文件检测；get 类读失败统一置空并暴露可重试错误 */
+  const loadClean = useCallback(async () => {
+    if (!real) return
+    setReportLoading(true)
+    setReportError('')
+    try {
+      const [rep, dup] = await Promise.all([getStorageReport(), getDuplicates()])
+      if (!rep) throw new Error('存储报告接口未返回数据')
+      setReport(rep)
+      setDuplicates(dup ?? { groups: [], reclaimableBytes: 0 })
+    } catch (err) {
+      setReportError(`清理数据加载失败：${(err as Error).message}`)
+    } finally {
+      setReportLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     void load()
   }, [load])
 
+  useEffect(() => {
+    void loadClean()
+  }, [loadClean])
+
   const filtered = files.filter((f) => `${f.name} ${f.category}`.toLowerCase().includes(query.trim().toLowerCase()))
   const usedPercent = Math.round((storage.used / storage.total) * 100)
   const expiresDays = ({ 永久: 0, '7 天': 7, '30 天': 30, '90 天': 90 } as Record<string, number>)[shareDraft.expires] ?? 0
+
+  const rep = report
+  const catTotal = rep ? Object.values(rep.byCategory).reduce((s, v) => s + v, 0) || 1 : storage.total
+  const buckets =
+    rep && real
+      ? Object.entries(rep.byCategory).map(([label, value], i) => ({
+          label,
+          value,
+          color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+          pct: (value / catTotal) * 100,
+          size: human(value),
+        }))
+      : storage.buckets.map((b) => ({
+          label: b.label,
+          value: b.value,
+          color: b.color,
+          pct: (b.value / storage.total) * 100,
+          size: `${b.value} GB`,
+        }))
 
   const run = async (key: string, task: () => Promise<unknown>, ok: string, fail: string) => {
     if (!real) return show('未配置服务端，写操作不可用')
@@ -165,6 +218,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
     try {
       await task()
       await load(false)
+      await loadClean()
       show(ok)
     } catch (err) {
       show(`${fail}：${(err as Error).message}`)
@@ -285,6 +339,61 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
     }
   }
 
+  /** 清空回收站：真删服务端记录与磁盘文件，用服务端返回的 removed/freedBytes 如实回显 */
+  const emptyTrashNow = async () => {
+    if (!real) return show('未配置服务端，清理操作不可用')
+    if (!window.confirm('清空回收站？服务端将永久删除回收站记录与磁盘文件，不可恢复。')) return
+    if (busy) return
+    setBusy('trash-empty')
+    try {
+      const res = await emptyTrash()
+      show(`回收站已清空：删除 ${res.removed} 个，释放 ${human(res.freedBytes)}`)
+    } catch (err) {
+      show(`清空回收站失败：${(err as Error).message}`)
+    } finally {
+      await load(false)
+      await loadClean()
+      setBusy(null)
+    }
+  }
+
+  /** 一键清理：孤立文件 / 临时文件 / 过期分享，数量以服务端返回为准 */
+  const cleanupNow = async () => {
+    if (!real) return show('未配置服务端，清理操作不可用')
+    if (!window.confirm('执行清理？将删除孤立文件、临时文件与过期分享。')) return
+    if (busy) return
+    setBusy('cleanup')
+    try {
+      const res = await cleanupFiles({ orphans: true, tmp: true, expiredShares: true })
+      show(`清理完成：孤立文件 ${res.orphansRemoved} 个（释放 ${human(res.bytesFreed)}），临时文件 ${res.tmpRemoved} 个，过期分享 ${res.sharesRemoved} 个`)
+    } catch (err) {
+      show(`清理失败：${(err as Error).message}`)
+    } finally {
+      await load(false)
+      await loadClean()
+      setBusy(null)
+    }
+  }
+
+  /** 删除重复文件：走 purgeFile 真删服务端记录与磁盘文件，不改动本地 state 冒充成功 */
+  const purgeDuplicate = async (ids: string[], note: string) => {
+    if (!real) return show('未配置服务端，删除不可用')
+    if (!ids.length) return
+    if (!window.confirm(`彻底删除 ${ids.length} 个重复文件？服务端会移除记录与磁盘文件，不可恢复。`)) return
+    if (busy) return
+    setBusy('dup-purge')
+    try {
+      for (const id of ids) await purgeFile(id)
+      show(`已彻底删除 ${ids.length} 个重复文件（${note}）`)
+    } catch (err) {
+      show(`删除重复文件失败：${(err as Error).message}`)
+    } finally {
+      await load(false)
+      await loadClean()
+      setBusy(null)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <PageTitle
@@ -299,7 +408,10 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
           <>
             <AButton
               icon={<RefreshCw size={13} className={loading ? 'animate-spin' : undefined} />}
-              onClick={() => void load()}
+              onClick={() => {
+                void load()
+                void loadClean()
+              }}
               disabled={loading}
             >
               {loading ? '刷新中…' : '刷新'}
@@ -407,7 +519,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
             <Panel
               kicker="Library"
               title="文件库"
-              desc={`${files.length} 个文件 · 公开 ${files.filter((f) => f.visibility === '公开').length} 个${real ? '' : ' · 预置演示'}`}
+              desc={`${files.length} 个文件 · 公开 ${files.filter((f) => f.visibility === '公开').length} 个${real ? '' : ' · 预置演示值'}`}
               flush
               right={<SearchBox value={query} onChange={setQuery} placeholder="搜索文件" className="w-40" />}
             >
@@ -511,21 +623,42 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
           </div>
 
           <div className="space-y-3">
-            <Panel kicker="Storage" title="存储用量（静态示意）" desc="真实占用需存储驱动统计，当前仅版式示意">
+            <Panel
+              kicker="Storage"
+              title={real ? '存储用量' : '存储用量（预置演示值）'}
+              desc={real ? 'GET /api/admin/files/storage · 服务端真实统计' : '真实占用需存储驱动统计，当前仅预置演示值'}
+            >
               <div className="flex items-end justify-between">
                 <p className="font-display text-[28px] font-extrabold leading-none">
-                  {storage.used} <span className="text-[12px] font-medium text-admin-muted">/ {storage.total} GB</span>
+                  {rep && real ? human(rep.totalBytes) : storage.used}{' '}
+                  <span className="text-[12px] font-medium text-admin-muted">
+                    / {rep && real ? `磁盘 ${human(rep.uploadsBytes)}` : `${storage.total} GB`}
+                  </span>
                 </p>
-                <Badge tone={usedPercent > 80 ? 'red' : 'teal'}>{usedPercent}%</Badge>
+                <Badge tone={real ? 'teal' : usedPercent > 80 ? 'red' : 'teal'}>
+                  {rep && real ? `${rep.files} 个文件` : `${usedPercent}%`}
+                </Badge>
               </div>
-              <Meter value={usedPercent} className="mt-2.5 h-2" />
-              <p className="mt-1.5 text-[10px] text-admin-muted">{storage.trend}</p>
+              {rep && real ? (
+                <div className="mt-2.5 flex h-2 w-full overflow-hidden rounded-full border border-ink/15 bg-paper">
+                  {buckets.map((b) => (
+                    <div key={b.label} style={{ width: `${b.pct}%`, background: b.color }} title={`${b.label} ${b.size}`} />
+                  ))}
+                </div>
+              ) : (
+                <Meter value={usedPercent} className="mt-2.5 h-2" />
+              )}
+              <p className="mt-1.5 text-[10px] text-admin-muted">
+                {rep && real
+                  ? `磁盘实际占用 ${human(rep.uploadsBytes)} · 文件记录合计 ${human(rep.totalBytes)} · 孤立 ${rep.orphans} / 临时 ${rep.tmpCount}`
+                  : storage.trend}
+              </p>
               <div className="mt-3 space-y-1.5">
-                {storage.buckets.map((b) => (
+                {buckets.map((b) => (
                   <div key={b.label} className="flex items-center gap-2 text-[10.5px]">
                     <span className="h-2 w-2 rounded-[2px]" style={{ background: b.color }} />
                     <span className="flex-1 text-admin-muted">{b.label}</span>
-                    <span className="font-mono">{b.value} GB</span>
+                    <span className="font-mono">{b.size}</span>
                   </div>
                 ))}
               </div>
@@ -534,18 +667,22 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
             <Panel kicker="Limits" title="上传限制（服务端环境变量）">
               <div className="space-y-2.5 text-[11px]">
                 {[
-                  ['单文件大小', '50 MB'],
+                  ['单文件大小', rep && real ? human(rep.limits.maxBytes) : '50 MB'],
                   ['单次最多', '10 个文件'],
-                  ['允许类型', 'PDF / MD / ZIP / XLSX / FIG / PY'],
-                  ['存储位置', 'server/data/uploads（local 驱动）'],
+                  ['允许类型', rep && real ? rep.limits.allowedExt.join(' / ') : 'PDF / MD / ZIP / XLSX / FIG / PY'],
+                  ['存储位置', rep && real ? `${rep.limits.driver} 驱动 · ${rep.limits.dir}` : 'server/data/uploads（local 驱动，预置演示值）'],
                 ].map(([k, v]) => (
                   <div key={k} className="flex items-center justify-between gap-3">
                     <span className="text-admin-muted">{k}</span>
-                    <span className="text-right">{v}</span>
+                    <span className="text-right font-mono text-[10px]">{v}</span>
                   </div>
                 ))}
               </div>
-              <p className="mt-3 font-mono text-[9px] leading-relaxed text-admin-muted">由 UPLOAD_MAX_BYTES / UPLOAD_ALLOWED_EXT 控制，后台不支持热改</p>
+              <p className="mt-3 font-mono text-[9px] leading-relaxed text-admin-muted">
+                {real
+                  ? '由 UPLOAD_MAX_BYTES / UPLOAD_ALLOWED_EXT 控制，此处回显 GET /api/admin/files/storage 的真实值；后台不支持热改'
+                  : '预置演示值：由 UPLOAD_MAX_BYTES / UPLOAD_ALLOWED_EXT 控制，后台不支持热改'}
+              </p>
             </Panel>
           </div>
         </div>
@@ -556,7 +693,7 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
           <Panel
             kicker="Links"
             title="分享链接"
-            desc="带密码的链接适合发给面试官，过期后自动失效"
+            desc={`带密码的链接适合发给面试官，过期后自动失效${real ? '' : ' · 预置演示值'}`}
             flush
             right={
               <AButton
@@ -662,22 +799,82 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
       {tab === 'clean' && (
         <div className="grid gap-3 xl:grid-cols-[1.55fr_1fr]">
           <div className="space-y-3">
-            <Panel kicker="Storage" title="空间占用" desc={`${storage.total} GB 总额度 · 已用 ${storage.used} GB（静态示意）`}>
-              <div className="flex h-3 w-full overflow-hidden rounded-full border border-ink/15 bg-paper">
-                {storage.buckets.map((b) => (
-                  <div key={b.label} style={{ width: `${(b.value / storage.total) * 100}%`, background: b.color }} title={`${b.label} ${b.value} GB`} />
-                ))}
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-                {storage.buckets.map((b) => (
-                  <div key={b.label}>
-                    <p className="flex items-center gap-1 text-[9.5px] text-admin-muted">
-                      <span className="h-1.5 w-1.5 rounded-sm" style={{ background: b.color }} /> {b.label}
-                    </p>
-                    <p className="mt-0.5 font-mono text-[11px]">{b.value} GB</p>
+            <Panel
+              kicker="Storage"
+              title="空间占用"
+              desc={
+                rep && real
+                  ? `磁盘实际占用 ${human(rep.uploadsBytes)} · 文件记录合计 ${human(rep.totalBytes)}（GET /api/admin/files/storage）`
+                  : `${storage.total} GB 总额度 · 已用 ${storage.used} GB（预置演示值）`
+              }
+            >
+              {real && reportLoading ? (
+                <div className="flex items-center gap-2 py-3 text-[11px] text-admin-muted">
+                  <Loader2 size={13} className="animate-spin" /> 正在读取存储报告…
+                </div>
+              ) : real && reportError ? (
+                <div className="space-y-2 py-2">
+                  <p className="text-[11px] text-admin-danger">{reportError}</p>
+                  <AButton size="sm" onClick={() => void loadClean()}>重试</AButton>
+                </div>
+              ) : (
+                <>
+                  <div className="flex h-3 w-full overflow-hidden rounded-full border border-ink/15 bg-paper">
+                    {buckets.map((b) => (
+                      <div key={b.label} style={{ width: `${b.pct}%`, background: b.color }} title={`${b.label} ${b.size}`} />
+                    ))}
                   </div>
-                ))}
-              </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    {buckets.map((b) => (
+                      <div key={b.label}>
+                        <p className="flex items-center gap-1 text-[9.5px] text-admin-muted">
+                          <span className="h-1.5 w-1.5 rounded-sm" style={{ background: b.color }} /> {b.label}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[11px]">{b.size}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {rep && real && (
+                    <>
+                      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                        {[
+                          ['文件总数', rep.files],
+                          ['已发布', rep.published],
+                          ['回收站', rep.trashed],
+                          ['待上传', rep.pending],
+                          ['分享', rep.shares],
+                          ['过期分享', rep.sharesExpired],
+                        ].map(([l, v]) => (
+                          <div key={l as string} className="rounded-lg bg-sand/55 px-2 py-1.5 text-center">
+                            <p className="text-[9px] text-admin-muted">{l}</p>
+                            <p className="mt-0.5 font-mono text-[13px] font-bold leading-none">{v}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {[
+                          ['孤立文件', `${rep.orphans} 个 / ${human(rep.orphanBytes)}`],
+                          ['临时文件', `${rep.tmpCount} 个 / ${human(rep.tmpBytes)}`],
+                          ['可释放合计', human(rep.orphanBytes + rep.tmpBytes)],
+                        ].map(([l, v]) => (
+                          <div key={l as string} className="rounded-lg border border-ink/15 px-3 py-2">
+                            <p className="text-[9.5px] text-admin-muted">{l}</p>
+                            <p className="mt-0.5 font-mono text-[11px]">{v}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2.5 rounded-lg border border-dashed border-ink/20 px-3 py-2">
+                        <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-admin-muted">上传限制</p>
+                        <p className="mt-1 text-[10.5px] leading-relaxed text-admin-muted">
+                          单文件 ≤ {human(rep.limits.maxBytes)} · 允许类型 {rep.limits.allowedExt.join(' / ')} · 驱动 {rep.limits.driver}
+                        </p>
+                        <p className="mt-0.5 break-all font-mono text-[9px] text-admin-muted">目录 {rep.limits.dir}</p>
+                      </div>
+                    </>
+                  )}
+                  {!real && <p className="mt-3 font-mono text-[9px] text-admin-muted">预置演示值：配置 VITE_API_BASE 后展示服务端真实统计</p>}
+                </>
+              )}
             </Panel>
 
             <Panel kicker="Trash" title="回收站" desc="文件保留 30 天，到期自动清理" flush>
@@ -728,30 +925,93 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                         size="sm"
                         variant="danger"
                         disabled={!real || busy !== null}
-                        title={real ? '' : '未配置服务端：不能清空'}
-                        onClick={async () => {
-                          if (!real) return show('未配置服务端，不能清空')
-                          if (!window.confirm('清空回收站？所有文件将被永久删除。')) return
-                          if (busy) return
-                          setBusy('purge-all')
-                          try {
-                            for (const t of trash) await purgeFile(t.id)
-                            await load(false)
-                            show('回收站已清空')
-                          } catch (err) {
-                            show(`清空失败：${(err as Error).message}`)
-                          } finally {
-                            setBusy(null)
-                          }
-                        }}
-                        icon={busy === 'purge-all' ? <Loader2 size={11} className="animate-spin" /> : undefined}
+                        title={real ? 'DELETE /api/admin/files/trashed · 真删服务端记录与磁盘文件' : '未配置服务端：不能清空'}
+                        onClick={() => void emptyTrashNow()}
+                        icon={busy === 'trash-empty' ? <Loader2 size={11} className="animate-spin" /> : undefined}
                       >
-                        {busy === 'purge-all' ? '清理中…' : '清空回收站'}
+                        {busy === 'trash-empty' ? '清理中…' : '清空回收站'}
                       </AButton>
                     </div>
                   </div>
                 )}
               </LoadState>
+            </Panel>
+
+            <Panel
+              kicker="Duplicates"
+              title="重复文件检测"
+              desc={
+                real
+                  ? `GET /api/admin/files/duplicates · ${duplicates?.groups.length ?? 0} 组 · 可释放 ${human(duplicates?.reclaimableBytes ?? 0)}`
+                  : '预置演示值：重复文件检测需要服务端'
+              }
+              flush
+            >
+              {!real ? (
+                <div className="space-y-2 p-4">
+                  {storage.duplicates.map((d) => (
+                    <div key={d.name} className="flex items-center justify-between rounded-lg border border-ink/15 px-3 py-2 text-[11px]">
+                      <span className="truncate">{d.name}</span>
+                      <Badge tone="amber">{d.copies} 份 · {d.size}</Badge>
+                    </div>
+                  ))}
+                  <p className="text-[9.5px] text-admin-muted">演示模式：以上为预置演示值，删除按钮不可用。</p>
+                </div>
+              ) : (
+                <LoadState loading={reportLoading} error={reportError} onRetry={() => void loadClean()} label="正在检测重复文件…">
+                  {!duplicates || duplicates.groups.length === 0 ? (
+                    <EmptyState title="没有检测到重复文件" desc="同名同大小的记录会归为一组" />
+                  ) : (
+                    <div className="divide-y divide-ink/10">
+                      {duplicates.groups.map((group, gi) => {
+                        const first = group[0]
+                        const rest = group.slice(1)
+                        return (
+                          <div key={`${first?.name ?? 'group'}-${gi}`} className="px-4 py-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="min-w-0 truncate text-[11.5px] font-medium" title={first?.name}>{first?.name ?? '—'}</p>
+                              <div className="flex items-center gap-2">
+                                <Badge tone="amber">{group.length} 份 · {human(first?.sizeBytes ?? 0)} / 份</Badge>
+                                <AButton
+                                  size="sm"
+                                  variant="danger"
+                                  disabled={busy !== null}
+                                  onClick={() => void purgeDuplicate(rest.map((x) => x.id), '保留 1 份')}
+                                  icon={busy === 'dup-purge' ? <Loader2 size={11} className="animate-spin" /> : undefined}
+                                >
+                                  保留一份，删除其余 {rest.length} 份
+                                </AButton>
+                              </div>
+                            </div>
+                            <div className="mt-2 space-y-1">
+                              {group.map((item, ii) => (
+                                <div key={item.id} className="flex items-center gap-2 rounded-lg bg-sand/40 px-2.5 py-1.5 text-[10px]">
+                                  <span className="font-mono text-admin-muted">#{ii + 1}</span>
+                                  <span className="min-w-0 flex-1 truncate font-mono text-admin-muted" title={item.id}>{item.id}</span>
+                                  <Status>{FILE_STATUS_LABEL[item.status] ?? item.status}</Status>
+                                  <span className="font-mono text-admin-muted">{item.createdAt?.slice(0, 10) || '—'}</span>
+                                  {ii === 0 ? (
+                                    <Badge tone="teal">保留</Badge>
+                                  ) : (
+                                    <IconButton
+                                      label="彻底删除此重复"
+                                      disabled={busy !== null}
+                                      className="hover:border-coral/60 hover:text-admin-danger"
+                                      onClick={() => void purgeDuplicate([item.id], '单项删除')}
+                                    >
+                                      <XIcon />
+                                    </IconButton>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </LoadState>
+              )}
             </Panel>
           </div>
 
@@ -769,23 +1029,59 @@ export default function FilesAdminPage({ tab, setTab, show }: { tab: Tab; setTab
                   </div>
                 ))}
               </div>
-              <p className="mt-3 font-mono text-[9px] leading-relaxed text-admin-muted">自动清理任务与重复文件检测尚未接入；回收站操作以服务端响应为准。</p>
+              <p className="mt-3 font-mono text-[9px] leading-relaxed text-admin-muted">重复文件检测与一键清理已接入服务端（GET /api/admin/files/duplicates、POST /api/admin/files/cleanup）；回收站 / 彻底删除均以服务端响应为准。自动定时清理仍需外部调度器，站内不自带定时任务。</p>
             </Panel>
 
-            <Panel kicker="Suggestions" title="清理建议（静态示意）">
-              <div className="space-y-2 text-[11px]">
-                {[
-                  ['回收站可释放', '3.4 GB'],
-                  ['90 天未访问', '1.8 GB'],
-                  ['重复文件', '61.2 MB'],
-                ].map(([k, v]) => (
-                  <div key={k} className="flex items-center justify-between rounded-lg border border-ink/15 px-3 py-2">
-                    <span>{k}</span>
-                    <span className="font-mono text-[10px] text-admin-muted">{v}</span>
+            <Panel
+              kicker={real ? 'Cleanup' : 'Suggestions'}
+              title={real ? '一键清理' : '清理建议（预置演示值）'}
+              desc={real ? 'POST /api/admin/files/cleanup · 真删孤立 / 临时文件与过期分享' : '仅版式示意，写操作禁用'}
+            >
+              {real ? (
+                <>
+                  <div className="space-y-2 text-[11px]">
+                    {[
+                      ['孤立文件（无记录）', rep ? `${rep.orphans} 个 · ${human(rep.orphanBytes)}` : '—'],
+                      ['临时 / 备份文件', rep ? `${rep.tmpCount} 个 · ${human(rep.tmpBytes)}` : '—'],
+                      ['过期分享', rep ? `${rep.sharesExpired} 个` : '—'],
+                      ['预计可释放', rep ? human(rep.orphanBytes + rep.tmpBytes) : '—'],
+                    ].map(([k, v]) => (
+                      <div key={k} className="flex items-center justify-between rounded-lg border border-ink/15 px-3 py-2">
+                        <span>{k}</span>
+                        <span className="font-mono text-[10px] text-admin-muted">{v}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <p className="mt-2 text-[9.5px] leading-relaxed text-admin-muted">仅版式示意；请在左侧回收站逐项恢复或彻底删除。</p>
+                  <AButton
+                    className="mt-3 w-full justify-center"
+                    variant="primary"
+                    disabled={busy !== null || reportLoading || !rep}
+                    onClick={() => void cleanupNow()}
+                    icon={busy === 'cleanup' ? <Loader2 size={12} className="animate-spin" /> : undefined}
+                  >
+                    {busy === 'cleanup' ? '清理中…' : '执行清理（孤立 / 临时 / 过期分享）'}
+                  </AButton>
+                  <p className="mt-2 text-[9.5px] leading-relaxed text-admin-muted">
+                    实际删除数量以服务端返回为准，成功后重新拉取存储报告与文件列表。自动定时清理仍需外部调度器，站内不自带定时任务。
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2 text-[11px]">
+                    {[
+                      ['回收站可释放', '3.4 GB'],
+                      ['90 天未访问', '1.8 GB'],
+                      ['重复文件', '61.2 MB'],
+                    ].map(([k, v]) => (
+                      <div key={k} className="flex items-center justify-between rounded-lg border border-ink/15 px-3 py-2">
+                        <span>{k}</span>
+                        <span className="font-mono text-[10px] text-admin-muted">{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[9.5px] leading-relaxed text-admin-muted">预置演示值：请在左侧回收站逐项恢复或彻底删除；清理按钮在演示模式下禁用。</p>
+                </>
+              )}
             </Panel>
           </div>
         </div>

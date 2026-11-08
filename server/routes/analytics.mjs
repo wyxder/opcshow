@@ -10,7 +10,7 @@ import { sendJson, sendError, readJson, rateLimit, clientIp, ipHash, sha256 } fr
 import { getStores } from '../lib/store.mjs'
 import { getSession, requireRole } from '../lib/auth.mjs'
 import { text, integer, oneOf } from '../lib/validate.mjs'
-import { pushHit, summaryCache } from '../lib/hits.mjs'
+import { pushHit, summaryCache, deviceFromUA } from '../lib/hits.mjs'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 
@@ -23,7 +23,8 @@ route('POST', '/api/track', async ({ req, res, reqId }) => {
   const stayMs = integer(body.stayMs ?? 0, { field: 'stayMs', min: 0, max: 24 * 3600 * 1000 })
   // BE-09：kind 显式区分页面与 AI 会话，不再靠 path 前缀猜
   const kind = body.kind === 'ai' ? 'ai' : oneOf(body.kind ?? 'page', ['page', 'ai'], 'kind')
-  await pushHit({ path, kind, referrer, sessionHash, stayMs, ipHash: ipHash(req) })
+  // 只落设备类别（手机/平板/桌面），不保存原始 UA
+  await pushHit({ path, kind, referrer, sessionHash, stayMs, ipHash: ipHash(req), device: deviceFromUA(req.headers['user-agent']) })
   sendJson(res, 202, { ok: true })
 })
 
@@ -88,6 +89,26 @@ route('GET', '/api/analytics/summary', async ({ req, res, reqId, url }) => {
     totalPv,
     totalUv,
     avgStaySec: avgStay,
+    // 真实可算的两个指标：单页会话占比 = 跳出率；停留时长分桶 = 阅读深度
+    bounceRate: (() => {
+      const counts = new Map()
+      for (const h of rows) {
+        const k = h.sessionHash ?? h.ipHash
+        if (k) counts.set(k, (counts.get(k) ?? 0) + 1)
+      }
+      const all = [...counts.values()]
+      return all.length ? Math.round((all.filter((n) => n === 1).length / all.length) * 100) : 0
+    })(),
+    readDepth: (() => {
+      const stays = rows.map((h) => h.stayMs ?? 0).filter((v) => v > 0)
+      if (!stays.length) return []
+      return [
+        { label: '<10s', value: stays.filter((v) => v <= 10000).length },
+        { label: '10-30s', value: stays.filter((v) => v > 10000 && v <= 30000).length },
+        { label: '30-60s', value: stays.filter((v) => v > 30000 && v <= 60000).length },
+        { label: '>60s', value: stays.filter((v) => v > 60000).length },
+      ]
+    })(),
     topPages,
     since: days[0]?.date ?? null,
     source: 'server',

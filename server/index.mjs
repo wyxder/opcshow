@@ -10,6 +10,7 @@ import { env, assertSecureConfig } from './lib/env.mjs'
 import { applyCors, setCommonHeaders, sendError, checkOrigin, errorOf, logEvent, requestId } from './lib/http.mjs'
 import { match } from './lib/router.mjs'
 import { ensureUsers, getSession, audit } from './lib/auth.mjs'
+import { cleanupTmpFiles } from './lib/store.mjs'
 import { getIndex } from './ai/indexer.mjs'
 
 import './routes/auth.mjs'
@@ -21,6 +22,7 @@ import './routes/ai.mjs'
 import './routes/system.mjs'
 import './routes/settings.mjs'
 import './routes/admin.mjs'
+import './routes/adminx.mjs'
 
 const bootAt = Date.now()
 
@@ -62,6 +64,8 @@ const server = createServer(async (req, res) => {
 async function boot() {
   // BE-01：缺口令 / 仍用示例口令时直接拒绝启动
   assertSecureConfig()
+  const cleaned = await cleanupTmpFiles()
+  if (cleaned) logEvent('info', 'store.tmp.cleaned', { count: cleaned })
   await ensureUsers()
   await getIndex()
   server.listen(env.port, env.host, () => {

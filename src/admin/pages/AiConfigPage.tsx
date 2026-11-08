@@ -1,9 +1,21 @@
-import { Activity, Bot, Check, Cpu, KeyRound, Plus, Sparkles, Trash2, Wand2, Zap } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Activity, Bot, Check, Cpu, KeyRound, Plus, RotateCcw, Sparkles, Trash2, Wand2, Zap } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { aiModels as modelSeed, aiUsage, prompts as promptSeed } from '@/admin/data'
 import { serverConfig } from '@/services/config'
 import { deleteModel, deletePrompt, getFeedback, reviewFeedback, type FeedbackRow } from '@/services/admin'
-import { apiJson } from '@/services/http'
+import { apiJson, ApiError } from '@/services/http'
+import {
+  aiFailover,
+  clearAiCache,
+  getAiLogs,
+  getAiSettings,
+  getCapabilities,
+  resetAiUsage,
+  saveAiSettings,
+  type AiLogRow,
+  type AiSettings,
+  type Capabilities,
+} from '@/services/adminx'
 import {
   AButton,
   AdminModal,
@@ -13,10 +25,12 @@ import {
   IconButton,
   Input,
   Legend,
+  LoadState,
   Meter,
   MiniBars,
   PageTitle,
   Panel,
+  ReadOnlyNotice,
   Select,
   Status,
   TableHead,
@@ -71,6 +85,50 @@ const toPromptRow = (p: ServerPrompt): PromptRow => ({
 })
 
 const fmtTokens = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
+const errMsg = (err: unknown) => (err instanceof Error ? err.message : String(err))
+
+const DEMO_CONSTRAINT = '回答必须基于站内已发布的内容；不确定时直说不知道。不要编造项目指标、获奖或个人信息。涉及联系方式时优先引导到留言板。'
+
+/**
+ * /api/ai/usage 不可用时的兜底：只用真实调用日志聚合，绝不掺入 @/admin/data 的写死演示值。
+ * 真实模式优先复用 /api/ai/usage（load 中），这里仅在它返回空时补位。
+ */
+const aggregateUsage = (logs: AiLogRow[], settings: AiSettings | null): UsageSummary => {
+  const month = new Date().toISOString().slice(0, 7)
+  const rows = logs.filter((l) => (l.day ?? l.ts.slice(0, 10)).startsWith(month))
+  const monthTokens = rows.reduce((s, l) => s + (l.tokens ?? 0), 0)
+  const monthCost = Number(rows.reduce((s, l) => s + (l.cost ?? 0), 0).toFixed(2))
+  const avgLatency = rows.length ? Math.round(rows.reduce((s, l) => s + (l.latency ?? 0), 0) / rows.length) : 0
+  const successRate = rows.length ? Number(((rows.filter((l) => l.ok).length / rows.length) * 100).toFixed(1)) : 100
+
+  const byDay = new Map<string, { tokens: number; cost: number; calls: number }>()
+  const byModel = new Map<string, number>()
+  for (const l of rows) {
+    const day = l.day ?? l.ts.slice(0, 10)
+    const cur = byDay.get(day) ?? { tokens: 0, cost: 0, calls: 0 }
+    cur.tokens += l.tokens ?? 0
+    cur.cost += l.cost ?? 0
+    cur.calls += 1
+    byDay.set(day, cur)
+    byModel.set(l.model, (byModel.get(l.model) ?? 0) + (l.tokens ?? 0))
+  }
+  const total = [...byModel.values()].reduce((s, v) => s + v, 0) || 1
+
+  return {
+    monthTokens,
+    monthCost,
+    avgLatency,
+    successRate,
+    budget: settings?.monthlyTokenBudget ?? 3000000,
+    dailyQuota: settings?.dailyQuota ?? 0,
+    daily: [...byDay.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .slice(-14)
+      .map(([date, v]) => ({ date, tokens: v.tokens, cost: Number(v.cost.toFixed(2)), calls: v.calls })),
+    byModel: [...byModel.entries()].map(([label, value]) => ({ label, value: Math.round((value / total) * 100) })),
+    recent: rows.slice(0, 20).map((l) => ({ ts: l.ts, model: l.model, tokens: l.tokens, latency: l.latency ?? 0, ok: l.ok, source: l.source ?? '' })),
+  }
+}
 
 const DEMO_USAGE = {
   monthTokens: aiUsage.monthTokens,
@@ -90,32 +148,85 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
   const [models, setModels] = useState<ModelRow[]>(modelSeed)
   const [prompts, setPrompts] = useState<PromptRow[]>(promptSeed)
   const [usage, setUsage] = useState<UsageSummary | null>(null)
+  const [logs, setLogs] = useState<AiLogRow[]>([])
+  const [aiSettings, setAiSettings] = useState<AiSettings | null>(null)
+  const [capabilities, setCapabilities] = useState<Capabilities>({})
+  const [loading, setLoading] = useState(real)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState({ name: '', provider: 'DeepSeek', model: '', key: '', context: '64k' })
   const [editingPrompt, setEditingPrompt] = useState<PromptRow | null>(null)
   const [promptDraft, setPromptDraft] = useState({ name: '', scene: '', model: '', body: '' })
-  const [limit, setLimit] = useState('3000000')
+  const [globalConstraint, setGlobalConstraint] = useState(real ? '' : DEMO_CONSTRAINT)
+  const [quota, setQuota] = useState({
+    dailyQuota: real ? '' : '100',
+    monthlyTokenBudget: real ? '' : '3000000',
+    perVisitorDailyLimit: real ? '' : '20',
+    fallbackModelId: '',
+  })
   const [feedback, setFeedback] = useState<FeedbackRow[]>([])
 
   /** F-01：配置页接服务端真实读写；未接服务端时保持纯演示态并在文案里说清楚 */
+  const load = useCallback(
+    async (spinner = true) => {
+      if (!real) {
+        setLoading(false)
+        return
+      }
+      if (spinner) setLoading(true)
+      setError('')
+      try {
+        const [m, p, u, lg, settings, caps, fb] = await Promise.all([
+          apiJson<{ models: ServerModel[] }>('/api/ai/models').catch(() => null),
+          apiJson<ServerPrompt[]>('/api/ai/prompts').catch(() => null),
+          apiJson<UsageSummary>('/api/ai/usage').catch(() => null),
+          getAiLogs(50),
+          getAiSettings(),
+          getCapabilities(),
+          getFeedback(),
+        ])
+        if (m?.models) setModels(m.models.map(toModelRow))
+        if (p) setPrompts(p.map(toPromptRow))
+        setLogs(lg)
+        // 真实模式绝不展示 @/admin/data 的写死用量：优先服务端记账，其次用真实日志聚合
+        setUsage(u ?? (lg.length ? aggregateUsage(lg, settings) : null))
+        if (settings) {
+          setAiSettings(settings)
+          setGlobalConstraint(settings.globalConstraint)
+          setQuota({
+            dailyQuota: String(settings.dailyQuota),
+            monthlyTokenBudget: String(settings.monthlyTokenBudget),
+            perVisitorDailyLimit: String(settings.perVisitorDailyLimit),
+            fallbackModelId: settings.fallbackModelId ?? '',
+          })
+        }
+        setCapabilities(caps ?? {})
+        setFeedback(fb)
+      } catch (err) {
+        setError(`加载失败：${errMsg(err)}`)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [real],
+  )
+
   useEffect(() => {
-    if (!real) return
-    let alive = true
-    void Promise.all([
-      apiJson<{ models: ServerModel[] }>('/api/ai/models').catch(() => null),
-      apiJson<ServerPrompt[]>('/api/ai/prompts').catch(() => null),
-      apiJson<UsageSummary>('/api/ai/usage').catch(() => null),
-    ]).then(([m, p, u]) => {
-      if (!alive) return
-      if (m?.models) setModels(m.models.map(toModelRow))
-      if (p) setPrompts(p.map(toPromptRow))
-      if (u) setUsage(u)
+    void load()
+  }, [load])
+
+  /** 把服务端保存结果回显到全局约束与额度表单 */
+  const applySettings = (s: AiSettings) => {
+    setAiSettings(s)
+    setGlobalConstraint(s.globalConstraint)
+    setQuota({
+      dailyQuota: String(s.dailyQuota),
+      monthlyTokenBudget: String(s.monthlyTokenBudget),
+      perVisitorDailyLimit: String(s.perVisitorDailyLimit),
+      fallbackModelId: s.fallbackModelId ?? '',
     })
-    void getFeedback().then((f) => alive && setFeedback(f))
-    return () => {
-      alive = false
-    }
-  }, [real])
+  }
 
   const enabled = models.filter((m) => m.enabled)
   const defaultModel = models.find((m) => m.isDefault)
@@ -133,35 +244,163 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
         recent: usage.recent,
       }
     : DEMO_USAGE
-  /** AI-06：只有真的拿到 /api/ai/usage 才标「服务端记账」，否则如实标预置 */
+  /** AI-06：只有真的拿到服务端用量（或真实日志聚合）才标「服务端记账」，否则如实标预置 */
   const usageLive = Boolean(usage) && real
-  const tokenPercent = Math.round((view.usedTokens / Number(limit || 1)) * 100)
+  const tokenPercent = Math.round((view.usedTokens / (view.limit || 1)) * 100)
+  /** 能力清单如实 gate：未接服务端或明确 unavailable 时禁用故障切换 */
+  const failoverAvailable = real && capabilities.modelFailover?.available !== false
+  const failoverReason = capabilities.modelFailover?.reason ?? '服务端未提供该能力'
 
-  /** 真实模式下写操作必须等服务端返回成功再提示 */
+  /** 真实模式下写操作必须等服务端返回成功再提示；演示模式一律禁用并说明 */
   const patchModel = async (id: string, patch: { enabled?: boolean; isDefault?: boolean }, okMsg: string) => {
-    if (!real) {
-      setModels((l) =>
-        l.map((x) =>
-          patch.isDefault
-            ? { ...x, isDefault: x.id === id, enabled: x.id === id ? true : x.enabled }
-            : x.id === id
-              ? { ...x, enabled: patch.enabled ?? x.enabled, isDefault: patch.enabled === false ? false : x.isDefault }
-              : x,
-        ),
-      )
-      show(`${okMsg}（演示：仅本页）`)
-      return
-    }
+    if (!real) return show('未接服务端：模型启停与默认切换需配置 VITE_API_BASE')
+    setBusy(true)
     try {
       const updated = await apiJson<ServerModel>(`/api/ai/models/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
       setModels((l) => l.map((x) => (x.id === id ? { ...x, enabled: updated.enabled, isDefault: updated.isDefault } : patch.isDefault ? { ...x, isDefault: false } : x)))
       show(okMsg)
     } catch (err) {
-      show(`保存失败：${(err as Error).message}`)
+      show(`保存失败：${errMsg(err)}`)
+    } finally {
+      setBusy(false)
     }
   }
 
-  const openPrompt = (p: (typeof promptSeed)[number]) => {
+  /** 连接测试：真实请求 /api/ai/health（services/ai.ts 的 probeAiMode 只返回 mode，不足以展示） */
+  const testConnection = async () => {
+    if (!real) return
+    setBusy(true)
+    try {
+      const h = await apiJson<{ model?: string; mode?: string; index?: { chunks?: number }; promptScene?: string[] }>('/api/ai/health')
+      const configured = h.model === 'configured' || h.mode === 'model'
+      show(
+        configured
+          ? `网关正常 · 模型密钥已配置 · ${h.model ?? h.mode} · 索引 ${h.index?.chunks ?? 0} 块 · 生效场景 ${h.promptScene?.length ?? 0} 个`
+          : '网关正常 · 未配置模型密钥，当前走站内检索摘录',
+      )
+    } catch (err) {
+      show(`连接失败：${errMsg(err)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** 故障切换：真实切换默认模型，成功后刷新模型列表 */
+  const failover = async () => {
+    if (!real) return
+    setBusy(true)
+    try {
+      const res = await aiFailover()
+      show(`已切换默认模型为「${res.name}」（${res.model}）`)
+      await load(false)
+    } catch (err) {
+      const noFallback = err instanceof ApiError && err.status === 422
+      show(noFallback ? '故障切换失败：没有可用的备用模型，请先在「模型」页启用至少一个模型' : `故障切换失败：${errMsg(err)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const togglePrompt = async (p: PromptRow, v: boolean) => {
+    if (!real) return
+    setBusy(true)
+    try {
+      await apiJson(`/api/ai/prompts/${p.id}`, { method: 'PUT', body: JSON.stringify({ active: v }) })
+      setPrompts((l) => l.map((x) => (x.id === p.id ? { ...x, enabled: v } : x)))
+      show(v ? '提示词已启用，下一次对话生效' : '提示词已停用')
+    } catch (err) {
+      show(`保存失败：${errMsg(err)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** 提示词版本回滚：调用服务端 rollback，成功后刷新列表 */
+  const rollbackPrompt = async () => {
+    const target = editingPrompt
+    if (!real || !target || target.id === 'new') return
+    setBusy(true)
+    try {
+      const res = await apiJson<{ id: string; version: number }>(`/api/ai/prompts/${target.id}/rollback`, { method: 'POST' })
+      const latest = await apiJson<ServerPrompt[]>('/api/ai/prompts')
+      setPrompts(latest.map(toPromptRow))
+      setEditingPrompt(null)
+      show(`已回滚到上一版 · 当前版本 v${res.version}`)
+    } catch (err) {
+      show(`回滚失败：${errMsg(err)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveGlobalConstraint = async () => {
+    if (!real) return
+    setBusy(true)
+    try {
+      const saved = await saveAiSettings({ globalConstraint })
+      applySettings(saved)
+      show('全局约束已保存到服务端，下一次对话生效')
+    } catch (err) {
+      show(`保存失败：${errMsg(err)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveQuota = async () => {
+    if (!real) return
+    const dailyQuota = Number(quota.dailyQuota)
+    const monthlyTokenBudget = Number(quota.monthlyTokenBudget)
+    const perVisitorDailyLimit = Number(quota.perVisitorDailyLimit)
+    if (![dailyQuota, monthlyTokenBudget, perVisitorDailyLimit].every((n) => Number.isInteger(n) && n > 0)) {
+      return show('请填写有效的正整数额度')
+    }
+    setBusy(true)
+    try {
+      const saved = await saveAiSettings({
+        dailyQuota,
+        monthlyTokenBudget,
+        perVisitorDailyLimit,
+        fallbackModelId: quota.fallbackModelId.trim() || null,
+      })
+      applySettings(saved)
+      show('额度与限流设置已保存到服务端')
+    } catch (err) {
+      show(`保存失败：${errMsg(err)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const resetUsage = async () => {
+    if (!real) return
+    if (!window.confirm('确认清空全部用量记录与当日配额计数？此操作不可撤销。')) return
+    setBusy(true)
+    try {
+      const res = await resetAiUsage()
+      show(`已清空 ${res.cleared} 条用量记录`)
+      await load(false)
+    } catch (err) {
+      show(`清空失败：${errMsg(err)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clearCache = async () => {
+    if (!real) return
+    setBusy(true)
+    try {
+      const res = await clearAiCache()
+      show(`已清空 ${res.cleared} 条回答缓存`)
+    } catch (err) {
+      show(`清空失败：${errMsg(err)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const openPrompt = (p: PromptRow) => {
     setPromptDraft({ name: p.name, scene: p.scene, model: p.model, body: p.body })
     setEditingPrompt(p)
   }
@@ -174,7 +413,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
         desc={
           real
             ? '模型与提示词写入服务端配置，保存后下一次对话生效；密钥只在服务端环境变量里。'
-            : '未配置服务端：这里的改动只存在当前页面，刷新即丢失，不会影响任何线上会话。'
+            : '未配置服务端：当前为只读演示，所有写操作已禁用；页面数据为本机预置示例。'
         }
         right={
           <>
@@ -195,6 +434,10 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
           { key: 'usage', label: '用量' },
         ]}
       />
+
+      <ReadOnlyNotice show={!real}>
+        当前未接入服务端（VITE_API_BASE 未配置）：模型 / 提示词 / 全局约束 / 额度 / 调用日志的读写均不可用，页面仅展示本机预置示例，所有写操作已禁用。
+      </ReadOnlyNotice>
 
       {tab === 'models' && (
         <div className="space-y-3">
@@ -241,11 +484,12 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                       <span className="font-mono text-[9.5px] text-admin-muted">{m.latency}</span>
                       <span className="font-mono text-[9px] text-admin-muted">{m.cost}</span>
                       <button
+                        disabled={!real || busy}
                         onClick={() => {
                           void patchModel(m.id, { isDefault: true }, `${m.name} 已设为默认模型`)
                         }}
                         className={cn(
-                          'flex h-5 w-5 items-center justify-center rounded-full border transition',
+                          'flex h-5 w-5 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-40',
                           m.isDefault ? 'border-ink bg-ink text-lime' : 'border-ink/20 text-transparent hover:border-ink/40',
                         )}
                         aria-label="设为默认"
@@ -255,12 +499,14 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                       <Toggle
                         on={m.enabled}
                         label={m.name}
+                        disabled={!real || busy}
                         onChange={(v) => {
                           void patchModel(m.id, { enabled: v }, v ? `${m.name} 已启用` : `${m.name} 已停用`)
                         }}
                       />
                       <IconButton
                         label="删除模型"
+                        disabled={!real || busy}
                         className="hover:border-coral/60 hover:text-admin-danger"
                         onClick={() => {
                           if (m.id === 'm_env' || m.provider === '环境变量') return show('环境变量模型不能删除，请改 .env')
@@ -312,28 +558,21 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                   </div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <AButton
-                    size="sm"
-                    icon={<Zap size={11} />}
-                    onClick={() => {
-                      if (!real) return show('连接测试通过（演示，未真实请求）')
-                      void apiJson<{ mode: string; model: string; index?: { chunks?: number } }>('/api/ai/health')
-                        .then((h) =>
-                          show(
-                            h.mode === 'model'
-                              ? `网关正常 · 模型可用 · 索引 ${h.index?.chunks ?? 0} 块`
-                              : '网关正常 · 未配置模型密钥，当前走站内检索摘录',
-                          ),
-                        )
-                        .catch((err: Error) => show(`连接失败：${err.message}`))
-                    }}
-                  >
+                  <AButton size="sm" icon={<Zap size={11} />} disabled={!real || busy} onClick={() => void testConnection()}>
                     测试连接
                   </AButton>
-                  <AButton size="sm" variant="soft" onClick={() => show(real ? '故障切换需要服务端路由策略，当前版本未实现' : '已切换至备用模型（演示）')}>
+                  <AButton
+                    size="sm"
+                    variant="soft"
+                    disabled={!real || busy || !failoverAvailable}
+                    title={failoverAvailable ? undefined : failoverReason}
+                    onClick={() => void failover()}
+                  >
                     故障切换
                   </AButton>
                 </div>
+                {!real && <p className="mt-2 text-[10px] leading-relaxed text-admin-muted">未接服务端：连接测试与故障切换需配置 VITE_API_BASE 后可用。</p>}
+                {real && !failoverAvailable && <p className="mt-2 text-[10px] text-admin-muted">故障切换不可用：{failoverReason}</p>}
               </Panel>
 
               <Panel kicker="Fallback" title="回退策略">
@@ -384,6 +623,7 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                   </AButton>
                   <IconButton
                     label="删除提示词"
+                    disabled={!real || busy}
                     className="hover:border-coral/60 hover:text-admin-danger"
                     onClick={() => {
                       if (!window.confirm(`删除提示词「${p.name}」？`)) return
@@ -400,19 +640,8 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                   <Toggle
                     on={p.enabled}
                     label={p.name}
-                    onChange={(v) => {
-                      if (!real) {
-                        setPrompts((l) => l.map((x) => (x.id === p.id ? { ...x, enabled: v } : x)))
-                        show(`${v ? '提示词已启用' : '提示词已停用'}（演示：仅本页）`)
-                        return
-                      }
-                      void apiJson(`/api/ai/prompts/${p.id}`, { method: 'PUT', body: JSON.stringify({ active: v }) })
-                        .then(() => {
-                          setPrompts((l) => l.map((x) => (x.id === p.id ? { ...x, enabled: v } : x)))
-                          show(v ? '提示词已启用，下一次对话生效' : '提示词已停用')
-                        })
-                        .catch((err: Error) => show(`保存失败：${err.message}`))
-                    }}
+                    disabled={!real || busy}
+                    onChange={(v) => void togglePrompt(p, v)}
                   />
                 </div>
               ))}
@@ -420,16 +649,21 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
           </Panel>
 
           <div className="space-y-3">
-            <Panel kicker="Guardrails" title="全局约束" desc="只读：定义在 server/ai/prompts.mjs，随服务端发布生效">
+            <Panel kicker="Guardrails" title="全局约束" desc={real ? '写入服务端 ai.json，保存后下一次对话生效' : '未接服务端：只读预览，编辑保存已禁用'}>
+              {!real && <ReadOnlyNotice show>未接服务端：全局约束只读，编辑与保存需配置 VITE_API_BASE。</ReadOnlyNotice>}
               <Textarea
-                defaultValue="回答必须基于站内已发布的内容；不确定时直说不知道。不要编造项目指标、获奖或个人信息。涉及联系方式时优先引导到留言板。"
+                value={globalConstraint}
+                onChange={(e) => setGlobalConstraint(e.target.value)}
                 rows={6}
-                readOnly
-                className="text-[11px] opacity-80"
+                readOnly={!real}
+                disabled={!real}
+                placeholder={loading ? '正在载入服务端配置…' : '留空表示不追加额外约束'}
+                className="mt-2 text-[11px]"
               />
-              <AButton className="mt-2 w-full" onClick={() => show('全局约束在 server/ai/prompts.mjs 中，需随服务端发版修改')}>
-                查看修改方式
+              <AButton className="mt-2 w-full" variant="primary" icon={<Activity size={12} />} disabled={!real || busy || loading} onClick={() => void saveGlobalConstraint()}>
+                保存全局约束
               </AButton>
+              {aiSettings?.updatedAt && <p className="mt-1.5 text-[9.5px] text-admin-muted">上次更新：{new Date(aiSettings.updatedAt).toLocaleString('zh-CN')}</p>}
             </Panel>
             <Panel kicker="Vars" title="可用变量">
               <div className="flex flex-wrap gap-1.5">
@@ -501,39 +735,31 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
           </div>
 
           <div className="grid gap-3 xl:grid-cols-[1.55fr_1fr]">
-            <Panel kicker="Logs" title="调用日志" desc={real ? '最近 8 次真实请求（服务端记账）' : '预置演示数据'} flush>
+            <Panel kicker="Logs" title="调用日志" desc={real ? '最近真实请求（服务端记账）' : '未接服务端：暂无调用日志'} flush>
               <div className="overflow-x-auto no-scrollbar">
                 <div className="admin-zebra min-w-[620px]">
                   <TableHead cols={['时间', '模型', '场景', 'Token', '耗时', '状态']} template="120px 150px minmax(0,1fr) 72px 66px 72px" />
-                  {(real && view.recent.length
-                    ? view.recent.slice(0, 8).map((r) => [
-                        new Date(r.ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }),
-                        r.model,
-                        r.source === 'retrieval' ? '站内检索摘录' : '模型生成',
-                        String(r.tokens ?? 0),
-                        `${r.latency ?? 0}ms`,
-                        r.ok ? '成功' : '失败',
-                      ])
-                    : [
-                        ['10-30 10:21', 'DeepSeek Chat', '站点助手 · 简历问答', '1,842', '820ms', '成功'],
-                        ['10-30 10:18', 'DeepSeek Chat', '站点助手 · 项目咨询', '2,410', '1.1s', '成功'],
-                        ['10-30 09:56', 'GPT-4o mini', '简历摘要生成', '3,208', '1.4s', '成功'],
-                        ['10-30 09:40', 'DeepSeek Chat', '留言审核分类', '486', '640ms', '成功'],
-                        ['10-30 09:12', 'DeepSeek Chat', '站点助手 · 超时重试', '—', '3.0s', '超时'],
-                      ]
-                  ).map((r) => (
-                    <div
-                      key={r[0] + r[2]}
-                      className="grid grid-cols-[120px_150px_minmax(0,1fr)_72px_66px_72px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[10.5px] last:border-0 hover:bg-lime/20"
-                    >
-                      <span className="font-mono text-[9.5px] text-admin-muted">{r[0]}</span>
-                      <span className="truncate">{r[1]}</span>
-                      <span className="truncate text-admin-muted">{r[2]}</span>
-                      <span className="font-mono text-admin-muted">{r[3]}</span>
-                      <span className="font-mono text-admin-muted">{r[4]}</span>
-                      <Status>{r[5]}</Status>
-                    </div>
-                  ))}
+                  <LoadState loading={loading} error={error} onRetry={() => void load()} label="正在加载调用日志…">
+                    {logs.length === 0 ? (
+                      <p className="px-4 py-6 text-center text-[11px] text-admin-muted">{real ? '还没有调用记录' : '未接服务端，无法读取调用日志'}</p>
+                    ) : (
+                      logs.slice(0, 8).map((r, i) => (
+                        <div
+                          key={r.id ? `${r.id}-${i}` : `log-${i}`}
+                          className="grid grid-cols-[120px_150px_minmax(0,1fr)_72px_66px_72px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[10.5px] last:border-0 hover:bg-lime/20"
+                        >
+                          <span className="font-mono text-[9.5px] text-admin-muted">
+                            {new Date(r.ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}
+                          </span>
+                          <span className="truncate">{r.model}</span>
+                          <span className="truncate text-admin-muted">{r.source === 'retrieval' ? '站内检索摘录' : r.source === 'preset' ? '预置问答' : '模型生成'}</span>
+                          <span className="font-mono text-admin-muted">{String(r.tokens ?? 0)}</span>
+                          <span className="font-mono text-admin-muted">{`${r.latency ?? 0}ms`}</span>
+                          <Status>{r.ok ? '成功' : '失败'}</Status>
+                        </div>
+                      ))
+                    )}
+                  </LoadState>
                 </div>
               </div>
             </Panel>
@@ -572,7 +798,8 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                 </div>
               </Panel>
 
-              <Panel kicker="Quota" title="额度与限流">
+              <Panel kicker="Quota" title="额度与限流" desc={real ? '后台可热改的覆盖值，保存后立即回显' : '未接服务端：只读，编辑保存已禁用'}>
+                {!real && <ReadOnlyNotice show>未接服务端：额度与限流无法编辑。</ReadOnlyNotice>}
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-admin-muted">本月已用</span>
                   <span className="font-mono">
@@ -582,24 +809,39 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
                 <Meter value={tokenPercent} color={tokenPercent > 80 ? 'rgb(var(--c-coral))' : 'rgb(var(--c-teal))'} className="mt-2 h-2" />
                 <div className="mt-3 grid gap-3">
                   <Field label="每月额度（tokens）">
-                    <Input value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, ''))} />
+                    <Input value={quota.monthlyTokenBudget} onChange={(e) => setQuota({ ...quota, monthlyTokenBudget: e.target.value.replace(/\D/g, '') })} inputMode="numeric" placeholder="3000000" disabled={!real || busy} />
                   </Field>
-                  <Field label="单访客每日上限">
-                    <Select defaultValue="30 次">
-                      {['10 次', '20 次', '30 次', '不限'].map((x) => (
-                        <option key={x}>{x}</option>
+                  <Field label="每日调用上限（次）">
+                    <Input value={quota.dailyQuota} onChange={(e) => setQuota({ ...quota, dailyQuota: e.target.value.replace(/\D/g, '') })} inputMode="numeric" placeholder="100" disabled={!real || busy} />
+                  </Field>
+                  <Field label="单访客每日上限（次）">
+                    <Input value={quota.perVisitorDailyLimit} onChange={(e) => setQuota({ ...quota, perVisitorDailyLimit: e.target.value.replace(/\D/g, '') })} inputMode="numeric" placeholder="20" disabled={!real || busy} />
+                  </Field>
+                  <Field label="默认备用模型" hint="故障切换未指定目标时优先使用">
+                    <Select value={quota.fallbackModelId} onChange={(e) => setQuota({ ...quota, fallbackModelId: e.target.value })} disabled={!real || busy}>
+                      <option value="">自动选择（下一个启用模型）</option>
+                      {models.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
                       ))}
                     </Select>
                   </Field>
                 </div>
-                <AButton
-                  variant="primary"
-                  className="mt-3 w-full"
-                  icon={<Activity size={12} />}
-                  onClick={() => show('额度与日限流由服务端环境变量控制（AI_DAILY_QUOTA / AI_MONTHLY_TOKEN_BUDGET），后台暂不支持热改')}
-                >
+                <AButton variant="primary" className="mt-3 w-full" icon={<Activity size={12} />} disabled={!real || busy || loading} onClick={() => void saveQuota()}>
                   保存设置
                 </AButton>
+                {aiSettings?.note && <p className="mt-2 text-[9.5px] leading-relaxed text-admin-muted">{aiSettings.note}</p>}
+              </Panel>
+
+              <Panel kicker="Maintenance" title="用量与缓存维护" desc="清空操作立即作用于服务端 ai.json">
+                <div className="grid grid-cols-2 gap-2">
+                  <AButton size="sm" variant="soft" icon={<Trash2 size={11} />} disabled={!real || busy} onClick={() => void resetUsage()}>
+                    清空用量记录
+                  </AButton>
+                  <AButton size="sm" variant="soft" icon={<Trash2 size={11} />} disabled={!real || busy} onClick={() => void clearCache()}>
+                    清空回答缓存
+                  </AButton>
+                </div>
+                {!real && <p className="mt-2 text-[10px] text-admin-muted">未接服务端：清空操作已禁用。</p>}
               </Panel>
 
               <Panel kicker="Health" title="服务健康（静态示意）" desc="真实可用的是「测试连接」与 /api/ai/health">
@@ -631,67 +873,72 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
             <AButton onClick={() => setAdding(false)}>取消</AButton>
             <AButton
               variant="primary"
+              disabled={!real || busy}
               onClick={() => {
+                if (!real) return show('未接服务端：接入模型需配置 VITE_API_BASE，刷新不会保留')
                 if (!draft.name.trim() || !draft.model.trim()) return show('请填写名称与模型 ID')
-                const row: ModelRow = {
-                  id: newId('m'),
-                  name: draft.name,
-                  provider: draft.provider,
-                  model: draft.model,
-                  key: real ? '服务端托管' : `sk-••••••••${Math.random().toString(16).slice(2, 6)}`,
-                  enabled: false,
-                  isDefault: false,
-                  latency: '—',
-                  cost: '按官方计价',
-                  context: draft.context,
-                  calls: 0,
-                }
-                if (!real) {
-                  setModels((l) => [...l, row])
-                  setAdding(false)
-                  show('模型已加入本页（演示：刷新丢失）')
-                  return
-                }
-                void apiJson<ServerModel>('/api/ai/models', {
-                  method: 'POST',
-                  body: JSON.stringify({ name: draft.name, provider: draft.provider, model: draft.model }),
-                })
-                  .then((created) => {
-                    setModels((l) => [...l, { ...row, ...toModelRow(created), context: draft.context }])
+                void (async () => {
+                  setBusy(true)
+                  try {
+                    const created = await apiJson<ServerModel>('/api/ai/models', {
+                      method: 'POST',
+                      body: JSON.stringify({ name: draft.name, provider: draft.provider, model: draft.model }),
+                    })
+                    setModels((l) => [
+                      ...l,
+                      {
+                        id: created.id,
+                        name: created.name,
+                        provider: created.provider,
+                        model: created.model,
+                        key: '服务端托管',
+                        enabled: created.enabled,
+                        isDefault: created.isDefault,
+                        latency: '—',
+                        cost: '按官方计价',
+                        context: draft.context,
+                        calls: 0,
+                      },
+                    ])
                     setAdding(false)
                     show('模型已写入服务端，默认停用；密钥请配到服务端环境变量')
-                  })
-                  .catch((err: Error) => show(`接入失败：${err.message}`))
+                  } catch (err) {
+                    show(`接入失败：${errMsg(err)}`)
+                  } finally {
+                    setBusy(false)
+                  }
+                })()
               }}
             >
-              测试并保存
+              接入并保存
             </AButton>
           </>
         }
       >
-        <div className="grid gap-3 sm:grid-cols-2">
+        <ReadOnlyNotice show={!real}>未接服务端：接入模型已禁用，保存按钮不可用；这里仅可查看表单。</ReadOnlyNotice>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="显示名称">
-            <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="例如：豆包 Pro" />
+            <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="例如：豆包 Pro" disabled={!real} />
           </Field>
           <Field label="供应商">
-            <Select value={draft.provider} onChange={(e) => setDraft({ ...draft, provider: e.target.value })}>
+            <Select value={draft.provider} onChange={(e) => setDraft({ ...draft, provider: e.target.value })} disabled={!real}>
               {['DeepSeek', 'OpenAI', '阿里云', '智谱', '字节跳动'].map((p) => (
                 <option key={p}>{p}</option>
               ))}
             </Select>
           </Field>
           <Field label="模型 ID">
-            <Input value={draft.model} onChange={(e) => setDraft({ ...draft, model: e.target.value })} placeholder="deepseek-chat" />
+            <Input value={draft.model} onChange={(e) => setDraft({ ...draft, model: e.target.value })} placeholder="deepseek-chat" disabled={!real} />
           </Field>
           <Field label="上下文">
-            <Select value={draft.context} onChange={(e) => setDraft({ ...draft, context: e.target.value })}>
+            <Select value={draft.context} onChange={(e) => setDraft({ ...draft, context: e.target.value })} disabled={!real}>
               {['32k', '64k', '128k', '200k'].map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </Select>
           </Field>
           <Field label="API Key" className="sm:col-span-2" hint="支持环境变量注入，例如 $DEEPSEEK_KEY">
-            <Input type="password" value={draft.key} onChange={(e) => setDraft({ ...draft, key: e.target.value })} placeholder="sk-..." />
+            <Input type="password" value={draft.key} onChange={(e) => setDraft({ ...draft, key: e.target.value })} placeholder="sk-..." disabled={!real} />
           </Field>
         </div>
       </AdminModal>
@@ -705,46 +952,53 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
         footer={
           <>
             <AButton onClick={() => setEditingPrompt(null)}>取消</AButton>
+            {editingPrompt && editingPrompt.id !== 'new' && real && (
+              <AButton icon={<RotateCcw size={12} />} disabled={busy} onClick={() => void rollbackPrompt()}>
+                回滚上一版
+              </AButton>
+            )}
             <AButton
               variant="primary"
               icon={<Sparkles size={12} />}
+              disabled={!real || busy}
               onClick={() => {
-                const name = promptDraft.name.trim()
-                if (!name) return show('请填写名称')
-                const isNew = !editingPrompt || editingPrompt.id === 'new'
-                const localRow: PromptRow = {
-                  id: isNew ? newId('p') : (editingPrompt?.id as string),
-                  name,
-                  scene: promptDraft.scene || '全站对话',
-                  model: promptDraft.model || 'DeepSeek Chat',
-                  updated: new Date().toISOString().slice(0, 10),
-                  enabled: isNew ? true : promptDraft.body.trim().length > 0,
-                  tokens: Math.round(promptDraft.body.length / 2),
-                  body: promptDraft.body,
-                }
-                if (!real) {
-                  setPrompts((l) => (isNew ? [localRow, ...l] : l.map((x) => (x.id === localRow.id ? { ...x, ...localRow } : x))))
-                  setEditingPrompt(null)
-                  show('提示词已保存（演示：仅本页）')
-                  return
-                }
-                const req = isNew
-                  ? apiJson<{ id: string; version: number }>('/api/ai/prompts', {
-                      method: 'POST',
-                      body: JSON.stringify({ name, scene: localRow.scene, body: promptDraft.body }),
-                    })
-                  : apiJson<{ id: string; version: number; active: boolean }>(`/api/ai/prompts/${localRow.id}`, {
-                      method: 'PUT',
-                      body: JSON.stringify({ name, body: promptDraft.body }),
-                    })
-                void req
-                  .then((res) => {
+                if (!real) return show('未接服务端：提示词保存需配置 VITE_API_BASE')
+                void (async () => {
+                  const name = promptDraft.name.trim()
+                  if (!name) return show('请填写名称')
+                  setBusy(true)
+                  try {
+                    const isNew = !editingPrompt || editingPrompt.id === 'new'
+                    const localRow: PromptRow = {
+                      id: isNew ? newId('p') : (editingPrompt?.id as string),
+                      name,
+                      scene: promptDraft.scene || '全站对话',
+                      model: promptDraft.model || 'DeepSeek Chat',
+                      updated: new Date().toISOString().slice(0, 10),
+                      enabled: isNew ? true : promptDraft.body.trim().length > 0,
+                      tokens: Math.round(promptDraft.body.length / 2),
+                      body: promptDraft.body,
+                    }
+                    const req = isNew
+                      ? apiJson<{ id: string; version: number }>('/api/ai/prompts', {
+                          method: 'POST',
+                          body: JSON.stringify({ name, scene: localRow.scene, body: promptDraft.body }),
+                        })
+                      : apiJson<{ id: string; version: number; active: boolean }>(`/api/ai/prompts/${localRow.id}`, {
+                          method: 'PUT',
+                          body: JSON.stringify({ name, body: promptDraft.body }),
+                        })
+                    const res = await req
                     const saved: PromptRow = { ...localRow, id: res.id, model: `v${res.version}` }
                     setPrompts((l) => (isNew ? [saved, ...l] : l.map((x) => (x.id === saved.id ? { ...x, ...saved } : x))))
                     setEditingPrompt(null)
                     show(`提示词已保存到服务端 · 版本 v${res.version}，下一次对话生效`)
-                  })
-                  .catch((err: Error) => show(`保存失败：${err.message}`))
+                  } catch (err) {
+                    show(`保存失败：${errMsg(err)}`)
+                  } finally {
+                    setBusy(false)
+                  }
+                })()
               }}
             >
               保存模板
@@ -752,31 +1006,32 @@ export default function AiConfigPage({ tab, setTab, show }: { tab: Tab; setTab: 
           </>
         }
       >
-        <div className="grid gap-3 sm:grid-cols-2">
+        <ReadOnlyNotice show={!real}>未接服务端：提示词保存 / 回滚已禁用，这里仅可查看内容。</ReadOnlyNotice>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="名称">
-            <Input value={promptDraft.name} onChange={(e) => setPromptDraft({ ...promptDraft, name: e.target.value })} />
+            <Input value={promptDraft.name} onChange={(e) => setPromptDraft({ ...promptDraft, name: e.target.value })} disabled={!real} />
           </Field>
           <Field label="关联场景">
-            <Select value={promptDraft.scene} onChange={(e) => setPromptDraft({ ...promptDraft, scene: e.target.value })}>
+            <Select value={promptDraft.scene} onChange={(e) => setPromptDraft({ ...promptDraft, scene: e.target.value })} disabled={!real}>
               {['全站对话', '简历解析', '内容管理', '互动审核'].map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </Select>
           </Field>
           <Field label="使用模型" className="sm:col-span-2">
-            <Select value={promptDraft.model} onChange={(e) => setPromptDraft({ ...promptDraft, model: e.target.value })}>
+            <Select value={promptDraft.model} onChange={(e) => setPromptDraft({ ...promptDraft, model: e.target.value })} disabled={!real}>
               {models.map((m) => (
                 <option key={m.id}>{m.name}</option>
               ))}
             </Select>
           </Field>
           <Field label="提示词正文" className="sm:col-span-2">
-            <Textarea value={promptDraft.body} onChange={(e) => setPromptDraft({ ...promptDraft, body: e.target.value })} rows={9} className="font-mono text-[11px]" />
+            <Textarea value={promptDraft.body} onChange={(e) => setPromptDraft({ ...promptDraft, body: e.target.value })} rows={9} className="font-mono text-[11px]" disabled={!real} />
           </Field>
         </div>
         <div className="mt-2 flex items-center justify-between text-[10px] text-admin-muted">
           <span>约 {Math.round(promptDraft.body.length / 2)} tokens</span>
-          <IconButton label="复制" onClick={() => void navigator.clipboard?.writeText(editingPrompt?.body ?? promptDraft.body).then(() => show('提示词已复制'))}>
+          <IconButton label="复制" onClick={() => void navigator.clipboard?.writeText(promptDraft.body).then(() => show('提示词已复制'))}>
             <KeyRound size={11} />
           </IconButton>
         </div>

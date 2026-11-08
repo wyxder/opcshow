@@ -7,6 +7,7 @@ import { cn, newId, usePrefersReducedMotion } from '@/lib/utils'
 import { describeContext, getAssistantContextSnapshot, subscribeAssistantContext } from '@/lib/assistant'
 import { askSite, clearSessionId, loadRemoteSession, probeAiMode, quickPrompts, type AiMode, type AnswerSource, type ChatReference } from '@/services/ai'
 import { serverConfig } from '@/services/config'
+import { profile } from '@/data/site'
 
 /** 「正在阅读」上下文：由页面通过 setAssistantContext() 写入 */
 function useAssistantContext() {
@@ -32,17 +33,18 @@ const sourceLabel = (source: AnswerSource, degraded?: boolean) => {
   return '预置问答 · 作者手写'
 }
 
-/** AI 分身的头像：回复气泡、浮标、面板头部共用 */
-const AVATAR_SRC = '/image/toux.jpg'
+/** AI 分身的头像：回复气泡、浮标、面板头部共用。后台资料页可热改 URL，未设置时用站内默认图 */
+const DEFAULT_AVATAR = '/image/toux.jpg'
 
 function BotAvatar({ className }: { className?: string }) {
   return (
+    // 首屏常驻的小头像不用 lazy：避免浏览器延后 load 事件并打印 Intervention 提示
     <img
-      src={AVATAR_SRC}
+      src={profile.avatar?.trim() || DEFAULT_AVATAR}
       alt="晓叶的 AI 分身头像"
       width={28}
       height={28}
-      loading="lazy"
+      loading="eager"
       className={cn('shrink-0 rounded-full border-1.5 border-ink object-cover', className)}
     />
   )

@@ -1,13 +1,15 @@
-import { Check, CloudDownload, DatabaseBackup, Download, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Check, CloudDownload, DatabaseBackup, Download, RefreshCw, RotateCcw, Search, Trash2, Upload } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { backups as backupSeed, seoDefaults, systemInfo } from '@/admin/data'
 import {
   AButton,
   AdminModal,
   Badge,
+  EmptyState,
   Field,
   IconButton,
   Input,
+  LoadState,
   PageTitle,
   Panel,
   Select,
@@ -20,9 +22,28 @@ import {
 } from '@/admin/ui'
 import { cn, newId } from '@/lib/utils'
 import { serverConfig } from '@/services/config'
-import { apiJson, apiJsonSafe } from '@/services/http'
+import { apiJson } from '@/services/http'
 import { getSiteSettings, saveSiteSettings } from '@/services/settings'
 import { deleteBackup } from '@/services/admin'
+import {
+  cleanupBackups,
+  downloadBackup,
+  downloadJson,
+  exportConfig,
+  getAssets,
+  getBackupPlan,
+  getCapabilities,
+  getSeoStatus,
+  importBackup,
+  importConfig,
+  readJsonFile,
+  refreshAssets,
+  saveBackupPlan,
+  type AssetsInfo,
+  type BackupPlan,
+  type Capabilities,
+  type SeoStatus,
+} from '@/services/adminx'
 import { useTheme } from '@/theme/ThemeProvider'
 import { SWATCH_TOKENS } from '@/theme/theme'
 import { siteMeta } from '@/data/site'
@@ -45,54 +66,106 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
 
   const [tokenValues, setTokenValues] = useState<Record<string, string>>({})
   const [seo, setSeo] = useState(seoDefaults)
-  const [autoBackup, setAutoBackup] = useState(true)
+
+  // SEO / 资源 / 能力：真实状态来自服务端，未接入时为 null
+  const [seoStatus, setSeoStatus] = useState<SeoStatus | null>(null)
+  const [seoStatusLoading, setSeoStatusLoading] = useState(true)
+  const [capabilities, setCapabilities] = useState<Capabilities | null>(null)
+  const [assets, setAssets] = useState<AssetsInfo | null>(null)
+  const [assetsLoading, setAssetsLoading] = useState(true)
+  const [refreshingAssets, setRefreshingAssets] = useState(false)
+
+  // 备份列表 / 导入导出
   const [backups, setBackups] = useState<BackupRow[]>(backupSeed)
+  const [backupsLoading, setBackupsLoading] = useState(true)
+  const [backupsError, setBackupsError] = useState<string | null>(null)
   const [restoring, setRestoring] = useState<string | null>(null)
   const [backingUp, setBackingUp] = useState(false)
+  const [importingBackup, setImportingBackup] = useState(false)
 
-  /** FE-05：备份列表直接读服务端 /api/admin/backup */
+  // 自动备份计划（真实持久化）+ 配置导入导出 / 清理
+  const [plan, setPlan] = useState<BackupPlan>({ enabled: false, time: '03:00', retain: 14, lastRunAt: null })
+  const [planLoading, setPlanLoading] = useState(true)
+  const [savingPlan, setSavingPlan] = useState(false)
+  const [cleaning, setCleaning] = useState(false)
+  const [exportingCfg, setExportingCfg] = useState(false)
+  const [importingCfg, setImportingCfg] = useState(false)
+
+  const backupFileRef = useRef<HTMLInputElement>(null)
+  const configFileRef = useRef<HTMLInputElement>(null)
+
+  /** FE-05：备份列表直接读服务端 /api/admin/backup；真实模式下失败要给出可重试的错误，而非静默回落演示数据 */
   const loadBackups = useCallback(async () => {
-    if (!serverConfig.enabled) return
-    const list = await apiJsonSafe<{ id: string; createdAt?: string; bytes?: number; entries?: number }[]>('/api/admin/backup')
-    if (!list) return
-    setBackups(
-      list.map((b) => ({
-        id: b.id,
-        name: b.id,
-        size: formatBytes(b.bytes),
-        type: '手动' as const,
-        status: '成功' as const,
-        time: b.createdAt ? new Date(b.createdAt).toLocaleString('zh-CN') : '—',
-        items: `${b.entries ?? 0} 类数据`,
-      })),
-    )
+    if (!serverConfig.enabled) {
+      setBackupsLoading(false)
+      return
+    }
+    setBackupsLoading(true)
+    try {
+      const list = await apiJson<{ id: string; createdAt?: string; bytes?: number; entries?: number }[]>('/api/admin/backup')
+      setBackups(
+        list.map((b) => ({
+          id: b.id,
+          name: b.id,
+          size: formatBytes(b.bytes),
+          type: '手动' as const,
+          status: '成功' as const,
+          time: b.createdAt ? new Date(b.createdAt).toLocaleString('zh-CN') : '—',
+          items: `${b.entries ?? 0} 类数据`,
+        })),
+      )
+      setBackupsError(null)
+    } catch (err) {
+      setBackupsError(`备份列表加载失败：${(err as Error).message}`)
+    } finally {
+      setBackupsLoading(false)
+    }
+  }, [])
+
+  // FE-05 / BE-14：SEO 表单字段读服务端，未接入时保持本机预览
+  const loadSiteSeo = useCallback(async () => {
+    const site = await getSiteSettings()
+    if (!site) return
+    setSeo((cur) => ({
+      ...cur,
+      title: site.title ?? cur.title,
+      description: site.description ?? cur.description,
+      keywords: Array.isArray(site.keywords) ? site.keywords.join(',') : cur.keywords,
+      ogImage: site.ogImage ?? cur.ogImage,
+      sitemap: site.sitemap ?? cur.sitemap,
+      structuredData: site.structuredData ?? cur.structuredData,
+      analytics: site.analytics ?? cur.analytics,
+    }))
+  }, [])
+
+  const loadSeoStatus = useCallback(async () => {
+    setSeoStatus(await getSeoStatus())
+    setSeoStatusLoading(false)
+  }, [])
+
+  const loadCapabilities = useCallback(async () => {
+    setCapabilities(await getCapabilities())
+  }, [])
+
+  const loadAssets = useCallback(async () => {
+    setAssets(await getAssets())
+    setAssetsLoading(false)
+  }, [])
+
+  const loadPlan = useCallback(async () => {
+    const p = await getBackupPlan()
+    if (p) setPlan(p)
+    setPlanLoading(false)
   }, [])
 
   useEffect(() => {
     void loadBackups()
-  }, [loadBackups])
-
-  // FE-05 / BE-14：SEO 设置读服务端，未接入时保持本机预览
-  useEffect(() => {
-    if (!serverConfig.enabled) return
-    let alive = true
-    getSiteSettings().then((site) => {
-      if (!alive || !site) return
-      setSeo((cur) => ({
-        ...cur,
-        title: site.title ?? cur.title,
-        description: site.description ?? cur.description,
-        keywords: Array.isArray(site.keywords) ? site.keywords.join(',') : cur.keywords,
-        ogImage: site.ogImage ?? cur.ogImage,
-        sitemap: site.sitemap ?? cur.sitemap,
-        structuredData: site.structuredData ?? cur.structuredData,
-        analytics: site.analytics ?? cur.analytics,
-      }))
-    })
-    return () => {
-      alive = false
-    }
-  }, [])
+    void loadSiteSeo()
+    void loadSeoStatus()
+    void loadCapabilities()
+    void loadAssets()
+    void loadPlan()
+  }, [loadBackups, loadSiteSeo, loadSeoStatus, loadCapabilities, loadAssets, loadPlan])
 
   // 等主题属性落到 <html> 后再读实际值
   useEffect(() => {
@@ -121,6 +194,15 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
     ],
     [seo],
   )
+
+  // 收录推送：能力由 capabilities 如实暴露，禁用并在原位说明，不弹空 toast
+  const searchConsole = capabilities?.searchConsole
+  const submitDisabled = !serverConfig.enabled || searchConsole?.available !== true
+  const submitReason = !serverConfig.enabled
+    ? '未接入服务端，无法提交收录'
+    : !capabilities
+      ? '收录能力状态未返回，暂不可提交'
+      : (searchConsole?.reason ?? 'Search Console 推送不可用')
 
   const startBackup = async () => {
     if (!serverConfig.enabled) return show('未接服务端：不会创建备份')
@@ -158,9 +240,104 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
         structuredData: seo.structuredData,
         analytics: seo.analytics,
       })
+      await loadSeoStatus()
       show('SEO 设置已保存到服务端')
     } catch (err) {
       show(`保存失败：${(err as Error).message}`)
+    }
+  }
+
+  /** 刷新静态资源：服务端明确无 CDN，仅记录刷新时间，不谎称向 CDN 提交任务 */
+  const refreshAssetsNow = async () => {
+    setRefreshingAssets(true)
+    try {
+      const res = await refreshAssets()
+      await loadAssets()
+      show(`已记录刷新时间${res.refreshedAt ? ` · ${new Date(res.refreshedAt).toLocaleString('zh-CN')}` : ''}`)
+    } catch (err) {
+      show(`刷新失败：${(err as Error).message}`)
+    } finally {
+      setRefreshingAssets(false)
+    }
+  }
+
+  /** 导入备份 JSON：真正写入服务端快照，成功后刷新列表并提示可在列表恢复 */
+  const onImportBackupFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setImportingBackup(true)
+    try {
+      const snapshot = await readJsonFile(file)
+      const res = await importBackup(snapshot)
+      await loadBackups()
+      show(`备份已导入（${res.note || formatBytes(res.bytes)}），可在列表中恢复`)
+    } catch (err) {
+      show(`导入失败：${(err as Error).message}`)
+    } finally {
+      setImportingBackup(false)
+    }
+  }
+
+  /** 导入配置 JSON：展示真正写入的 applied 字段，并刷新 SEO 相关数据 */
+  const onImportConfigFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setImportingCfg(true)
+    try {
+      const config = await readJsonFile(file)
+      const res = await importConfig(config)
+      await Promise.all([loadSiteSeo(), loadSeoStatus()])
+      show(`配置已导入 · 已应用：${res.applied.length ? res.applied.join('、') : '无变更'}`)
+    } catch (err) {
+      show(`导入失败：${(err as Error).message}`)
+    } finally {
+      setImportingCfg(false)
+    }
+  }
+
+  const savePlan = async () => {
+    setSavingPlan(true)
+    try {
+      const saved = await saveBackupPlan({ enabled: plan.enabled, time: plan.time, retain: plan.retain })
+      setPlan(saved)
+      show('自动备份计划已保存到服务端')
+    } catch (err) {
+      show(`保存失败：${(err as Error).message}`)
+    } finally {
+      setSavingPlan(false)
+    }
+  }
+
+  const cleanup = async () => {
+    if (!window.confirm(`按保留数清理：仅保留最近 ${plan.retain} 份，其余备份将永久删除，确认继续？`)) return
+    setCleaning(true)
+    try {
+      const res = await cleanupBackups(plan.retain)
+      await loadBackups()
+      show(`清理完成 · 删除 ${res.removed} 份，保留 ${res.kept} 份`)
+    } catch (err) {
+      show(`清理失败：${(err as Error).message}`)
+    } finally {
+      setCleaning(false)
+    }
+  }
+
+  const exportCfg = async () => {
+    setExportingCfg(true)
+    try {
+      const cfg = await exportConfig()
+      if (!cfg) {
+        show('配置导出失败：未接服务端或读取为空')
+        return
+      }
+      downloadJson(cfg, `site-config-${new Date().toISOString().slice(0, 10)}.json`)
+      show('配置已导出为 JSON 文件')
+    } catch (err) {
+      show(`导出失败：${(err as Error).message}`)
+    } finally {
+      setExportingCfg(false)
     }
   }
 
@@ -252,7 +429,7 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
                 >
                   设为站点默认
                 </AButton>
-                <AButton onClick={() => { resetTheme(); show('已恢复默认主题 · 01 纸感极简') }}>恢复默认</AButton>
+                <AButton onClick={() => { resetTheme(); show('已恢复本机默认主题 · 01 纸感极简（仅这台浏览器，未改动站点默认）') }}>恢复默认</AButton>
                 <AButton variant="soft" onClick={() => { followSiteDefault(); show('已取消本机覆盖，回到站点缺省 + 系统偏好') }}>跟随站点默认</AButton>
                 <span className="ml-auto font-mono text-[9px] tracking-[0.16em] text-admin-muted">ACTIVE · {current.en}</span>
               </div>
@@ -350,21 +527,28 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
               <p className="mt-2 text-center font-mono text-[9px] text-admin-muted">令牌由 CSS 变量提供 · 无后台硬编码色值</p>
             </Panel>
 
-            <Panel kicker="Cache" title="静态资源">
-              <div className="space-y-2 text-[10.5px]">
-                {[
-                  ['构建版本', '2026.10.29-a3f1'],
-                  ['上次部署', '12 分钟前'],
-                  ['CDN 命中率', '96.4%'],
-                ].map(([k, v]) => (
-                  <div key={k} className="flex items-center justify-between border-b border-ink/10 pb-1.5 last:border-0">
-                    <span className="text-admin-muted">{k}</span>
-                    <span className="font-mono">{v}</span>
-                  </div>
-                ))}
-              </div>
-              <AButton className="mt-3 w-full" icon={<RefreshCw size={12} />} onClick={() => show('缓存刷新任务已提交')}>
-                刷新 CDN 缓存
+            <Panel kicker="Cache" title="静态资源" desc="版本与刷新时间来自 /api/admin/assets">
+              <LoadState loading={assetsLoading} label="正在读取资源版本…">
+                <div className="space-y-2 text-[10.5px]">
+                  {[
+                    ['构建版本', assets?.version ?? '—'],
+                    ['构建时间', assets?.builtAt ? new Date(assets.builtAt).toLocaleString('zh-CN') : '—'],
+                    ['上次刷新', assets?.refreshedAt ? new Date(assets.refreshedAt).toLocaleString('zh-CN') : '尚未刷新'],
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex items-center justify-between border-b border-ink/10 pb-1.5 last:border-0">
+                      <span className="text-admin-muted">{k}</span>
+                      <span className="font-mono">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </LoadState>
+              <p className="mt-2 rounded-lg bg-paper px-3 py-2 text-[9.5px] leading-relaxed text-admin-muted">
+                {assets && assets.cdnAvailable === false
+                  ? `本站无 CDN，仅记录刷新时间${assets.note ? ` · ${assets.note}` : ''}`
+                  : (assets?.note ?? (serverConfig.enabled ? '静态资源版本与刷新记录' : '未接入服务端，暂无真实版本信息'))}
+              </p>
+              <AButton className="mt-3 w-full" icon={<RefreshCw size={12} />} disabled={refreshingAssets || assetsLoading} onClick={refreshAssetsNow}>
+                {refreshingAssets ? '刷新中…' : '刷新资源缓存'}
               </AButton>
             </Panel>
           </div>
@@ -418,30 +602,44 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
                 })}
               </div>
 
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 <AButton variant="primary" icon={<Check size={12} />} onClick={saveSeo}>
                   保存
                 </AButton>
-                <AButton icon={<Search size={12} />} onClick={() => show('Search Console 推送未接入（需外部账号）')}>
+                <AButton icon={<Search size={12} />} disabled={submitDisabled} title={submitReason}>
                   提交收录
                 </AButton>
+                <span className="font-mono text-[9.5px] leading-snug text-admin-muted">{submitReason}</span>
               </div>
             </Panel>
 
-            <Panel kicker="Sitemap" title="已收录页面（静态示意）">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {[
-                  ['页面总数', '23'],
-                  ['已提交', '23'],
-                  ['已收录', '18'],
-                  ['最近抓取', '2 小时前'],
-                ].map(([l, v]) => (
-                  <div key={l} className="rounded-lg bg-paper px-3 py-2">
-                    <p className="text-[9.5px] text-admin-muted">{l}</p>
-                    <p className="mt-0.5 font-mono text-[12px]">{v}</p>
-                  </div>
-                ))}
-              </div>
+            <Panel kicker="Index" title="收录状态" desc="来自 /api/admin/seo/status，按已发布内容实时统计">
+              <LoadState loading={seoStatusLoading} label="正在读取收录状态…">
+                {!seoStatus ? (
+                  <EmptyState title="暂无收录状态" desc={serverConfig.enabled ? '服务端未返回 SEO 状态' : '未接入服务端，当前为本机预览'} />
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        ['可索引页面', String(seoStatus.indexablePages)],
+                        ['已发布内容', String(seoStatus.publishedContent)],
+                        ['Sitemap', seoStatus.sitemap || '未生成'],
+                        ['更新时间', seoStatus.updatedAt ? new Date(seoStatus.updatedAt).toLocaleString('zh-CN') : '—'],
+                      ].map(([l, v]) => (
+                        <div key={l} className="rounded-lg bg-paper px-3 py-2">
+                          <p className="text-[9.5px] text-admin-muted">{l}</p>
+                          <p className="mt-0.5 truncate font-mono text-[12px]">{v}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 space-y-1 rounded-lg bg-paper px-3 py-2 font-mono text-[9.5px] leading-relaxed text-admin-muted">
+                      <p>Canonical：{seoStatus.canonical || '未配置'}</p>
+                      <p>Robots：{seoStatus.robots || '未配置'}</p>
+                      {seoStatus.note && <p className="font-sans">{seoStatus.note}</p>}
+                    </div>
+                  </>
+                )}
+              </LoadState>
             </Panel>
           </div>
 
@@ -493,73 +691,95 @@ Sitemap: ${seo.canonical}/sitemap.xml`}
             desc={`最近备份 ${backups[0]?.time ?? '—'} · 共 ${backups.length} 份`}
             flush
             right={
-              <AButton size="sm" variant="primary" icon={<DatabaseBackup size={11} />} onClick={startBackup} disabled={backingUp}>
-                {backingUp ? '备份中…' : '立即备份'}
-              </AButton>
+              <div className="flex items-center gap-2">
+                <input ref={backupFileRef} type="file" accept=".json,application/json" className="hidden" onChange={onImportBackupFile} />
+                <AButton size="sm" icon={<Upload size={11} />} disabled={importingBackup} onClick={() => backupFileRef.current?.click()}>
+                  {importingBackup ? '导入中…' : '导入备份'}
+                </AButton>
+                <AButton size="sm" variant="primary" icon={<DatabaseBackup size={11} />} onClick={startBackup} disabled={backingUp}>
+                  {backingUp ? '备份中…' : '立即备份'}
+                </AButton>
+              </div>
             }
           >
             <div className="overflow-x-auto no-scrollbar">
               <div className="admin-zebra min-w-[760px]">
                 <TableHead cols={['备份', '内容', '大小', '类型', '时间', '状态', '操作']} template="minmax(0,1fr) 128px 64px 56px 96px 72px 100px" />
-                {backups.map((b) => (
-                  <div
-                    key={b.id}
-                    className="grid grid-cols-[minmax(0,1fr)_128px_64px_56px_96px_72px_100px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
-                  >
-                    <span className="truncate font-mono text-[10.5px]">{b.name}</span>
-                    <span className="truncate text-[9.5px] text-admin-muted">{b.items}</span>
-                    <span className="font-mono text-[10px] text-admin-muted">{b.size}</span>
-                    <Badge tone={b.type === '自动' ? 'neutral' : 'amber'}>{b.type}</Badge>
-                    <span className="font-mono text-[9.5px] text-admin-muted">{b.time}</span>
-                    <Status>{b.status}</Status>
-                    <div className="flex items-center justify-end gap-1">
-                      <IconButton label="下载" onClick={() => show('备份文件在服务端 data/backups，浏览器下载未接入')}>
-                        <Download size={11} />
-                      </IconButton>
-                      <IconButton label="删除" onClick={() => {
-                        if (!serverConfig.enabled) return show('未接服务端：不能删除备份')
-                        if (!window.confirm(`删除备份 ${b.name}？`)) return
-                        void deleteBackup(b.id).then(async () => { await loadBackups(); show('备份已删除') }).catch((err: Error) => show(`删除失败：${err.message}`))
-                      }}>
-                        <Trash2 size={11} />
-                      </IconButton>
-                      <AButton size="sm" variant="soft" disabled={b.status !== '成功'} onClick={() => setRestoring(b.name)}>
-                        恢复
-                      </AButton>
-                    </div>
-                  </div>
-                ))}
+                <LoadState loading={backupsLoading} error={backupsError ?? undefined} onRetry={() => void loadBackups()} label="正在加载备份列表…">
+                  {backups.length === 0 ? (
+                    <EmptyState title="暂无备份" desc="点「立即备份」创建，或用「导入备份」载入已有 JSON" />
+                  ) : (
+                    backups.map((b) => (
+                      <div
+                        key={b.id}
+                        className="grid grid-cols-[minmax(0,1fr)_128px_64px_56px_96px_72px_100px] items-center gap-3 border-b border-ink/10 px-4 py-2.5 text-[11.5px] last:border-0 hover:bg-lime/20"
+                      >
+                        <span className="truncate font-mono text-[10.5px]">{b.name}</span>
+                        <span className="truncate text-[9.5px] text-admin-muted">{b.items}</span>
+                        <span className="font-mono text-[10px] text-admin-muted">{b.size}</span>
+                        <Badge tone={b.type === '自动' ? 'neutral' : 'amber'}>{b.type}</Badge>
+                        <span className="font-mono text-[9.5px] text-admin-muted">{b.time}</span>
+                        <Status>{b.status}</Status>
+                        <div className="flex items-center justify-end gap-1">
+                          <IconButton label="下载" onClick={() => {
+                            try {
+                              downloadBackup(b.id)
+                              show(`已触发浏览器下载：${b.name}`)
+                            } catch (err) {
+                              show(`下载失败：${(err as Error).message}`)
+                            }
+                          }}>
+                            <Download size={11} />
+                          </IconButton>
+                          <IconButton label="删除" onClick={() => {
+                            if (!serverConfig.enabled) return show('未接服务端：不能删除备份')
+                            if (!window.confirm(`删除备份 ${b.name}？`)) return
+                            void deleteBackup(b.id).then(async () => { await loadBackups(); show('备份已删除') }).catch((err: Error) => show(`删除失败：${err.message}`))
+                          }}>
+                            <Trash2 size={11} />
+                          </IconButton>
+                          <AButton size="sm" variant="soft" disabled={b.status !== '成功'} onClick={() => setRestoring(b.name)}>
+                            恢复
+                          </AButton>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </LoadState>
               </div>
             </div>
           </Panel>
 
           <div className="space-y-3">
-            <Panel kicker="Schedule" title="自动备份">
+            <Panel kicker="Schedule" title="自动备份" desc="站内仅保存配置，真正定时执行需外部调度器调用 POST /api/admin/backup">
               <div className="flex items-center justify-between gap-3 rounded-lg border border-ink/15 px-3 py-2.5">
                 <div>
                   <p className="text-[11.5px] font-medium">每日自动备份</p>
-                  <p className="mt-0.5 text-[9.5px] text-admin-muted">保留最近 14 份，超出自动清理</p>
+                  <p className="mt-0.5 text-[9.5px] text-admin-muted">
+                    保留最近 {plan.retain} 份 · {plan.lastRunAt ? `上次执行 ${new Date(plan.lastRunAt).toLocaleString('zh-CN')}` : '尚未执行'}
+                  </p>
                 </div>
-                <Toggle on={autoBackup} onChange={(v) => { setAutoBackup(v); show('仅本页状态：自动备份调度未接入') }} label="自动备份" />
+                <Toggle on={plan.enabled} onChange={(v) => setPlan((p) => ({ ...p, enabled: v }))} label="自动备份" disabled={planLoading} />
               </div>
               <div className="mt-3 grid gap-3">
                 <Field label="执行时间">
-                  <Select defaultValue="03:00">
-                    {['01:00', '03:00', '05:00', '每日 12:00'].map((t) => (
-                      <option key={t}>{t}</option>
+                  <Select value={plan.time} onChange={(e) => setPlan((p) => ({ ...p, time: e.target.value }))} disabled={planLoading}>
+                    {Array.from(new Set([plan.time, '01:00', '03:00', '05:00', '12:00'])).map((t) => (
+                      <option key={t} value={t}>{t === '12:00' ? '每日 12:00' : t}</option>
                     ))}
                   </Select>
                 </Field>
                 <Field label="保留份数">
-                  <Select defaultValue="14 份">
-                    {['7 份', '14 份', '30 份'].map((t) => (
-                      <option key={t}>{t}</option>
+                  <Select value={String(plan.retain)} onChange={(e) => setPlan((p) => ({ ...p, retain: Number(e.target.value) }))} disabled={planLoading}>
+                    {Array.from(new Set([7, 14, 30, plan.retain])).sort((a, b) => a - b).map((n) => (
+                      <option key={n} value={n}>{n} 份</option>
                     ))}
                   </Select>
                 </Field>
               </div>
-              <AButton className="mt-3 w-full" onClick={() => show('自动备份调度未接入（需 cron / 外部调度器）')}>
-                保存计划
+              {plan.note && <p className="mt-2 text-[9.5px] leading-relaxed text-admin-muted">{plan.note}</p>}
+              <AButton className="mt-3 w-full" disabled={planLoading || savingPlan} onClick={savePlan}>
+                {savingPlan ? '保存中…' : planLoading ? '读取中…' : '保存计划'}
               </AButton>
             </Panel>
 
@@ -578,24 +798,28 @@ Sitemap: ${seo.canonical}/sitemap.xml`}
                 ))}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <AButton size="sm" icon={<CloudDownload size={11} />} onClick={() => show('配置导出未接入服务端')}>
-                  导出配置
+                <AButton size="sm" icon={<CloudDownload size={11} />} disabled={exportingCfg} onClick={exportCfg}>
+                  {exportingCfg ? '导出中…' : '导出配置'}
                 </AButton>
-                <AButton size="sm" icon={<RotateCcw size={11} />} onClick={() => show('配置导入未接入服务端')}>
-                  导入配置
+                <AButton size="sm" icon={<RotateCcw size={11} />} disabled={importingCfg} onClick={() => configFileRef.current?.click()}>
+                  {importingCfg ? '导入中…' : '导入配置'}
                 </AButton>
               </div>
+              <input ref={configFileRef} type="file" accept=".json,application/json" className="hidden" onChange={onImportConfigFile} />
             </Panel>
 
             <Panel kicker="Cleanup" title="旧备份清理">
-              <p className="text-[10.5px] leading-relaxed text-admin-muted">已过期 1 份，占用 119 MB，删除后不可恢复。</p>
+              <p className="text-[10.5px] leading-relaxed text-admin-muted">
+                按保留份数清理：仅保留最近 {plan.retain} 份，更早的备份将被真实删除且不可恢复。
+              </p>
               <AButton
                 variant="danger"
                 className="mt-2 w-full"
                 icon={<Trash2 size={11} />}
-                onClick={() => show('旧备份保留策略需外部调度器，未接入；可逐条删除上方备份')}
+                disabled={cleaning || backupsLoading}
+                onClick={cleanup}
               >
-                清理过期备份
+                {cleaning ? '清理中…' : '按保留数清理'}
               </AButton>
             </Panel>
           </div>

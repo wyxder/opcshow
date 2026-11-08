@@ -43,6 +43,7 @@ import { cn, usePrefersReducedMotion } from '@/lib/utils'
 import { openAssistant, setAssistantContext } from '@/lib/assistant'
 import { highlightParts, matchScore, pushRecentSearch, readRecentSearches } from '@/lib/search'
 import { Marquee } from '@/components/ui/primitives'
+import { RouteFallback } from '@/components/ErrorBoundary'
 import { Modal } from '@/components/ui/Modal'
 import { ConnectModal } from '@/components/ConnectModal'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
@@ -104,20 +105,26 @@ function WeChatIcon({ size = 12, className }: { size?: number; className?: strin
 /* ------------------------------ scroll helpers ----------------------------- */
 function ScrollToTop() {
   const { pathname, hash } = useLocation()
+  const firstRun = useRef(true)
   useEffect(() => {
+    // 首次挂载（刷新 / 直接带 #锚点 进入）用瞬间定位：原来延迟 80ms 再 smooth
+    // scrollIntoView，在移动端就是「加载一会儿页面自动上滑 / 下滑」。
+    // 站内主动点锚点仍保留平滑过渡。
+    const initial = firstRun.current
+    firstRun.current = false
     if (hash) {
       const id = hash.replace('#', '')
       let tries = 0
       const run = () => {
         const el = document.getElementById(id)
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          el.scrollIntoView({ behavior: (initial ? 'instant' : 'smooth') as ScrollBehavior, block: 'start' })
         } else if (tries++ < 20) {
           requestAnimationFrame(run)
         }
       }
-      const timer = window.setTimeout(run, 80)
-      return () => window.clearTimeout(timer)
+      run()
+      return
     }
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
   }, [pathname, hash])
@@ -143,6 +150,8 @@ function Header() {
   const [scrolled, setScrolled] = useState(false)
   const { pathname } = useLocation()
   const reduce = usePrefersReducedMotion()
+  // 首页只走底部 6 个主菜单栏，顶部那排分栏菜单在首页不显示
+  const isHome = pathname === '/'
   const closeTimer = useRef<number | null>(null)
 
   // hover 意图：进入即刻展开，离开延时 180ms 再收起（期间重新进入则取消）
@@ -190,8 +199,10 @@ function Header() {
     item.to === '/'
       ? pathname === '/'
       : pathname.startsWith('/' + item.key) || item.children.some(isChildActive)
-  // 移动端顶部的分栏入口：跟随当前所在的 01—05 分组
+  // 移动端顶部的分栏入口：跟随当前所在的 01—06 分组
   const currentSection = navItems.find((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key)))
+  // 「交朋友 / 后台」只在「我的」这一栏出现：移动端顶栏胶囊 + 桌面端右上角 CTA 一起收口
+  const isMeSection = currentSection?.key === 'me'
 
   return (
     <>
@@ -203,8 +214,13 @@ function Header() {
               scrolled ? 'shadow-hard-sm' : 'shadow-none',
             )}
           >
-            {/* logo：移动端隐藏，把空间让给分栏子菜单 */}
-            <Link to="/" className="group hidden items-center gap-2.5 lg:flex" onMouseEnter={() => setOpenKey(null)}>
+            {/* logo：非首页的移动端让位给顶部分栏菜单；首页隐藏了顶部菜单后显示 logo，
+                避免顶栏变成一条只有主题按钮的空壳 */}
+            <Link
+              to="/"
+              className={cn('group items-center gap-2.5', isHome ? 'flex' : 'hidden lg:flex')}
+              onMouseEnter={() => setOpenKey(null)}
+            >
               <span className="relative block h-9 w-9 shrink-0 -rotate-3 overflow-hidden rounded-[11px] border-1.5 border-ink bg-cream shadow-hard-sm transition-transform duration-300 group-hover:rotate-0">
                 <img
                   src="/image/logo-144.png"
@@ -220,45 +236,76 @@ function Header() {
               </span>
             </Link>
 
-            {/* 移动端分栏子菜单：原来挂在底部菜单栏上方，现在移到顶栏。
-                右上角让位给主题切换钮，所以「交个朋友 / 后台」两个动作也并到这一行的末尾。 */}
+            {/* 移动端顶部菜单栏：只在非首页分组显示（6 个一级入口 + 本组子项），
+                当前分组高亮；「交朋友 / 后台」只挂在「我的」这一栏。
+                首页不显示顶部菜单，导航交给底部 6 个主菜单栏；整行单行、高度稳定。 */}
             <nav
               aria-label="分栏导航"
-              className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-0.5 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden"
+              className={cn(
+                'flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-0.5 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden',
+                isHome && 'hidden',
+              )}
             >
-              {currentSection?.children.map((c) => {
-                const Icon = icons[c.icon ?? 'sparkles'] ?? Sparkles
-                const base = c.to.split(/[?#]/)[0]
-                const active = base !== '/' && pathname === base
+              {navItems.map((item) => {
+                const active = currentSection?.key === item.key
                 return (
                   <Link
-                    key={c.to}
-                    to={c.to}
+                    key={item.key}
+                    to={item.to}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10.5px] transition-colors',
+                      // 一级入口不带图标：底部菜单栏已有图标，这里 6 个纯文字胶囊才能在
+                      // 390px 视口内一次排完，不用横滑才看得到「生活 / 我的」
+                      'flex shrink-0 items-center whitespace-nowrap rounded-full border px-1.5 py-1 text-[10px] font-medium transition-colors',
                       active ? 'border-ink bg-lime text-ink' : 'border-ink/15 bg-paper text-ink/60',
                     )}
                   >
-                    <Icon size={10.5} className="shrink-0 opacity-60" />
-                    {c.label}
+                    {item.label}
                   </Link>
                 )
               })}
-              <button
-                onClick={() => setConnectOpen(true)}
-                className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border-1.5 border-ink bg-ink px-2 py-1 text-[10.5px] text-paper"
-              >
-                <MessageCircle size={10.5} className="shrink-0" />
-                交朋友
-              </button>
-              <Link
-                to="/admin"
-                className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-ink/15 bg-paper px-2 py-1 text-[10.5px] text-ink/60"
-              >
-                <Settings size={10.5} className="shrink-0" />
-                后台
-              </Link>
+              {currentSection && !currentSection.noDropdown && (
+                <>
+                  <span aria-hidden className="mx-0.5 h-4 w-px shrink-0 bg-ink/15" />
+                  {currentSection.children.map((c) => {
+                    const Icon = icons[c.icon ?? 'sparkles'] ?? Sparkles
+                    const base = c.to.split(/[?#]/)[0]
+                    const active = base !== '/' && pathname === base
+                    return (
+                      <Link
+                        key={c.to}
+                        to={c.to}
+                        aria-current={active ? 'page' : undefined}
+                        className={cn(
+                          'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10.5px] transition-colors',
+                          active ? 'border-ink bg-lime text-ink' : 'border-ink/15 bg-paper text-ink/60',
+                        )}
+                      >
+                        <Icon size={10.5} className="shrink-0 opacity-60" />
+                        {c.label}
+                      </Link>
+                    )
+                  })}
+                </>
+              )}
+              {isMeSection && (
+                <>
+                  <button
+                    onClick={() => setConnectOpen(true)}
+                    className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border-1.5 border-ink bg-ink px-2 py-1 text-[10.5px] text-paper"
+                  >
+                    <MessageCircle size={10.5} className="shrink-0" />
+                    交朋友
+                  </button>
+                  <Link
+                    to="/admin"
+                    className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-ink/15 bg-paper px-2 py-1 text-[10.5px] text-ink/60"
+                  >
+                    <Settings size={10.5} className="shrink-0" />
+                    后台
+                  </Link>
+                </>
+              )}
             </nav>
 
             {/* desktop nav：一级项间距拉开（gap 5 / xl 7），下拉面板仍对准各自项 */}
@@ -271,12 +318,15 @@ function Header() {
               }}
               aria-label="主导航"
             >
-              {navItems.map((item, i) => (
+              {navItems.map((item, i) => {
+                // 首页是「直达型」一级项：hover / 聚焦 / 点击都不展开下拉，也不显示箭头
+                const plain = item.noDropdown === true
+                return (
                 <div
                   key={item.key}
                   className="relative"
-                  onMouseEnter={() => openNow(item.key)}
-                  onFocus={() => openNow(item.key)}
+                  onMouseEnter={() => (plain ? setOpenKey(null) : openNow(item.key))}
+                  onFocus={() => (plain ? setOpenKey(null) : openNow(item.key))}
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') {
                       setOpenKey(null)
@@ -287,9 +337,9 @@ function Header() {
                   <Link
                     to={item.to}
                     aria-current={isActive(item) ? 'page' : undefined}
-                    aria-haspopup="true"
-                    aria-expanded={openKey === item.key}
-                    onClick={() => setOpenKey(openKey === item.key ? null : item.key)}
+                    aria-haspopup={plain ? undefined : 'true'}
+                    aria-expanded={plain ? undefined : openKey === item.key}
+                    onClick={() => setOpenKey(plain ? null : openKey === item.key ? null : item.key)}
                     className={cn(
                       // whitespace-nowrap：6 个菜单项后导航变挤，禁止「首页」被折成两行
                       'relative flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-2 text-[12px] font-medium transition-colors xl:px-3.5 xl:text-[13px]',
@@ -305,12 +355,13 @@ function Header() {
                     )}
                     <span className="hidden font-mono text-[9px] opacity-40 xl:inline">{item.index}</span>
                     {item.label}
-                    <ChevronDown size={11} className={cn('transition-transform', openKey === item.key && 'rotate-180')} />
+                    {!plain && <ChevronDown size={11} className={cn('transition-transform', openKey === item.key && 'rotate-180')} />}
                   </Link>
 
                   {/* 紧凑下拉：挂在当前导航项文字正下方，单列、不遮满屏。
                       定位放在外层：framer-motion 会写内联 transform，
                       直接给 motion 元素挂 -translate-x-1/2 会被覆盖。 */}
+                  {!plain && (
                   <div
                     className={cn(
                       // -mt-1.5 + pt-1.5 补一段透明桥接热区，消除一级与面板之间因间隙导致的 mouseleave 闪烁；
@@ -358,8 +409,10 @@ function Header() {
                       )}
                     </AnimatePresence>
                   </div>
+                  )}
                 </div>
-              ))}
+                )
+              })}
 
             </nav>
 
@@ -377,21 +430,25 @@ function Header() {
                 </button>
                 <ThemeSwitcher className="hidden lg:block" />
               </div>
-              <Link
-                to="/admin"
-                className="hidden h-8 w-8 items-center justify-center rounded-full border-1.5 border-ink/15 bg-paper text-ink/55 transition hover:border-ink hover:text-ink sm:flex"
-                aria-label="后台管理"
-              >
-                <Settings size={14} />
-              </Link>
-              {/* 桌面端「交个朋友」：回到原来的位置，放在后台按钮后面 */}
-              <button
-                onClick={() => setConnectOpen(true)}
-                className="hidden shrink-0 items-center gap-1.5 rounded-full border-1.5 border-ink bg-ink px-3.5 py-1.5 text-[12px] font-medium text-paper transition hover:-translate-y-0.5 hover:shadow-hard-sm sm:flex"
-              >
-                <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime" />
-                交个朋友
-              </button>
+              {/* 「交朋友 / 后台」与移动端顶栏保持同一规则：只在「我的」分组出现 */}
+              {isMeSection && (
+                <>
+                  <Link
+                    to="/admin"
+                    className="hidden h-8 w-8 items-center justify-center rounded-full border-1.5 border-ink/15 bg-paper text-ink/55 transition hover:border-ink hover:text-ink sm:flex"
+                    aria-label="后台管理"
+                  >
+                    <Settings size={14} />
+                  </Link>
+                  <button
+                    onClick={() => setConnectOpen(true)}
+                    className="hidden shrink-0 items-center gap-1.5 rounded-full border-1.5 border-ink bg-ink px-3.5 py-1.5 text-[12px] font-medium text-paper transition hover:-translate-y-0.5 hover:shadow-hard-sm sm:flex"
+                  >
+                    <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime" />
+                    交个朋友
+                  </button>
+                </>
+              )}
               {/* 移动端右上角：主题切换（展开按钮已下线，导航由顶栏分栏 + 底部菜单栏接管） */}
               <ThemeSwitcher variant="dot" className="lg:hidden" />
             </div>
@@ -715,17 +772,28 @@ function Footer() {
               一起做点
               <span className="marker ml-1">有用的东西</span>
             </a>
+            {/* 社交链接由后台「个人中心 → 资料」维护，启动时由 /api/profile 水合覆盖；
+                href 为 null 的平台渲染成不可点标签，避免 href="#" 死链（F4） */}
             <div className="mt-4 flex flex-wrap gap-2">
-              <a href={`mailto:${profile.email}`} className="tag hover:bg-lime">
-                <Mail size={12} /> {profile.email}
-              </a>
-              <span className="tag">
-                <WeChatIcon size={13} className="text-brand-wechat" /> {profile.wechat}
-              </span>
-              {/* fx.md F4：真实外链 + rel="noopener noreferrer"，不再留 href="#" */}
-              <a href={links.github} target="_blank" rel="noopener noreferrer" className="tag hover:bg-lime">
-                <Github size={12} /> GitHub
-              </a>
+              {profile.socials.map((s, i) => {
+                const Icon = s.icon === 'mail' ? Mail : s.icon === 'github' ? Github : s.icon === 'chat' ? WeChatIcon : s.icon === 'book' ? BookOpen : Link2
+                const inner = <><Icon size={12} /> {s.value}</>
+                const external = typeof s.href === 'string' && /^https?:\/\//.test(s.href)
+                return s.href ? (
+                  <a
+                    key={`${s.label}-${i}`}
+                    href={s.href}
+                    target={external ? '_blank' : undefined}
+                    rel={external ? 'noopener noreferrer' : undefined}
+                    className="tag hover:bg-lime"
+                    aria-label={s.label}
+                  >
+                    {inner}
+                  </a>
+                ) : (
+                  <span key={`${s.label}-${i}`} className="tag" title={`${s.label}：暂未公开主页`}>{inner}</span>
+                )
+              })}
             </div>
           </div>
 
@@ -784,6 +852,8 @@ export default function Layout() {
   const { pathname } = useLocation()
   // AI 分身是沉浸式全屏页面：不渲染页脚，页面自身占满顶栏以下的可用高度
   const isAvatarPage = pathname.startsWith('/ai')
+  // 首页 loading 占位与首屏 hero 同高，chunk 到达替换内容区时不再上下推挤
+  const isHome = pathname === '/'
 
   // 锁定页面级滚动：AI 分身页内容自行滚动，避免向下滑动时露出首页式页脚/底部区域
   useEffect(() => {
@@ -813,7 +883,10 @@ export default function Layout() {
           isAvatarPage ? 'pt-0' : 'pt-[88px]',
         )}
       >
-        <Outlet />
+        {/* 只替换内容区：顶栏 / 页脚 / 底部菜单栏在 chunk 加载期间始终常驻 */}
+        <Suspense fallback={<RouteFallback tall={isHome} />}>
+          <Outlet />
+        </Suspense>
       </main>
       {!isAvatarPage && <Footer />}
       <MobileTabBar />

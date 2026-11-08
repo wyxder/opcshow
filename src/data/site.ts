@@ -66,6 +66,8 @@ export const profile = {
   email: 'wyxcode@qq.com',
   wechat: 'wyx200265',
   phone: '18323765634',
+  /** 头像图片地址：后台「个人中心 → 资料」可覆盖；留空时各页面回落到文字首字母头像 */
+  avatar: '',
   bio: [
     '信息与通信工程硕士在读，多模态 AI 方向。写代码之前先想清楚「谁会用、用完得到什么」，所以我的项目大多从一句真实需求开始，最后落到一个能付费、能被评测的线上产品。',
     `上过 ${figures.products} 款 AI 付费产品，打过 ${figures.hackathonOnsite2026} 场线下黑客松，也是一个 ${figures.mainPlatformFollowers} 粉的 AI 内容创作者。白天写 Agent，晚上剪视频，剩下的时间在西安的巷子里找面吃。`,

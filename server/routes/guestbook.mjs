@@ -13,7 +13,8 @@ import { route } from '../lib/router.mjs'
 import { sendJson, sendError, readJson, paginate, rateLimit, clientIp, ipHash, sha256, idempotency, rememberIdempotency } from '../lib/http.mjs'
 import { getStores } from '../lib/store.mjs'
 import { getSession, requireRole, audit } from '../lib/auth.mjs'
-import { text, email, oneOf, containsBlocked } from '../lib/validate.mjs'
+import { text, email, oneOf } from '../lib/validate.mjs'
+import { evaluateSubmission } from '../lib/review.mjs'
 
 const COLORS = ['lime', 'coral', 'blue', 'amber', 'grape']
 
@@ -42,19 +43,25 @@ route('POST', '/api/guestbook', async ({ req, res, reqId }) => {
     color: COLORS.includes(body.color) ? body.color : 'lime',
     source: text(body.source ?? '站内', { field: '来源', max: 40 }),
   }
+  // 后台「互动审核 → 审核规则」在这里真正生效：自定义黑名单、长度、需登录、自动通过
+  const session = await getSession(req)
+  const verdict = await evaluateSubmission(payload.text, { authenticated: Boolean(session) })
+  if (verdict.reject) return sendError(res, 422, 'REVIEW_REJECTED', verdict.reasons.join('；'), reqId)
+
   const hash = ipHash(req)
   const digest = sha256(`${hash}|${payload.text}`)
   const { guestbook } = await getStores()
   const result = await guestbook.update((data) => {
     const dup = data.messages.find((m) => m.digest === digest && Date.now() - new Date(m.createdAt).getTime() < 30 * 1000)
     if (dup) throw Object.assign(new Error('30 秒内请勿重复提交'), { status: 409, code: 'DUPLICATE' })
-    const flagged = containsBlocked(payload.text)
     const item = {
       id: `gb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       ...payload,
       text: payload.text,
-      status: flagged ? 'pending' : 'pending',
-      flagged,
+      status: verdict.status,
+      flagged: verdict.flagged,
+      autoApproved: verdict.autoApproved,
+      reviewReasons: verdict.reasons,
       digest,
       ipHash: hash,
       likes: 0,
@@ -67,7 +74,7 @@ route('POST', '/api/guestbook', async ({ req, res, reqId }) => {
     data.messages.unshift(item)
     return item
   })
-  const out = { id: result.id, status: result.status, flagged: result.flagged }
+  const out = { id: result.id, status: result.status, flagged: result.flagged, autoApproved: result.autoApproved, reasons: verdict.reasons }
   rememberIdempotency(req, body, out)
   sendJson(res, 201, out)
 })

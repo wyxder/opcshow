@@ -7,6 +7,7 @@
 import { serverConfig } from './config'
 import { apiJson, apiJsonSafe, NotSupportedError } from './http'
 
+export type SocialLink = { label: string; value: string; href?: string | null; icon?: string }
 export type ProfilePatch = {
   name?: string
   latin?: string
@@ -23,6 +24,10 @@ export type ProfilePatch = {
   phone?: string
   bio?: string[]
   keywords?: string[]
+  avatar?: string
+  socials?: SocialLink[]
+  /** 服务端写入时间；PUT /api/admin/profile 的返回值带回 */
+  updatedAt?: string
 }
 
 export type SiteSettings = {

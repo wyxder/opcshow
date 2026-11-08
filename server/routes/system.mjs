@@ -10,7 +10,8 @@
  * GET  /api/og/:id.svg              每篇文章专属 OG 图（构建期脚本也会用同一逻辑）
  * GET  /api/openapi.json            OpenAPI 3.1
  */
-import { mkdir, readdir, readFile, writeFile, rm } from 'node:fs/promises'
+import { mkdir, readdir, readFile, writeFile, rm, stat } from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { route } from '../lib/router.mjs'
@@ -139,7 +140,8 @@ route('POST', '/api/admin/backup', async ({ req, res }) => {
   const session = requireRole(await getSession(req), ROLE_ADMIN)
   await mkdir(BACKUP_DIR, { recursive: true })
   const snapshot = await backupSnapshot()
-  const name = `backup-${snapshot.createdAt.replace(/[:.]/g, '-')}.json`
+  // 同一秒内多次备份不再互相覆盖
+  const name = `backup-${snapshot.createdAt.replace(/[:.]/g, '-')}-${randomBytes(3).toString('hex')}.json`
   await writeFile(join(BACKUP_DIR, name), JSON.stringify(snapshot), 'utf8')
   await audit(session.user, 'backup.create', name, null, null)
   sendJson(res, 201, { id: name, createdAt: snapshot.createdAt, bytes: JSON.stringify(snapshot).length })
@@ -152,8 +154,17 @@ route('GET', '/api/admin/backup', async ({ req, res }) => {
   const items = []
   for (const name of names.slice(0, 50)) {
     const full = join(BACKUP_DIR, name)
-    const content = JSON.parse(await readFile(full, 'utf8'))
-    items.push({ id: name, createdAt: content.createdAt ?? null, entries: Object.keys(content.snapshot ?? {}).length })
+    try {
+      const info = await stat(full)
+      let createdAt = null
+      let entries = 0
+      try {
+        const content = JSON.parse(await readFile(full, 'utf8'))
+        createdAt = content.createdAt ?? null
+        entries = Object.keys(content.snapshot ?? {}).length
+      } catch { /* 单个损坏文件不影响整个列表 */ }
+      items.push({ id: name, createdAt, entries, bytes: info.size, status: createdAt ? '成功' : '损坏' })
+    } catch { /* 文件可能在列举后被删除 */ }
   }
   sendJson(res, 200, items)
 })

@@ -37,7 +37,11 @@ export default function About() {
                 <div className="flex items-center gap-4">
                   <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border-1.5 border-paper/60 bg-lime text-ink">
                     <div className="absolute inset-0 halftone opacity-25" />
-                    <span className="relative font-display text-2xl font-extrabold">魏</span>
+                    {profile.avatar?.trim() ? (
+                      <img src={profile.avatar} alt={`${profile.name}的头像`} className="relative h-full w-full object-cover" />
+                    ) : (
+                      <span className="relative font-display text-2xl font-extrabold">魏</span>
+                    )}
                   </div>
                   <div>
                     <p className="font-mono text-[9px] tracking-[0.24em] text-lime">PERSONAL ID / 2026</p>

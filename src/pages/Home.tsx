@@ -24,7 +24,7 @@ import {
   Trophy,
   Utensils,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ProjectModal } from '@/components/ProjectModal'
 import { Modal } from '@/components/ui/Modal'
@@ -102,12 +102,19 @@ function Typewriter({ words }: { words: string[] }) {
     return () => window.clearTimeout(timer)
   }, [text, phase, wi, words, reduce])
 
+  // 用最长短语做隐形占位，锁住打字机的宽高：打字 / 删除 / 换词时字数和换行数不再变化，
+  // 移动端窄屏也就不会在「加载一会儿」后随换词反复把首屏整页内容上下推挤（CLS）。
+  const longest = useMemo(() => words.reduce((a, b) => (b.length > a.length ? b : a), ''), [words])
+
   return (
-    <span className="text-coral" aria-label={words.join('，')}>
-      <span aria-hidden>{text}</span>
-      {!reduce && (
-        <span className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-blink bg-coral align-middle" aria-hidden />
-      )}
+    <span className="relative inline-grid max-w-full text-coral" aria-label={words.join('，')}>
+      <span className="invisible col-start-1 row-start-1" aria-hidden>{longest}</span>
+      <span className="col-start-1 row-start-1" aria-hidden>
+        {text}
+        {!reduce && (
+          <span className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-blink bg-coral align-middle" />
+        )}
+      </span>
     </span>
   )
 }

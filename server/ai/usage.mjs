@@ -16,22 +16,56 @@ export const cacheKey = (message, context, promptVersion) =>
     .update(`${message.trim().toLowerCase()}|${JSON.stringify(context ?? null)}|v${promptVersion}`)
     .digest('hex')
 
+/**
+ * 后台「AI 配置 → 用量」保存的覆盖值在这里真正生效。
+ * 之前 checkQuota / checkBudget 只读 .env，后台改了额度却不影响真实请求。
+ * 语义：dailyQuota = 全站每日总次数；perVisitorDailyLimit = 单访客每日上限；
+ * 实际单访客上限取两者较小值，保证任一旋钮收紧都立刻生效。
+ */
+async function effectiveLimits() {
+  const { ai } = await getStores()
+  const data = await ai.read()
+  const s = data.settings ?? {}
+  const positive = (v, fallback) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : fallback)
+  const dailyQuota = positive(s.dailyQuota, env.ai.dailyQuota)
+  return {
+    dailyQuota,
+    monthlyTokenBudget: positive(s.monthlyTokenBudget, env.ai.monthlyTokenBudget),
+    perVisitorDailyLimit: positive(s.perVisitorDailyLimit, dailyQuota),
+    source: Object.keys(s).length ? 'admin' : 'env',
+  }
+}
+
 export async function checkQuota(ip) {
   const { ai } = await getStores()
   const data = await ai.read()
   const day = today()
+  const limits = await effectiveLimits()
   // BE-07：配额计数独立于 usage 的截断数组，避免 5000 条上限把当天计数“挤出”
   const used = data.quota?.[`${day}|${ip}`] ?? 0
-  return { ok: used < env.ai.dailyQuota, used, limit: env.ai.dailyQuota }
+  const globalUsed = data.quota?.[`${day}|__all__`] ?? 0
+  const limit = Math.min(limits.dailyQuota, limits.perVisitorDailyLimit)
+  const ipOk = used < limit
+  const globalOk = globalUsed < limits.dailyQuota
+  return {
+    ok: ipOk && globalOk,
+    used,
+    limit,
+    globalUsed,
+    globalLimit: limits.dailyQuota,
+    reason: !ipOk ? 'visitor' : !globalOk ? 'global' : null,
+    source: limits.source,
+  }
 }
 
 /** AI-05：月度 token 预算硬拦截（超限直接走检索，不再调模型） */
 export async function checkBudget() {
   const { ai } = await getStores()
   const data = await ai.read()
+  const limits = await effectiveLimits()
   const month = today().slice(0, 7)
   const used = data.usage.filter((u) => u.day.startsWith(month)).reduce((s, u) => s + (u.tokens ?? 0), 0)
-  return { ok: used < env.ai.monthlyTokenBudget, used, limit: env.ai.monthlyTokenBudget }
+  return { ok: used < limits.monthlyTokenBudget, used, limit: limits.monthlyTokenBudget, source: limits.source }
 }
 
 export async function consumeQuota(ip) {
@@ -40,6 +74,7 @@ export async function consumeQuota(ip) {
   await ai.update((data) => {
     data.quota = data.quota ?? {}
     data.quota[`${day}|${ip}`] = (data.quota[`${day}|${ip}`] ?? 0) + 1
+    data.quota[`${day}|__all__`] = (data.quota[`${day}|__all__`] ?? 0) + 1
   })
 }
 
@@ -65,6 +100,7 @@ export async function recordUsage({ ip, model, tokens, cost, latency, source, ok
 export async function getUsageSummary() {
   const { ai } = await getStores()
   const data = await ai.read()
+  const limits = await effectiveLimits()
   const day = today()
   const month = day.slice(0, 7)
   const monthRows = data.usage.filter((u) => u.day.startsWith(month))
@@ -93,8 +129,10 @@ export async function getUsageSummary() {
     monthCost: Number(cost.toFixed(3)),
     avgLatency: latency,
     successRate: monthRows.length ? Number(((ok / monthRows.length) * 100).toFixed(1)) : 100,
-    budget: env.ai.monthlyTokenBudget,
-    dailyQuota: env.ai.dailyQuota,
+    budget: limits.monthlyTokenBudget,
+    dailyQuota: limits.dailyQuota,
+    perVisitorDailyLimit: limits.perVisitorDailyLimit,
+    limitsSource: limits.source,
     daily: [...byDay.entries()]
       .sort(([a], [b]) => (a < b ? -1 : 1))
       .slice(-14)

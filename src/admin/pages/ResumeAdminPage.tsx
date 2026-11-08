@@ -41,6 +41,12 @@ import {
   type ResumeModule,
   type ResumeVersion,
 } from '@/services/admin'
+import {
+  getCapabilities,
+  getLatestParse,
+  syncResumeFromParse,
+  type Capabilities,
+} from '@/services/adminx'
 import { serverConfig } from '@/services/config'
 import { apiJson } from '@/services/http'
 
@@ -51,9 +57,40 @@ type Job = {
   result?: { fileName?: string; fields?: { key: string; value: string; confidence: number }[]; engine?: string }
   error?: string
 }
+type ParseField = { key: string; value: string; confidence: number }
+type LatestParse = {
+  jobId: string
+  finishedAt: string | null
+  fileName: string
+  engine: string
+  fields: ParseField[]
+  modulesCount: number
+}
 
 const real = serverConfig.enabled
 const DEMO_NOTE = '当前未配置服务端（VITE_API_BASE），解析、模块调整、版本创建 / 恢复 / 删除均已禁用。'
+
+const asText = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback)
+const asCount = (v: unknown) => (typeof v === 'number' ? v : 0)
+const asFields = (v: unknown): ParseField[] =>
+  Array.isArray(v)
+    ? v
+        .filter((x): x is Record<string, unknown> => typeof x === 'object' && x !== null)
+        .map((r) => ({ key: asText(r.key), value: asText(r.value), confidence: asCount(r.confidence) }))
+    : []
+
+/** 服务端返回的是开放对象，这里收敛成页面需要的视图，避免把 unknown 当真实数据渲染 */
+const toLatestParse = (raw: Record<string, unknown> | null): LatestParse | null => {
+  if (!raw) return null
+  return {
+    jobId: asText(raw.jobId),
+    finishedAt: typeof raw.finishedAt === 'string' ? raw.finishedAt : null,
+    fileName: asText(raw.fileName, 'resume.txt'),
+    engine: asText(raw.engine, 'local-rules'),
+    fields: asFields(raw.fields),
+    modulesCount: Array.isArray(raw.modules) ? raw.modules.length : 0,
+  }
+}
 
 const seedModules: ResumeModule[] = resumeModules.map((m, i) => ({
   id: `seed_${i}`,
@@ -93,8 +130,14 @@ export default function ResumeAdminPage({
   const [saving, setSaving] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
 
+  const [capabilities, setCapabilities] = useState<Capabilities | null>(null)
+  const [latestParse, setLatestParse] = useState<LatestParse | null>(null)
+  const [latestLoading, setLatestLoading] = useState(real)
+  const [latestError, setLatestError] = useState('')
+  const [syncResult, setSyncResult] = useState<{ modules: number; from: string } | null>(null)
+
   const [parsing, setParsing] = useState(false)
-  const [fields, setFields] = useState<{ key: string; value: string; confidence: number }[] | null>(null)
+  const [fields, setFields] = useState<ParseField[] | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
   const [jobNote, setJobNote] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -132,9 +175,34 @@ export default function ResumeAdminPage({
     }
   }, [])
 
+  /** 载入服务端最近一次成功解析的结果（GET /api/admin/resume/parse/latest） */
+  const loadLatest = useCallback(async (spinner = true) => {
+    if (!real) {
+      setLatestParse(null)
+      setLatestLoading(false)
+      setLatestError('')
+      return
+    }
+    if (spinner) setLatestLoading(true)
+    setLatestError('')
+    try {
+      setLatestParse(toLatestParse(await getLatestParse()))
+    } catch (err) {
+      setLatestError(`最近解析结果加载失败：${(err as Error).message}`)
+    } finally {
+      if (spinner) setLatestLoading(false)
+    }
+  }, [])
+
+  const loadCapabilities = useCallback(async () => {
+    setCapabilities(await getCapabilities())
+  }, [])
+
   useEffect(() => {
     void load()
-  }, [load])
+    void loadLatest()
+    void loadCapabilities()
+  }, [load, loadLatest, loadCapabilities])
 
   const enabledCount = modules.filter((m) => m.enabled).length
 
@@ -164,7 +232,8 @@ export default function ResumeAdminPage({
           setFields(cur.result?.fields ?? null)
           setFileName(cur.result?.fileName ?? name)
           setJobNote(`服务端解析（${cur.result?.engine ?? 'local-rules'}）：${cur.result?.fields?.length ?? 0} 个字段`)
-          await load(false)
+          setSyncResult(null)
+          await Promise.all([load(false), loadLatest(false)])
           show('解析完成，模块与版本已写入服务端')
           return
         }
@@ -194,10 +263,7 @@ export default function ResumeAdminPage({
   const pickFile = async (file: File | undefined) => {
     if (!file) return
     const isText = /\.(txt|md|markdown)$/i.test(file.name)
-    if (!isText) {
-      show('服务端目前只能解析纯文本（.txt / .md）；PDF / DOCX 需要 pdfjs / mammoth，尚未接入')
-      return
-    }
+    if (!isText) return
     const text = await file.text()
     lastText.current = text
     setFileName(file.name)
@@ -220,18 +286,19 @@ export default function ResumeAdminPage({
     }
   }
 
-  const syncFields = async () => {
-    if (!real) return show('未配置服务端，不能保存')
-    if (!fields?.length) return show('先上传一份简历并解析')
+  /** 把服务端最近一次解析结果里的 modules 真正写入简历模块（POST /api/admin/resume/sync） */
+  const syncFromParse = async () => {
+    if (!real) return show('未配置服务端，不能同步')
+    if (!latestParse) return show('请先在解析页运行一次')
     if (busy) return
-    setBusy('sync')
+    setBusy('sync-parse')
     try {
-      const next: ResumeModule[] = fields.map((f) => ({ id: `f_${f.key}`, title: f.key, summary: f.value, items: [], enabled: true }))
-      setModules(await saveResumeModules(next))
-      setDirty(false)
-      show('字段已写入简历模块')
+      const res = await syncResumeFromParse()
+      setSyncResult({ modules: res.modules, from: res.from })
+      await load(false)
+      show(`已同步 ${res.modules} 个模块到简历（来源任务 ${res.from}）`)
     } catch (err) {
-      show(`保存失败：${(err as Error).message}`)
+      show(`同步失败：${(err as Error).message}`)
     } finally {
       setBusy(null)
     }
@@ -288,8 +355,18 @@ export default function ResumeAdminPage({
     }
   }
 
-  const currentFile = fileName ?? (real ? '尚未上传简历文件' : resumeParse.file)
-  const extracted = fields ?? (real ? [] : resumeParse.extracted)
+  const currentFile = fileName ?? (real ? latestParse?.fileName ?? '尚未上传简历文件' : resumeParse.file)
+  const extracted: ParseField[] = real ? (latestParse?.fields ?? []) : resumeParse.extracted
+  const hasParse = Boolean(fields || latestParse)
+
+  // PDF / DOCX 入口依据服务端能力清单禁用，并把 reason 原位展示，不再等选完文件才提示
+  const pdfParse = capabilities?.pdfParse
+  const pdfDisabled = !real || pdfParse?.available !== true
+  const pdfReason = !real
+    ? '未配置服务端：PDF / DOCX 解析不可用（演示模式仅支持纯文本）'
+    : !capabilities
+      ? 'PDF / DOCX 解析能力状态未返回，暂不可用'
+      : (pdfParse?.reason ?? 'PDF / DOCX 解析不可用')
 
   return (
     <div className="space-y-4">
@@ -299,7 +376,7 @@ export default function ResumeAdminPage({
         desc={
           real
             ? '上传纯文本简历 → 服务端任务解析为结构化字段；模块开关决定前台简历的展示内容。'
-            : '演示只读数据：解析、模块调整与版本操作全部禁用，刷新后不会保存任何内容。'
+            : '预置演示值（只读）：解析、模块调整与版本操作全部禁用，刷新后不会保存任何内容。'
         }
         right={
           <>
@@ -320,7 +397,7 @@ export default function ResumeAdminPage({
       />
 
       <ReadOnlyNotice show={!real}>
-        {DEMO_NOTE} 配置 <span className="font-mono text-[9.5px]">VITE_API_BASE</span> 并登录后自动启用。
+        {DEMO_NOTE} 当前简历文件、抽取字段、模块与版本列表均为预置演示值，仅用于预览版式。配置 <span className="font-mono text-[9.5px]">VITE_API_BASE</span> 并登录后自动启用。
       </ReadOnlyNotice>
 
       <Tabs
@@ -344,16 +421,16 @@ export default function ResumeAdminPage({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[12px] font-medium">{currentFile}</p>
                   <p className="mt-0.5 font-mono text-[9.5px] text-admin-muted">
-                    {real ? '服务端仅解析 .txt / .md' : `${resumeParse.size} · ${resumeParse.pages} 页 · 预置演示`}
+                    {real ? '服务端仅解析 .txt / .md 纯文本' : `${resumeParse.size} · ${resumeParse.pages} 页 · 预置演示值`}
                   </p>
                 </div>
-                <Status>{parsing ? '解析中' : fields ? '已解析' : real ? '未解析' : resumeParse.state}</Status>
+                <Status>{parsing ? '解析中' : hasParse ? '已解析' : real ? '未解析' : resumeParse.state}</Status>
               </div>
               {jobNote && <p className="mt-2 font-mono text-[9.5px] leading-relaxed text-admin-muted">{jobNote}</p>}
               <input
                 ref={fileRef}
                 type="file"
-                accept=".txt,.md,.markdown,.pdf,.doc,.docx"
+                accept=".txt,.md,.markdown"
                 className="hidden"
                 onChange={(e) => {
                   void pickFile(e.target.files?.[0])
@@ -364,19 +441,19 @@ export default function ResumeAdminPage({
               <div className="mt-3 rounded-xl border-1.5 border-ink/20 p-3">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-admin-muted">解析进度</span>
-                  <span className="font-mono text-[10.5px]">{parsing ? '进行中…' : real ? (fields ? '100%' : '0%') : '预置'}</span>
+                  <span className="font-mono text-[10.5px]">{parsing ? '进行中…' : real ? (hasParse ? '100%' : '0%') : '预置'}</span>
                 </div>
                 <Meter
-                  value={parsing ? 62 : real ? (fields ? 100 : 0) : 100}
-                  color={parsing ? 'rgb(var(--c-amber))' : real && !fields ? 'rgb(var(--c-ink))' : 'rgb(var(--c-teal))'}
+                  value={parsing ? 62 : real ? (hasParse ? 100 : 0) : 100}
+                  color={parsing ? 'rgb(var(--c-amber))' : real && !hasParse ? 'rgb(var(--c-ink))' : 'rgb(var(--c-teal))'}
                   className="mt-2 h-2"
                 />
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
-                    ['解析耗时', fields ? '见任务记录' : real ? '—' : '4.2s'],
-                    ['识别准确率', fields ? '按字段置信度' : real ? '—' : '96%'],
-                    ['结构化字段', fields ? String(fields.length) : real ? '0' : '18'],
-                    ['使用引擎', fields ? 'local-rules' : real ? '—' : '预置演示'],
+                    ['解析耗时', real ? (hasParse ? '见任务记录' : '—') : '4.2s · 预置演示值'],
+                    ['识别准确率', real ? (hasParse ? '按字段置信度' : '—') : '96% · 预置演示值'],
+                    ['结构化字段', real ? String(extracted.length) : `${extracted.length} · 预置演示值`],
+                    ['使用引擎', real ? (latestParse?.engine || '—') : '预置演示值'],
                   ].map(([l, v]) => (
                     <div key={l} className="rounded-lg border border-ink/10 bg-paper px-2 py-1.5">
                       <p className="text-[9.5px] text-admin-muted">{l}</p>
@@ -386,7 +463,7 @@ export default function ResumeAdminPage({
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <AButton
                   icon={parsing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                   onClick={runParse}
@@ -398,17 +475,21 @@ export default function ResumeAdminPage({
                 <AButton
                   onClick={() => fileRef.current?.click()}
                   disabled={!real || parsing}
-                  title={real ? '' : '未配置服务端：上传不可用'}
+                  title={real ? '上传 .txt / .md 纯文本简历' : '未配置服务端：上传不可用'}
                 >
-                  上传新文件
+                  上传纯文本简历
                 </AButton>
                 <AButton variant="soft" onClick={() => window.open('/work/resume', '_blank')}>
                   预览前台简历
                 </AButton>
+                <AButton disabled={pdfDisabled} title={pdfReason}>
+                  上传 PDF / DOCX
+                </AButton>
+                <span className="w-full font-mono text-[9.5px] leading-snug text-admin-muted">{pdfReason}</span>
               </div>
             </Panel>
 
-            <Panel kicker="Pipeline" title="解析流水线（静态示意）" desc="当前实现为本地规则抽取，耗时与分区数为版式示意">
+            <Panel kicker="Pipeline" title="解析流水线（静态示意）" desc="版式示意：服务端当前实现为纯文本本地规则抽取，耗时、PDF 体积与分区数均为示意，不代表真实解析结果">
               <ol className="relative space-y-3 pl-5">
                 <span className="absolute left-[5px] top-1 h-[calc(100%-8px)] w-px bg-ink/15" />
                 {[
@@ -431,18 +512,29 @@ export default function ResumeAdminPage({
 
           <div className="space-y-3">
             <Panel
-              kicker="Extracted"
-              title="抽取结果"
-              desc={real ? '置信度低于 90% 的字段建议人工核对' : '以下为预置演示字段，不代表真实简历'}
+              kicker="Latest Parse"
+              title="最近一次解析结果"
+              desc={real ? '来自服务端最近一次成功解析的任务；同步会把该结果的模块真正写入简历模块' : '预置演示值：以下为预置演示字段，不代表真实简历'}
               right={
-                <Badge tone={fields ? 'teal' : 'neutral'}>
-                  {fields ? '服务端结果' : real ? '未解析' : '预置'} · {extracted.length} 个字段
+                <Badge tone={latestParse ? 'teal' : 'neutral'}>
+                  {real ? (latestParse ? '服务端结果' : '未解析') : '预置演示值'} · {extracted.length} 个字段
                 </Badge>
               }
             >
-              <LoadState loading={loading} error={error} onRetry={() => void load()} label="正在加载简历数据…">
+              <LoadState
+                loading={latestLoading}
+                error={latestError}
+                onRetry={() => void loadLatest()}
+                label="正在加载最近解析结果…"
+              >
+                {real && latestParse && (
+                  <div className="mb-3 rounded-lg border border-ink/15 bg-paper px-3 py-2 font-mono text-[9.5px] leading-relaxed text-admin-muted">
+                    <p>任务 {latestParse.jobId || '—'} · 完成于 {fmtDate(latestParse.finishedAt ?? undefined)}</p>
+                    <p className="mt-0.5">文件 {latestParse.fileName} · 引擎 {latestParse.engine} · 可同步模块 {latestParse.modulesCount} 个</p>
+                  </div>
+                )}
                 {extracted.length === 0 ? (
-                  <EmptyState title="还没有解析结果" desc="上传 .txt / .md 简历后，服务端会把字段解析到这里" />
+                  <EmptyState title="还没有解析结果" desc="上传 .txt / .md 简历并解析后，这里会显示最近一次的真实字段" />
                 ) : (
                   <div className="space-y-2.5">
                     {extracted.map((e) => (
@@ -460,17 +552,23 @@ export default function ResumeAdminPage({
                 <AButton
                   variant="primary"
                   className="mt-3 w-full"
-                  icon={busy === 'sync' ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                  onClick={() => void syncFields()}
-                  disabled={!real || !fields?.length || busy !== null}
-                  title={real ? '' : '未配置服务端：不能保存'}
+                  icon={busy === 'sync-parse' ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                  onClick={() => void syncFromParse()}
+                  disabled={!real || !latestParse || busy !== null}
+                  title={real ? (latestParse ? '' : '请先在解析页运行一次') : '未配置服务端：不能同步'}
                 >
-                  {busy === 'sync' ? '写入中…' : '同步到简历数据'}
+                  {busy === 'sync-parse' ? '同步中…' : '同步到简历模块'}
                 </AButton>
+                {real && !latestParse && <p className="mt-1.5 text-center font-mono text-[9.5px] text-admin-muted">请先在解析页运行一次</p>}
+                {syncResult && (
+                  <p className="mt-1.5 text-center font-mono text-[9.5px] text-admin-teal">
+                    已写入 {syncResult.modules} 个模块（来源任务 {syncResult.from}）
+                  </p>
+                )}
               </LoadState>
             </Panel>
 
-            <Panel kicker="Logs" title="最近版本" desc={real ? '来自服务端 resume.versions' : '预置演示版本（只读）'}>
+            <Panel kicker="Logs" title="最近版本" desc={real ? '来自服务端 resume.versions' : '预置演示值（只读）'}>
               <LoadState loading={loading} error={error} onRetry={() => void load()}>
                 <div className="space-y-1.5 text-[10.5px]">
                   {versions.slice(0, 4).map((v) => (
@@ -494,10 +592,10 @@ export default function ResumeAdminPage({
           <Panel
             kicker="Modules"
             title="简历模块"
-            desc="开关控制前台展示；顺序即阅读顺序，上移 / 下移后保存即可生效"
+            desc={real ? '开关控制前台展示；顺序即阅读顺序，上移 / 下移后保存即可生效' : '预置演示值（只读）：开关与顺序仅供预览，调整按钮已禁用'}
             right={
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone={dirty ? 'amber' : 'neutral'}>{real ? (dirty ? '有未保存修改' : '已同步') : '演示只读'}</Badge>
+                <Badge tone={dirty ? 'amber' : 'neutral'}>{real ? (dirty ? '有未保存修改' : '已同步') : '预置演示值 · 只读'}</Badge>
                 <Badge tone="neutral">
                   已启用 {enabledCount} / {modules.length}
                 </Badge>
@@ -555,7 +653,7 @@ export default function ResumeAdminPage({
                           if (!real) return
                           setModules((l) => l.filter((x) => x.id !== m.id))
                           setDirty(true)
-                          show('已从列表移除，保存布局后生效')
+                          show('已从列表移除，请点「保存布局」写入服务端')
                         }}
                       >
                         <Trash2 size={11} />
@@ -578,7 +676,7 @@ export default function ResumeAdminPage({
             </LoadState>
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink/10 bg-paper px-4 py-2.5">
               <span className="text-[10px] text-admin-muted">
-                {real ? (dirty ? '调整完成后记得保存，否则刷新会丢失' : '顺序与开关与服务端一致') : '演示模式：调整按钮已禁用'}
+                {real ? (dirty ? '调整完成后记得保存，否则刷新会丢失' : '顺序与开关与服务端一致') : '预置演示值：调整按钮已禁用，刷新后不会保存'}
               </span>
               <AButton
                 size="sm"
@@ -628,7 +726,7 @@ export default function ResumeAdminPage({
           <Panel
             kicker="Versions"
             title="版本历史"
-            desc="每次导出 / 解析都会生成版本；恢复只影响前台展示的模块内容"
+            desc={real ? '每次导出 / 解析都会生成版本；恢复只影响前台展示的模块内容' : '预置演示值（只读）：版本来自预置演示数据，刷新后不会保存'}
             flush
             right={
               <AButton
@@ -716,7 +814,7 @@ export default function ResumeAdminPage({
           <div className="grid gap-3 md:grid-cols-3">
             {[
               ['最新版本', versions[0]?.name ?? '—', versions[0] ? fmtDate(versions[0].createdAt) : '暂无'],
-              ['版本数', String(versions.length), real ? '最多保留 50 个' : '演示只读'],
+              ['版本数', String(versions.length), real ? '最多保留 50 个' : '预置演示值'],
               ['当前模块数', String(modules.length), `已启用 ${enabledCount}`],
             ].map(([l, v, n]) => (
               <div key={l} className="rounded-xl border border-ink/15 bg-cream px-4 py-3">
@@ -816,7 +914,7 @@ export default function ResumeAdminPage({
                 ])
                 setDirty(true)
                 setAddOpen(false)
-                show('已添加到列表，记得保存布局')
+                show('已添加到列表，请点「保存布局」写入服务端')
               }}
             >
               添加

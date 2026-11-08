@@ -9,6 +9,8 @@ export type NavItem = {
   index: string
   to: string
   children: NavChild[]
+  /** true = 该一级项不展开下拉（首页的锚点子项只在页脚 / ⌘K 里保留） */
+  noDropdown?: boolean
 }
 
 export const navItems: NavItem[] = [
@@ -18,6 +20,8 @@ export const navItems: NavItem[] = [
     en: 'HOME',
     index: '01',
     to: '/',
+    // 首页不挂下拉：点「首页」直接回首页，不再下滑 01 / 今日概览 / 精选项目 … 这一串子菜单
+    noDropdown: true,
     children: [
       { label: '今日概览', desc: '一屏看完我的近况', to: '/#top', icon: 'home' },
       { label: '精选项目', desc: `${figures.products} 个上线过的作品`, to: '/#projects', icon: 'sparkles' },

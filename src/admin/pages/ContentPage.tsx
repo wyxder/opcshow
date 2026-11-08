@@ -38,6 +38,8 @@ type ArticleRow = {
   words: number
   abstract: string
   version?: number
+  /** 结构化正文（sections）序列化结果，编辑弹窗里可直接改并回写服务端 */
+  sectionsText?: string
 }
 
 type ProjectRow = {
@@ -148,7 +150,7 @@ export default function ContentPage({
   const [editing, setEditing] = useState<ArticleRow | null>(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
-  const [draft, setDraft] = useState({ title: '', category: '工程手记', status: '草稿', abstract: '' })
+  const [draft, setDraft] = useState({ title: '', category: '工程手记', status: '草稿', abstract: '', sectionsText: '[]' })
 
   const [projectOpen, setProjectOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<ProjectRow | null>(null)
@@ -192,6 +194,7 @@ export default function ContentPage({
           words: num(r.words),
           abstract: str(r.abstract),
           version: typeof r.version === 'number' ? r.version : undefined,
+          sectionsText: Array.isArray(r.sections) ? JSON.stringify(r.sections, null, 2) : '[]',
         })),
       )
       setProjects(
@@ -298,27 +301,48 @@ export default function ContentPage({
   }
 
   const openCreate = () => {
-    setDraft({ title: '', category: '工程手记', status: '草稿', abstract: '' })
+    setDraft({ title: '', category: '工程手记', status: '草稿', abstract: '', sectionsText: '[]' })
     setFormError('')
     setCreating(true)
   }
 
   const openEdit = (a: ArticleRow) => {
-    setDraft({ title: a.title, category: a.category, status: a.status, abstract: a.abstract })
+    setDraft({ title: a.title, category: a.category, status: a.status, abstract: a.abstract, sectionsText: a.sectionsText ?? '[]' })
     setFormError('')
     setEditing(a)
+  }
+
+  /** 正文是 src/data/articles.ts 的 Section[] 结构，后台用 JSON 直接编辑；
+   *  空串视为不改动 / 空正文，非法 JSON 或非数组直接拦下，不写入服务端。 */
+  const parseSections = (): unknown[] | null => {
+    const raw = draft.sectionsText.trim()
+    if (!raw) return []
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      setFormError('正文 JSON 格式错误，请检查引号与逗号')
+      return null
+    }
+    if (!Array.isArray(parsed)) {
+      setFormError('正文必须是 Section 数组（[{ id, title, subs: [...] }]）')
+      return null
+    }
+    return parsed
   }
 
   const saveArticle = async () => {
     if (!draft.title.trim()) return setFormError('标题不能为空')
     if (!real) return setFormError(DEMO_NOTE)
     if (saving) return
+    const sections = parseSections()
+    if (!sections) return
     setSaving(true)
     setFormError('')
     try {
       if (editing) {
-        // 元数据走乐观锁 upsert，状态单独走状态机（BE-04）
-        await contents.upsert('articles', editing.id, { title: draft.title.trim(), category: draft.category, abstract: draft.abstract }, editing.version)
+        // 元数据与结构化正文一起走乐观锁 upsert，状态单独走状态机（BE-04）
+        await contents.upsert('articles', editing.id, { title: draft.title.trim(), category: draft.category, abstract: draft.abstract, sections }, editing.version)
         if (draft.status !== editing.status) {
           await contents.setStatus('articles', editing.id, toServerStatus(draft.status))
         }
@@ -328,6 +352,7 @@ export default function ContentPage({
           title: draft.title.trim(),
           category: draft.category,
           abstract: draft.abstract,
+          sections,
           status: toServerStatus(draft.status),
           date: today(),
           views: 0,
@@ -955,11 +980,19 @@ export default function ContentPage({
             />
           </Field>
           <Field
-            label="正文（Markdown）"
-            hint="块编辑器未接入：正文仍在前台数据文件中维护，这里只保存标题 / 分类 / 摘要 / 状态"
+            label="正文（结构化 JSON）"
+            hint="前台文章正文为 Section[]：每项 { id, title, lead?, subs: [{ id, title, blocks: [{ t, v, … }] }] }。直接编辑 JSON，保存时校验并写入服务端 /api/content/articles/:id"
             className="sm:col-span-2"
           >
-            <Textarea value="" readOnly rows={5} placeholder="正文编辑未接入（保存不会写入正文）" className="font-mono text-[11.5px]" />
+            <Textarea
+              value={draft.sectionsText}
+              disabled={saving || !real}
+              onChange={(e) => setDraft({ ...draft, sectionsText: e.target.value })}
+              rows={8}
+              spellCheck={false}
+              placeholder='[{ "id": "s1", "title": "章节标题", "subs": [{ "id": "s1-1", "title": "小节", "blocks": [{ "t": "p", "v": "正文段落" }] }] }]'
+              className="font-mono text-[11px] leading-relaxed"
+            />
           </Field>
           {formError && (
             <p role="alert" className="text-[11px] text-admin-danger sm:col-span-2">

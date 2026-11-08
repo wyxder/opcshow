@@ -1,0 +1,998 @@
+- generic [ref=e4]:
+  - link "跳到主内容" [ref=e5] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=e6]:
+    - generic [ref=e8]:
+      - link "晓叶 · WYX.SPACE 标志 晓叶 WYX.SPACE / 2026" [ref=e9] [cursor=pointer]:
+        - /url: /
+        - img "晓叶 · WYX.SPACE 标志" [ref=e11]
+        - generic [ref=e12]:
+          - generic [ref=e13]: 晓叶
+          - generic [ref=e14]: WYX.SPACE / 2026
+      - navigation "主导航" [ref=e15]:
+        - link "01 首页" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e19]: "01"
+          - text: 首页
+        - link "02 AI分身" [ref=e21] [cursor=pointer]:
+          - /url: /ai
+          - generic [ref=e22]: "02"
+          - text: AI分身
+        - link "03 学习" [ref=e27] [cursor=pointer]:
+          - /url: /learn
+          - generic [ref=e28]: "03"
+          - text: 学习
+        - link "04 工作" [ref=e33] [cursor=pointer]:
+          - /url: /work/resume
+          - generic [ref=e34]: "04"
+          - text: 工作
+        - link "05 生活" [ref=e39] [cursor=pointer]:
+          - /url: /life/moments
+          - generic [ref=e40]: "05"
+          - text: 生活
+        - link "06 我的" [ref=e45] [cursor=pointer]:
+          - /url: /me
+          - generic [ref=e46]: "06"
+          - text: 我的
+      - generic [ref=e51]:
+        - button "搜索" [ref=e52] [cursor=pointer]:
+          - generic [ref=e57]: ⌘K
+        - button "切换主题，当前 纸感极简" [ref=e59] [cursor=pointer]
+  - main [ref=e74]:
+    - generic [ref=e75]:
+      - generic [ref=e76]:
+        - generic: PORTFOLIO / 2026 — 01
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]: 正在寻找 AI 应用与智能体开发实习 · 可实习 6 个月+
+            - heading "HELLO 你好，我是 晓叶" [level=1] [ref=e86]:
+              - generic [ref=e87]:
+                - generic [ref=e88]: HELLO
+                - generic [ref=e90]: 你好，我是
+              - generic [ref=e91]:
+                - generic [ref=e92]: 晓叶
+                - generic [aria-hidden] [ref=e93]: 👋
+            - generic [ref=e94]:
+              - paragraph [ref=e95]:
+                - text: 我是一名
+                - generic "AI 应用与智能体开发者，RAG 工程化实践者，把 Agent 做成产品的人，多模态 AI 方向研究生，AI 商业产品创造者" [ref=e96]:
+                  - generic [aria-hidden] [ref=e97]: A
+              - paragraph [ref=e99]: 陕西科技大学多模态 AI 方向硕士在读，CCF-A 学生一作在投，7 款 AI 商业产品上线者，2.3w 粉 AI 自媒体博主。信奉「把 Agent 做成产品，把产品做成事业」。
+            - generic [ref=e100]:
+              - generic [ref=e101]:
+                - link "看看我的项目" [ref=e102] [cursor=pointer]:
+                  - /url: "#projects"
+                - button "联系我" [ref=e108] [cursor=pointer]
+              - generic [ref=e112]:
+                - generic [ref=e113]: 西安 · 可远程 / 出差
+                - generic [ref=e118]: 6 个月+ · 5 天/周 · 随时到岗
+                - generic [ref=e119]:
+                  - link "简历 · 一页纸" [ref=e120] [cursor=pointer]:
+                    - /url: /work/resume
+                  - link "留句话" [ref=e121] [cursor=pointer]:
+                    - /url: /me/guestbook
+          - generic [ref=e122]:
+            - generic [ref=e124]:
+              - generic [ref=e125]:
+                - term [ref=e126]: 竞赛 & 奖项
+                - definition [ref=e127]:
+                  - generic [ref=e128]: 0+
+                  - generic [ref=e129]: 竞赛 & 奖项
+              - generic [ref=e130]:
+                - term [ref=e131]: 线下黑客松
+                - definition [ref=e132]:
+                  - generic [ref=e133]: "0"
+                  - generic [ref=e134]: 线下黑客松
+              - generic [ref=e135]:
+                - term [ref=e136]: 开源项目
+                - definition [ref=e137]:
+                  - generic [ref=e138]: 0+
+                  - generic [ref=e139]: 开源项目
+              - generic [ref=e140]:
+                - term [ref=e141]: AI 商业产品
+                - definition [ref=e142]:
+                  - generic [ref=e143]: "0"
+                  - generic [ref=e144]: AI 商业产品
+            - generic [ref=e146]:
+              - generic [ref=e147]:
+                - generic [ref=e148]: QUICK LOOK / 2026
+                - generic [ref=e149]: OPEN TO WORK
+              - generic [ref=e152]:
+                - paragraph [ref=e153]: FOCUS / NOW
+                - list [ref=e154]:
+                  - listitem [ref=e155]:
+                    - generic [ref=e156]: "01"
+                    - generic [ref=e158]:
+                      - generic [ref=e159]: RSI 自进化评测中台
+                      - generic [ref=e160]: 影子回归 · 验收写回
+                  - listitem [ref=e161]:
+                    - generic [ref=e162]: "02"
+                    - generic [ref=e164]:
+                      - generic [ref=e165]: KAMER 微表情识别
+                      - generic [ref=e166]: ICCV 2027 在投
+                  - listitem [ref=e167]:
+                    - generic [ref=e168]: "03"
+                    - generic [ref=e170]:
+                      - generic [ref=e171]: 2026 实习
+                      - generic [ref=e172]: AI 全栈 / 智能体开发
+        - generic [ref=e173]:
+          - generic [ref=e174]:
+            - text: SCROLL
+            - generic [ref=e178]: 继续往下看项目与经历
+          - generic [ref=e179]: WYX.SPACE / 2026
+          - generic [ref=e180]: 01 — HELLO
+      - generic [ref=e183]:
+        - generic [ref=e184]:
+          - generic [ref=e185]:
+            - generic [ref=e186]:
+              - text: 2026 上海星火计划 OPC 超级个体
+              - generic [ref=e190]: 国赛一等奖
+            - generic [ref=e191]: ✦
+          - generic [ref=e192]:
+            - generic [ref=e193]:
+              - text: 2026 高校 AI 黑客松 · 西安交通大学站
+              - generic [ref=e197]: 第一名
+            - generic [ref=e198]: ✦
+          - generic [ref=e199]:
+            - generic [ref=e200]:
+              - text: 2026 长沙 CSDN Agent 创新大赛
+              - generic [ref=e204]: 决赛第二名
+            - generic [ref=e205]: ✦
+          - generic [ref=e206]:
+            - generic [ref=e207]:
+              - text: 第十届高校计算机大赛 AIGC 创新
+              - generic [ref=e211]: 国赛二等奖
+            - generic [ref=e212]: ✦
+          - generic [ref=e213]:
+            - generic [ref=e214]:
+              - text: 第九届「远见者」杯创新就业大赛
+              - generic [ref=e218]: 国赛二等奖
+            - generic [ref=e219]: ✦
+          - generic [ref=e220]:
+            - generic [ref=e221]:
+              - text: 第十五届蓝桥杯 人工智能设计+
+              - generic [ref=e225]: 国赛二等奖
+            - generic [ref=e226]: ✦
+          - generic [ref=e227]:
+            - generic [ref=e228]:
+              - text: 第十二届数字媒体科技创意竞赛
+              - generic [ref=e232]: 省赛一等奖
+            - generic [ref=e233]: ✦
+          - generic [ref=e234]:
+            - generic [ref=e235]:
+              - text: 第八届传智杯 AI 大模型创新应用赛
+              - generic [ref=e239]: 一等奖
+            - generic [ref=e240]: ✦
+        - generic [ref=e241]:
+          - generic [ref=e242]:
+            - generic [ref=e243]:
+              - text: 2026 上海星火计划 OPC 超级个体
+              - generic [ref=e247]: 国赛一等奖
+            - generic [ref=e248]: ✦
+          - generic [ref=e249]:
+            - generic [ref=e250]:
+              - text: 2026 高校 AI 黑客松 · 西安交通大学站
+              - generic [ref=e254]: 第一名
+            - generic [ref=e255]: ✦
+          - generic [ref=e256]:
+            - generic [ref=e257]:
+              - text: 2026 长沙 CSDN Agent 创新大赛
+              - generic [ref=e261]: 决赛第二名
+            - generic [ref=e262]: ✦
+          - generic [ref=e263]:
+            - generic [ref=e264]:
+              - text: 第十届高校计算机大赛 AIGC 创新
+              - generic [ref=e268]: 国赛二等奖
+            - generic [ref=e269]: ✦
+          - generic [ref=e270]:
+            - generic [ref=e271]:
+              - text: 第九届「远见者」杯创新就业大赛
+              - generic [ref=e275]: 国赛二等奖
+            - generic [ref=e276]: ✦
+          - generic [ref=e277]:
+            - generic [ref=e278]:
+              - text: 第十五届蓝桥杯 人工智能设计+
+              - generic [ref=e282]: 国赛二等奖
+            - generic [ref=e283]: ✦
+          - generic [ref=e284]:
+            - generic [ref=e285]:
+              - text: 第十二届数字媒体科技创意竞赛
+              - generic [ref=e289]: 省赛一等奖
+            - generic [ref=e290]: ✦
+          - generic [ref=e291]:
+            - generic [ref=e292]:
+              - text: 第八届传智杯 AI 大模型创新应用赛
+              - generic [ref=e296]: 一等奖
+            - generic [ref=e297]: ✦
+      - generic [ref=e298]:
+        - generic [ref=e299]:
+          - generic [ref=e300]:
+            - generic [ref=e301]:
+              - generic [ref=e302]:
+                - generic [ref=e303]: "01"
+                - heading "技能图谱" [level=2] [ref=e304]
+                - generic [ref=e305]: MODULES
+              - paragraph [ref=e306]: 不是罗列关键词，是每个方向都有一两个能拿出来的结果。
+            - generic [ref=e307]: 点击模块展开，查看我实际在用的能力 →
+          - generic [ref=e308]:
+            - generic [ref=e309]:
+              - paragraph [ref=e310]: 一套从模型原理到交付上线的完整回路。
+              - generic [ref=e311]:
+                - generic [ref=e312]: Python
+                - generic [ref=e313]: Java
+                - generic [ref=e314]: TypeScript
+                - generic [ref=e315]: Vue 3
+                - generic [ref=e316]: React
+                - generic [ref=e317]: Next.js
+                - generic [ref=e318]: FastAPI
+                - generic [ref=e319]: Spring Boot
+                - generic [ref=e320]: LangChain4j
+                - generic [ref=e321]: LangGraph
+                - generic [ref=e322]: CrewAI
+                - generic [ref=e323]: Redis
+                - generic [ref=e324]: PostgreSQL
+                - generic [ref=e325]: SQLite
+                - generic [ref=e326]: Docker
+                - generic [ref=e327]: Three.js
+                - generic [ref=e328]: uniapp
+                - generic [ref=e329]: MCP
+                - generic [ref=e330]: RAGAS
+                - generic [ref=e331]: Langfuse
+                - generic [ref=e332]: Vercel
+                - generic [ref=e333]: Coze
+                - generic [ref=e334]: DashScope
+                - generic [ref=e335]: Seedance
+              - paragraph [ref=e336]: 持续迭代中 · last update 2026.10
+              - generic [ref=e338]:
+                - generic [ref=e339]:
+                  - generic [ref=e340]: FOCUS / NOW
+                  - generic [ref=e341]: 03 ITEMS
+                - generic [ref=e342]:
+                  - generic [ref=e343]: "01"
+                  - generic [ref=e344]: RSI 自进化评测中台
+                  - generic [ref=e345]: 影子回归 · 验收写回
+                - generic [ref=e346]:
+                  - generic [ref=e347]: "02"
+                  - generic [ref=e348]: KAMER 微表情识别
+                  - generic [ref=e349]: ICCV 2027 在投
+                - generic [ref=e350]:
+                  - generic [ref=e351]: "03"
+                  - generic [ref=e352]: 2026 实习
+                  - generic [ref=e353]: AI 全栈 / 智能体开发
+            - generic [ref=e354]:
+              - button "01 RAG 技术 切片 · 双路召回 · 重排" [ref=e356] [cursor=pointer]:
+                - generic [ref=e357]: "01"
+                - generic [ref=e358]:
+                  - generic [ref=e359]: RAG 技术
+                  - generic [ref=e360]: 切片 · 双路召回 · 重排
+                - generic "熟练度 92%" [ref=e361]
+              - button "02 Agent 开发 ReAct · MCP · Multi-Agent" [ref=e366] [cursor=pointer]:
+                - generic [ref=e367]: "02"
+                - generic [ref=e368]:
+                  - generic [ref=e369]: Agent 开发
+                  - generic [ref=e370]: ReAct · MCP · Multi-Agent
+                - generic "熟练度 94%" [ref=e371]
+              - button "03 全栈开发 React · Vue · Java" [ref=e376] [cursor=pointer]:
+                - generic [ref=e377]: "03"
+                - generic [ref=e378]:
+                  - generic [ref=e379]: 全栈开发
+                  - generic [ref=e380]: React · Vue · Java
+                - generic "熟练度 88%" [ref=e381]
+              - button "04 评测迭代 指标体系 · Badcase · A/B 盲测" [ref=e386] [cursor=pointer]:
+                - generic [ref=e387]: "04"
+                - generic [ref=e388]:
+                  - generic [ref=e389]: 评测迭代
+                  - generic [ref=e390]: 指标体系 · Badcase · A/B 盲测
+                - generic "熟练度 86%" [ref=e391]
+              - button "05 大模型原理 Transformer · MoE · GRPO" [ref=e396] [cursor=pointer]:
+                - generic [ref=e397]: "05"
+                - generic [ref=e398]:
+                  - generic [ref=e399]: 大模型原理
+                  - generic [ref=e400]: Transformer · MoE · GRPO
+                - generic "熟练度 82%" [ref=e401]
+              - button "06 AI 编程 Codex · WorkBuddy · Vibe Coding" [ref=e406] [cursor=pointer]:
+                - generic [ref=e407]: "06"
+                - generic [ref=e408]:
+                  - generic [ref=e409]: AI 编程
+                  - generic [ref=e410]: Codex · WorkBuddy · Vibe Coding
+                - generic "熟练度 96%" [ref=e411]
+              - paragraph [ref=e415]:
+                - text: 每一条结果都能在下面的项目、简历或论文里找到出处
+                - link "看结果落在哪" [ref=e416] [cursor=pointer]:
+                  - /url: "#projects"
+        - generic [ref=e421]:
+          - generic [ref=e422]:
+            - generic [ref=e423]:
+              - generic [ref=e424]: "02"
+              - generic [ref=e425]:
+                - heading "精选项目" [level=2] [ref=e426]
+                - paragraph [ref=e427]: FEATURED PROJECTS / BUILD LOG
+            - generic [ref=e428]:
+              - button "上一个项目" [ref=e429] [cursor=pointer]
+              - generic [ref=e432]: 01 / 07
+              - button "下一个项目" [ref=e433] [cursor=pointer]
+          - group "精选项目，可用左右方向键切换" [ref=e436]:
+            - generic [ref=e437]:
+              - generic [ref=e441]:
+                - generic [ref=e442]:
+                  - generic [ref=e443]: 01 / 07 · AI 全栈开发
+                  - generic [ref=e444]: 上海星火 OPC 决赛第一名 · 最佳商业价值奖
+                - generic [ref=e449]:
+                  - generic [ref=e461]: COVER / AI 全栈
+                  - generic [ref=e462]:
+                    - generic [ref=e463]: COMMERCE STUDIO
+                    - generic [ref=e464]: 2026.05 — 至今
+                - heading "跨境电商 AIGC 带货视频创作平台" [level=3] [ref=e466]
+                - paragraph [ref=e467]: 一款跨境电商带货视频 AI 生成工具，跑通「商品 URL 卖点提取 → 数字人口播 → AI 带货视频生成 → 云端剪辑 → 多平台分发」的闭环。
+                - generic [ref=e468]:
+                  - generic [ref=e469]:
+                    - paragraph [ref=e470]: 2 天 → 3 分钟
+                    - paragraph [ref=e472]: 制作周期
+                  - generic [ref=e473]:
+                    - paragraph [ref=e474]: ≈ 2 元
+                    - paragraph [ref=e476]: 单条成本
+                  - generic [ref=e477]:
+                    - paragraph [ref=e478]: 1.2w
+                    - paragraph [ref=e480]: 上线收益
+                - generic [ref=e481]:
+                  - generic [ref=e482]: 商业化落地
+                  - generic [ref=e483]: 视频生成
+                  - generic [ref=e484]: 订阅制
+                - generic [ref=e485]:
+                  - generic [ref=e486]: 2026.05 — 至今
+                  - generic [ref=e487]: ONLINE · AI 全栈
+              - generic [ref=e494]:
+                - generic [ref=e495]:
+                  - generic [ref=e496]: 02 / 07 · AI 应用开发
+                  - generic [ref=e497]: 字节跳动 AI 工程训练营 · 试点商家接待量下降 45%
+                - generic [ref=e502]:
+                  - generic [ref=e512]: COVER / Agent 开发
+                  - generic [ref=e513]:
+                    - generic [ref=e514]: RAG SERVICE DESK
+                    - generic [ref=e515]: 2025.06 — 2025.09
+                - heading [level=3] [ref=e517]: 抖音电商 RAG 企业客服与智慧运营系统
+                - paragraph [ref=e518]: 面向 B 端的生产级智能客服产品，集成多模态 AI、多智能体意图识别与 RAG 知识库问答，解决商家人工客服成本高、知识分散的痛点。
+                - generic [ref=e519]:
+                  - generic [ref=e520]:
+                    - paragraph [ref=e521]: "0.93"
+                    - paragraph [ref=e523]: Recall@5
+                  - generic [ref=e524]:
+                    - paragraph [ref=e525]: 60s → 3s
+                    - paragraph [ref=e527]: 响应时间
+                  - generic [ref=e528]:
+                    - paragraph [ref=e529]: ↓ 45%
+                    - paragraph [ref=e531]: 接待量
+                - generic [ref=e532]:
+                  - generic [ref=e533]: RAG
+                  - generic [ref=e534]: 多智能体
+                  - generic [ref=e535]: 生产级
+                - generic [ref=e536]:
+                  - generic [ref=e537]: 2025.06 — 2025.09
+                  - generic [ref=e538]: ONLINE · Agent 开发
+              - generic [ref=e545]:
+                - generic [ref=e546]:
+                  - generic [ref=e547]: 07 / 07 · Agent 开发
+                  - generic [ref=e548]: 字节 TRAE AI 创造力大赛 Top300 入围（1.3%）
+                - generic [ref=e553]:
+                  - generic [ref=e563]: COVER / Agent 开发
+                  - generic [ref=e564]:
+                    - generic [ref=e565]: DIGITAL GUIDE
+                    - generic [ref=e566]: 2026.05 — 2026.07
+                - heading [level=3] [ref=e568]: 多模态 AI 数字人导游与智慧运营 Agent
+                - paragraph [ref=e569]: 面向 C 端游客与 B 端运营后台的 AI 数字人导游，集成高德 IP 服务、RAG 与 VR3D 识景，提供热门景点攻略与行程规划。
+                - generic [ref=e570]:
+                  - generic [ref=e571]:
+                    - paragraph [ref=e572]: 92%
+                    - paragraph [ref=e574]: Top-3 命中
+                  - generic [ref=e575]:
+                    - paragraph [ref=e576]: ↑ 62%
+                    - paragraph [ref=e578]: 使用率
+                  - generic [ref=e579]:
+                    - paragraph [ref=e580]: 96.5%
+                    - paragraph [ref=e582]: 满意度
+                - generic [ref=e583]:
+                  - generic [ref=e584]: 数字人
+                  - generic [ref=e585]: Live2D
+                  - generic [ref=e586]: C/B 双端
+                - generic [ref=e587]:
+                  - generic [ref=e588]: 2026.05 — 2026.07
+                  - generic [ref=e589]: ONLINE · Agent 开发
+        - generic [ref=e593]:
+          - generic [ref=e594]:
+            - generic [ref=e595]:
+              - generic [ref=e596]:
+                - generic [ref=e597]: "03"
+                - heading "竞赛荣誉" [level=2] [ref=e598]
+                - generic [ref=e599]: AWARDS
+              - paragraph [ref=e600]: 2026 年跑了 7 场黑客松，6 次进决赛。奖项放在这里，作品在上面。
+            - button "全部 16 项" [ref=e601] [cursor=pointer]
+          - generic [ref=e605]:
+            - generic [ref=e606]:
+              - tablist "奖项筛选" [ref=e607]:
+                - tab "全部" [selected] [ref=e608] [cursor=pointer]
+                - tab "国赛" [ref=e609] [cursor=pointer]
+                - tab "省赛" [ref=e610] [cursor=pointer]
+                - tab "黑客松" [ref=e611] [cursor=pointer]
+                - tab "决赛" [ref=e612] [cursor=pointer]
+                - tab "实践" [ref=e613] [cursor=pointer]
+              - generic [ref=e614]:
+                - generic [ref=e615]:
+                  - generic [ref=e616]: "2026"
+                  - generic [ref=e617]:
+                    - generic [ref=e618]: 2026 上海星火计划 OPC 超级个体
+                    - generic [ref=e619]: 国赛一等奖
+                  - generic [ref=e620]: 国赛
+                - generic [ref=e624]:
+                  - generic [ref=e625]: "2026"
+                  - generic [ref=e626]:
+                    - generic [ref=e627]: 2026 高校 AI 黑客松 · 西安交通大学站
+                    - generic [ref=e628]: 第一名
+                  - generic [ref=e629]: 黑客松
+                - generic [ref=e633]:
+                  - generic [ref=e634]: "2026"
+                  - generic [ref=e635]:
+                    - generic [ref=e636]: 2026 长沙 CSDN Agent 创新大赛
+                    - generic [ref=e637]: 决赛第二名
+                  - generic [ref=e638]: 国赛
+                - generic [ref=e642]:
+                  - generic [ref=e643]: "2026"
+                  - generic [ref=e644]:
+                    - generic [ref=e645]: 第十届高校计算机大赛 AIGC 创新
+                    - generic [ref=e646]: 国赛二等奖
+                  - generic [ref=e647]: 国赛
+                - generic [ref=e651]:
+                  - generic [ref=e652]: "2026"
+                  - generic [ref=e653]:
+                    - generic [ref=e654]: 第九届「远见者」杯创新就业大赛
+                    - generic [ref=e655]: 国赛二等奖
+                  - generic [ref=e656]: 国赛
+                - generic [ref=e660]:
+                  - generic [ref=e661]: "2026"
+                  - generic [ref=e662]:
+                    - generic [ref=e663]: 第十五届蓝桥杯 人工智能设计+
+                    - generic [ref=e664]: 国赛二等奖
+                  - generic [ref=e665]: 国赛
+                - generic [ref=e669]:
+                  - generic [ref=e670]: "2025"
+                  - generic [ref=e671]:
+                    - generic [ref=e672]: 第十二届数字媒体科技创意竞赛
+                    - generic [ref=e673]: 省赛一等奖
+                  - generic [ref=e674]: 省赛
+            - generic [ref=e679]:
+              - generic [ref=e682]:
+                - paragraph [ref=e684]: ANNUAL RECORD · 2026
+                - generic [ref=e691]:
+                  - generic [ref=e692]:
+                    - generic [ref=e693]:
+                      - generic [ref=e694]: "0"
+                      - generic [ref=e695]: 场
+                    - paragraph [ref=e696]: 黑客松现场
+                  - generic [ref=e697]:
+                    - generic [ref=e698]:
+                      - generic [ref=e699]: "0"
+                      - generic [ref=e700]: 次
+                    - paragraph [ref=e701]: 进决赛
+                  - generic [ref=e702]:
+                    - generic [ref=e703]:
+                      - generic [ref=e704]: "0"
+                      - generic [ref=e705]: 次
+                    - paragraph [ref=e706]: 上台路演
+                  - generic [ref=e707]:
+                    - generic [ref=e708]:
+                      - generic [ref=e709]: "0"
+                      - generic [ref=e710]: 项
+                    - paragraph [ref=e711]: 奖项总数
+              - generic [ref=e712]:
+                - paragraph [ref=e716]: 黑客松不是比赛，是 48 小时的真实产品课。
+                - paragraph [ref=e717]: 6 场决赛、5 次上台路演、3 个评委追问：你的付费模型怎么走通？
+                - generic [ref=e718]: "2026"
+        - generic [ref=e719]:
+          - generic [ref=e720]:
+            - generic [ref=e721]:
+              - generic [ref=e722]:
+                - heading "现场瞬间" [level=2] [ref=e723]
+                - generic [ref=e724]: SNAP SHOTS
+              - paragraph [ref=e725]: 手机相册里没整理的那些：凌晨的实验室、决赛的展台、路过的落日。
+            - generic [ref=e726]:
+              - generic [ref=e727]: 朋友圈
+              - generic [ref=e731]: 旅拍
+              - link "进入生活频道 →" [ref=e734] [cursor=pointer]:
+                - /url: /life/moments
+          - generic [ref=e735]:
+            - group "朋友圈现场，向左连续滚动" [ref=e736]:
+              - generic [ref=e737]:
+                - generic [ref=e738]:
+                  - link "朋友圈：把评测中台的第 42 个用例写完了。RSI 闭环终于能自己跑完一整轮，看着 pass_rate 从 0.71 爬到 0.93，比喝咖啡还提神。" [ref=e739] [cursor=pointer]:
+                    - /url: /life/moments
+                    - generic [ref=e740]:
+                      - generic [ref=e750]: 朋友圈
+                      - generic [ref=e755]: eval-report.png
+                    - generic [ref=e756]:
+                      - paragraph [ref=e757]: 把评测中台的第 42 个用例写完了。RSI 闭环终于能自己跑完一整轮，看着 pass_rate 从 0.71 爬到 0.93，比喝咖啡还提神。
+                      - paragraph [ref=e758]:
+                        - generic [ref=e762]: 今天 01:42 · 西安 · 实验室
+                  - link "朋友圈：长沙决赛结束，第二名。评委问「你的自进化会不会自己乱改生产」，我说有三层刹车。他笑了，我也笑了。" [ref=e763] [cursor=pointer]:
+                    - /url: /life/moments
+                    - generic [ref=e764]:
+                      - generic [ref=e776]: 朋友圈
+                      - generic [ref=e781]: csdn-final.jpg
+                    - generic [ref=e782]:
+                      - paragraph [ref=e783]: 长沙决赛结束，第二名。评委问「你的自进化会不会自己乱改生产」，我说有三层刹车。他笑了，我也笑了。
+                      - paragraph [ref=e784]:
+                        - generic [ref=e788]: 昨天 19:20 · 长沙 · 马栏山
+                  - link "朋友圈：黑了一整天：多轨道时间轴的拖拽在 Safari 上位置差了 12px。最后发现是 transform-origin 和 rem 换算的问题。前端真的是一门玄学。" [ref=e789] [cursor=pointer]:
+                    - /url: /life/moments
+                    - generic [ref=e790]:
+                      - generic [ref=e801]: 朋友圈
+                      - generic [ref=e806]: timeline-bug.mov
+                    - generic [ref=e807]:
+                      - paragraph [ref=e808]: 黑了一整天：多轨道时间轴的拖拽在 Safari 上位置差了 12px。最后发现是 transform-origin 和 rem 换算的问题。前端真的是一门玄学。
+                      - paragraph [ref=e809]:
+                        - generic [ref=e813]: 3 天前
+                  - link "朋友圈：第一次给线下 80 个人讲 Agent Harness。讲到「工具越权要返回 404」的时候，前排有个同学疯狂点头，那一刻觉得做内容是有意义的。" [ref=e814] [cursor=pointer]:
+                    - /url: /life/moments
+                    - generic [ref=e815]:
+                      - generic [ref=e831]: 朋友圈
+                      - generic [ref=e836]: opc-talk.jpg
+                    - generic [ref=e837]:
+                      - paragraph [ref=e838]: 第一次给线下 80 个人讲 Agent Harness。讲到「工具越权要返回 404」的时候，前排有个同学疯狂点头，那一刻觉得做内容是有意义的。
+                      - paragraph [ref=e839]:
+                        - generic [ref=e843]: 2026.09.18 · 杭州 · 初芯 OPC
+                  - link "朋友圈：骑车 42 公里环了西安一圈，从大唐不夜城到浐灞，在河边坐着看落日。写代码之外，城市也需要被阅读。" [ref=e844] [cursor=pointer]:
+                    - /url: /life/moments
+                    - generic [ref=e845]:
+                      - generic [ref=e855]: 朋友圈
+                      - generic [ref=e860]: cycling-42km.jpg
+                    - generic [ref=e861]:
+                      - paragraph [ref=e862]: 骑车 42 公里环了西安一圈，从大唐不夜城到浐灞，在河边坐着看落日。写代码之外，城市也需要被阅读。
+                      - paragraph [ref=e863]:
+                        - generic [ref=e867]: 2026.09.02 · 西安 · 浐灞
+                  - link "朋友圈：给开源项目补了 README 和 3 个 demo。凌晨收到第一个 star，比拿奖还开心一点。" [ref=e868] [cursor=pointer]:
+                    - /url: /life/moments
+                    - generic [ref=e869]:
+                      - generic [ref=e888]: 朋友圈
+                      - generic [ref=e893]: github-star.png
+                    - generic [ref=e894]:
+                      - paragraph [ref=e895]: 给开源项目补了 README 和 3 个 demo。凌晨收到第一个 star，比拿奖还开心一点。
+                      - paragraph [ref=e896]:
+                        - generic [ref=e900]: 2026.08.11
+                - generic [ref=e901]:
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 朋友圈
+                      - generic: eval-report.png
+                    - generic:
+                      - paragraph: 把评测中台的第 42 个用例写完了。RSI 闭环终于能自己跑完一整轮，看着 pass_rate 从 0.71 爬到 0.93，比喝咖啡还提神。
+                      - paragraph:
+                        - generic: 今天 01:42 · 西安 · 实验室
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 朋友圈
+                      - generic: csdn-final.jpg
+                    - generic:
+                      - paragraph: 长沙决赛结束，第二名。评委问「你的自进化会不会自己乱改生产」，我说有三层刹车。他笑了，我也笑了。
+                      - paragraph:
+                        - generic: 昨天 19:20 · 长沙 · 马栏山
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 朋友圈
+                      - generic: timeline-bug.mov
+                    - generic:
+                      - paragraph: 黑了一整天：多轨道时间轴的拖拽在 Safari 上位置差了 12px。最后发现是 transform-origin 和 rem 换算的问题。前端真的是一门玄学。
+                      - paragraph:
+                        - generic: 3 天前
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 朋友圈
+                      - generic: opc-talk.jpg
+                    - generic:
+                      - paragraph: 第一次给线下 80 个人讲 Agent Harness。讲到「工具越权要返回 404」的时候，前排有个同学疯狂点头，那一刻觉得做内容是有意义的。
+                      - paragraph:
+                        - generic: 2026.09.18 · 杭州 · 初芯 OPC
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 朋友圈
+                      - generic: cycling-42km.jpg
+                    - generic:
+                      - paragraph: 骑车 42 公里环了西安一圈，从大唐不夜城到浐灞，在河边坐着看落日。写代码之外，城市也需要被阅读。
+                      - paragraph:
+                        - generic: 2026.09.02 · 西安 · 浐灞
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 朋友圈
+                      - generic: github-star.png
+                    - generic:
+                      - paragraph: 给开源项目补了 README 和 3 个 demo。凌晨收到第一个 star，比拿奖还开心一点。
+                      - paragraph:
+                        - generic: 2026.08.11
+            - group "旅拍现场，向右连续滚动" [ref=e902]:
+              - generic [ref=e903]:
+                - generic [ref=e904]:
+                  - link "城市漫游：骑行 42km 的终点，日落把塔身染成橘色。" [ref=e905] [cursor=pointer]:
+                    - /url: /life/travel
+                    - generic [ref=e906]:
+                      - generic [ref=e922]: 城市漫游
+                      - generic [ref=e927]: 西安 / 大雁塔
+                    - generic [ref=e928]:
+                      - paragraph [ref=e929]: 骑行 42km 的终点，日落把塔身染成橘色。
+                      - paragraph [ref=e930]:
+                        - generic [ref=e934]: 西安 · 2026.09.02
+                  - link "家乡：带她回家吃外婆做的饭，江风把她的头发吹得很乱。" [ref=e935] [cursor=pointer]:
+                    - /url: /life/travel
+                    - generic [ref=e936]:
+                      - generic [ref=e946]: 家乡
+                      - generic [ref=e951]: 重庆 / 万州
+                    - generic [ref=e952]:
+                      - paragraph [ref=e953]: 带她回家吃外婆做的饭，江风把她的头发吹得很乱。
+                      - paragraph [ref=e954]:
+                        - generic [ref=e958]: 重庆 · 2025.05.01
+                  - link "演唱会：第一场演唱会，副歌的时候她哭了。" [ref=e959] [cursor=pointer]:
+                    - /url: /life/travel
+                    - generic [ref=e960]:
+                      - generic [ref=e979]: 演唱会
+                      - generic [ref=e984]: 成都 / 东安湖体育公园
+                    - generic [ref=e985]:
+                      - paragraph [ref=e986]: 第一场演唱会，副歌的时候她哭了。
+                      - paragraph [ref=e987]:
+                        - generic [ref=e991]: 成都 · 2024.07.21
+                  - link "出差：分享完第二天早起绕湖跑了一圈，雾很大。" [ref=e992] [cursor=pointer]:
+                    - /url: /life/travel
+                    - generic [ref=e993]:
+                      - generic [ref=e1003]: 出差
+                      - generic [ref=e1008]: 杭州 / 西湖
+                    - generic [ref=e1009]:
+                      - paragraph [ref=e1010]: 分享完第二天早起绕湖跑了一圈，雾很大。
+                      - paragraph [ref=e1011]:
+                        - generic [ref=e1015]: 杭州 · 2026.09.17
+                  - link "黑客松：决赛前夜在便利店改 PPT 到两点。" [ref=e1016] [cursor=pointer]:
+                    - /url: /life/travel
+                    - generic [ref=e1017]:
+                      - generic [ref=e1029]: 黑客松
+                      - generic [ref=e1034]: 长沙 / 马栏山视频文创园
+                    - generic [ref=e1035]:
+                      - paragraph [ref=e1036]: 决赛前夜在便利店改 PPT 到两点。
+                      - paragraph [ref=e1037]:
+                        - generic [ref=e1041]: 长沙 · 2026.08.08
+                  - link "跨年：跨年黑客松拿了最佳实践奖，奖金请她吃了顿好的。" [ref=e1042] [cursor=pointer]:
+                    - /url: /life/travel
+                    - generic [ref=e1043]:
+                      - generic [ref=e1054]: 跨年
+                      - generic [ref=e1059]: 北京 / 798 艺术区
+                    - generic [ref=e1060]:
+                      - paragraph [ref=e1061]: 跨年黑客松拿了最佳实践奖，奖金请她吃了顿好的。
+                      - paragraph [ref=e1062]:
+                        - generic [ref=e1066]: 北京 · 2026.01.01
+                  - link "黑客松：路演完在秦淮河边走了很久。" [ref=e1067] [cursor=pointer]:
+                    - /url: /life/travel
+                    - generic [ref=e1068]:
+                      - generic [ref=e1084]: 黑客松
+                      - generic [ref=e1089]: 南京 / 阿里中心
+                    - generic [ref=e1090]:
+                      - paragraph [ref=e1091]: 路演完在秦淮河边走了很久。
+                      - paragraph [ref=e1092]:
+                        - generic [ref=e1096]: 南京 · 2026.06.14
+                - generic [ref=e1097]:
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 城市漫游
+                      - generic: 西安 / 大雁塔
+                    - generic:
+                      - paragraph: 骑行 42km 的终点，日落把塔身染成橘色。
+                      - paragraph:
+                        - generic: 西安 · 2026.09.02
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 家乡
+                      - generic: 重庆 / 万州
+                    - generic:
+                      - paragraph: 带她回家吃外婆做的饭，江风把她的头发吹得很乱。
+                      - paragraph:
+                        - generic: 重庆 · 2025.05.01
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 演唱会
+                      - generic: 成都 / 东安湖体育公园
+                    - generic:
+                      - paragraph: 第一场演唱会，副歌的时候她哭了。
+                      - paragraph:
+                        - generic: 成都 · 2024.07.21
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 出差
+                      - generic: 杭州 / 西湖
+                    - generic:
+                      - paragraph: 分享完第二天早起绕湖跑了一圈，雾很大。
+                      - paragraph:
+                        - generic: 杭州 · 2026.09.17
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 黑客松
+                      - generic: 长沙 / 马栏山视频文创园
+                    - generic:
+                      - paragraph: 决赛前夜在便利店改 PPT 到两点。
+                      - paragraph:
+                        - generic: 长沙 · 2026.08.08
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 跨年
+                      - generic: 北京 / 798 艺术区
+                    - generic:
+                      - paragraph: 跨年黑客松拿了最佳实践奖，奖金请她吃了顿好的。
+                      - paragraph:
+                        - generic: 北京 · 2026.01.01
+                  - generic [aria-hidden]:
+                    - generic:
+                      - generic: 黑客松
+                      - generic: 南京 / 阿里中心
+                    - generic:
+                      - paragraph: 路演完在秦淮河边走了很久。
+                      - paragraph:
+                        - generic: 南京 · 2026.06.14
+        - generic [ref=e1098]:
+          - generic [ref=e1099]:
+            - generic [ref=e1100]:
+              - generic [ref=e1101]:
+                - generic [ref=e1102]: "04"
+                - heading "生活切片" [level=2] [ref=e1103]
+                - generic [ref=e1104]: OFF SCREEN
+              - paragraph [ref=e1105]: 工作之外的那部分，才让这个网站像个人。
+            - link "进入生活频道 →" [ref=e1106] [cursor=pointer]:
+              - /url: /life/moments
+          - generic [ref=e1107]:
+            - link "默认入口 朋友圈 项目的坑、比赛的现场、路上的风景。 去看看" [ref=e1109] [cursor=pointer]:
+              - /url: /life/moments
+              - generic [ref=e1111]: 默认入口
+              - heading "朋友圈" [level=3] [ref=e1116]
+              - paragraph [ref=e1117]: 项目的坑、比赛的现场、路上的风景。
+              - generic [ref=e1118]: 去看看
+            - link "11 座城市 旅拍相册 地图上钉了 11 个点，每个都有故事。 去看看" [ref=e1123] [cursor=pointer]:
+              - /url: /life/travel
+              - generic [ref=e1125]: 11 座城市
+              - heading "旅拍相册" [level=3] [ref=e1131]
+              - paragraph [ref=e1132]: 地图上钉了 11 个点，每个都有故事。
+              - generic [ref=e1133]: 去看看
+            - link "异地第 4 年 恋爱记录 1240 天，86 次见面，11 座城市。 去看看" [ref=e1138] [cursor=pointer]:
+              - /url: /life/love
+              - generic [ref=e1140]: 异地第 4 年
+              - heading "恋爱记录" [level=3] [ref=e1145]
+              - paragraph [ref=e1146]: 1240 天，86 次见面，11 座城市。
+              - generic [ref=e1147]: 去看看
+            - link "6 张歌单 音乐盒 写代码时在听什么，都在这。 去看看" [ref=e1152] [cursor=pointer]:
+              - /url: /life/music
+              - generic [ref=e1154]: 6 张歌单
+              - heading "音乐盒" [level=3] [ref=e1161]
+              - paragraph [ref=e1162]: 写代码时在听什么，都在这。
+              - generic [ref=e1163]: 去看看
+          - generic [ref=e1167]:
+            - generic [ref=e1169]:
+              - generic [ref=e1170]:
+                - heading "兴趣爱好" [level=3] [ref=e1171]
+                - generic [ref=e1172]: 周末去哪儿
+              - generic [ref=e1173]:
+                - generic [ref=e1174]:
+                  - paragraph [ref=e1180]: 逛菜市场
+                  - paragraph [ref=e1181]: 找当季的菜
+                - generic [ref=e1182]:
+                  - paragraph [ref=e1189]: 城市骑行
+                  - paragraph [ref=e1190]: 西安 42km 环线
+                - generic [ref=e1191]:
+                  - paragraph [ref=e1198]: 手冲咖啡
+                  - paragraph [ref=e1199]: 浅烘 · V60
+                - generic [ref=e1200]:
+                  - paragraph [ref=e1205]: 拍延时
+                  - paragraph [ref=e1206]: 大雁塔的黄昏
+                - generic [ref=e1207]:
+                  - paragraph [ref=e1218]: 胶片相机
+                  - paragraph [ref=e1219]: Contax T2
+                - generic [ref=e1220]:
+                  - paragraph [ref=e1225]: 看论文
+                  - paragraph [ref=e1226]: 每天早上 30 min
+            - generic [ref=e1228]:
+              - generic [ref=e1229]:
+                - heading "最近更新" [level=3] [ref=e1230]
+                - link "知识库" [ref=e1233] [cursor=pointer]:
+                  - /url: /learn
+              - generic [ref=e1236]:
+                - link "01 RAG 工程化：从切片到溯源的 7 个决策 2026-09-18 12 min · RAG 工程化" [ref=e1237] [cursor=pointer]:
+                  - /url: /learn/rag-engineering
+                  - generic [ref=e1238]: "01"
+                  - generic [ref=e1239]:
+                    - generic [ref=e1240]: RAG 工程化：从切片到溯源的 7 个决策
+                    - generic [ref=e1241]:
+                      - generic [ref=e1242]: 2026-09-18
+                      - generic [ref=e1244]: 12 min
+                      - generic [ref=e1245]: · RAG 工程化
+                - link "02 Agent 评测别玄学：22 个指标怎么选 2026-09-02 10 min · Agent 评测" [ref=e1249] [cursor=pointer]:
+                  - /url: /learn/agent-eval
+                  - generic [ref=e1250]: "02"
+                  - generic [ref=e1251]:
+                    - generic [ref=e1252]: Agent 评测别玄学：22 个指标怎么选
+                    - generic [ref=e1253]:
+                      - generic [ref=e1254]: 2026-09-02
+                      - generic [ref=e1256]: 10 min
+                      - generic [ref=e1257]: · Agent 评测
+                - link "03 Harness：给 Agent 装上方向盘 2026-08-21 9 min · Agent 评测" [ref=e1261] [cursor=pointer]:
+                  - /url: /learn/harness
+                  - generic [ref=e1262]: "03"
+                  - generic [ref=e1263]:
+                    - generic [ref=e1264]: Harness：给 Agent 装上方向盘
+                    - generic [ref=e1265]:
+                      - generic [ref=e1266]: 2026-08-21
+                      - generic [ref=e1268]: 9 min
+                      - generic [ref=e1269]: · Agent 评测
+                - link "04 RSI 自进化：让评测反向修改系统 2026-08-08 11 min · RAG 工程化" [ref=e1273] [cursor=pointer]:
+                  - /url: /learn/rsi-loop
+                  - generic [ref=e1274]: "04"
+                  - generic [ref=e1275]:
+                    - generic [ref=e1276]: RSI 自进化：让评测反向修改系统
+                    - generic [ref=e1277]:
+                      - generic [ref=e1278]: 2026-08-08
+                      - generic [ref=e1280]: 11 min
+                      - generic [ref=e1281]: · RAG 工程化
+        - generic [ref=e1285]:
+          - generic [ref=e1288]:
+            - generic [ref=e1289]:
+              - paragraph [ref=e1290]: NEXT STEP
+              - heading "把 Agent 做成产品， 把产品做成事业。" [level=2] [ref=e1291]: 把 Agent 做成产品，把产品做成事业。
+              - paragraph [ref=e1292]: 研二在读，可以 6 个月以上、每周 5 天，随时到岗。接受加班，也接受被质疑方案——只要最后东西能跑起来。
+            - generic [ref=e1293]:
+              - link "wyxcode@qq.com" [ref=e1294] [cursor=pointer]:
+                - /url: mailto:wyxcode@qq.com
+              - link "查看完整简历" [ref=e1302] [cursor=pointer]:
+                - /url: /work/resume
+              - link "在弹幕墙留一句" [ref=e1309] [cursor=pointer]:
+                - /url: /me/guestbook
+          - generic [ref=e1315]:
+            - generic [ref=e1316]: WYX.SPACE
+            - generic [ref=e1318]: UPDATED 2026.10.29
+  - contentinfo [ref=e1319]:
+    - generic [ref=e1322]:
+      - generic [ref=e1323]:
+        - generic [ref=e1324]:
+          - generic [ref=e1325]: OPEN TO INTERNSHIP
+          - generic [ref=e1326]: ✦
+        - generic [ref=e1327]:
+          - generic [ref=e1328]: AI 全栈 / 智能体开发
+          - generic [ref=e1329]: ✦
+        - generic [ref=e1330]:
+          - generic [ref=e1331]: 6 个月 · 5 天/周 · 随时到岗
+          - generic [ref=e1332]: ✦
+        - generic [ref=e1333]:
+          - generic [ref=e1334]: 西安 · 可远程
+          - generic [ref=e1335]: ✦
+        - generic [ref=e1336]:
+          - generic [ref=e1337]: WYXCODE@QQ.COM
+          - generic [ref=e1338]: ✦
+      - generic [ref=e1339]:
+        - generic [ref=e1340]:
+          - generic [ref=e1341]: OPEN TO INTERNSHIP
+          - generic [ref=e1342]: ✦
+        - generic [ref=e1343]:
+          - generic [ref=e1344]: AI 全栈 / 智能体开发
+          - generic [ref=e1345]: ✦
+        - generic [ref=e1346]:
+          - generic [ref=e1347]: 6 个月 · 5 天/周 · 随时到岗
+          - generic [ref=e1348]: ✦
+        - generic [ref=e1349]:
+          - generic [ref=e1350]: 西安 · 可远程
+          - generic [ref=e1351]: ✦
+        - generic [ref=e1352]:
+          - generic [ref=e1353]: WYXCODE@QQ.COM
+          - generic [ref=e1354]: ✦
+    - generic [ref=e1355]:
+      - generic [ref=e1356]:
+        - generic [ref=e1357]:
+          - paragraph [ref=e1358]: LET'S BUILD SOMETHING
+          - link "一起做点有用的东西" [ref=e1359] [cursor=pointer]:
+            - /url: mailto:wyxcode@qq.com
+          - generic [ref=e1360]:
+            - link "Email" [ref=e1361] [cursor=pointer]:
+              - /url: mailto:wyxcode@qq.com
+              - text: wyxcode@qq.com
+            - link "GitHub" [ref=e1365] [cursor=pointer]:
+              - /url: https://github.com/wyx-code
+              - text: "@wyx-code"
+            - generic "小红书：暂未公开主页" [ref=e1369]: 2.3w 粉
+            - generic "微信：暂未公开主页" [ref=e1372]: wyx200265
+        - generic [ref=e1379]:
+          - generic [ref=e1380]:
+            - paragraph [ref=e1381]:
+              - generic [ref=e1382]: "01"
+              - text: 首页
+            - list [ref=e1383]:
+              - listitem [ref=e1384]:
+                - link "今日概览" [ref=e1385] [cursor=pointer]:
+                  - /url: /#top
+              - listitem [ref=e1388]:
+                - link "精选项目" [ref=e1389] [cursor=pointer]:
+                  - /url: /#projects
+              - listitem [ref=e1392]:
+                - link "技能图谱" [ref=e1393] [cursor=pointer]:
+                  - /url: /#skills
+              - listitem [ref=e1396]:
+                - link "竞赛荣誉" [ref=e1397] [cursor=pointer]:
+                  - /url: /#awards
+          - generic [ref=e1400]:
+            - paragraph [ref=e1401]:
+              - generic [ref=e1402]: "02"
+              - text: AI分身
+            - list [ref=e1403]:
+              - listitem [ref=e1404]:
+                - link "声音克隆" [ref=e1405] [cursor=pointer]:
+                  - /url: /ai?tab=voice
+              - listitem [ref=e1407]:
+                - link "形象复刻" [ref=e1408] [cursor=pointer]:
+                  - /url: /ai?tab=avatar
+              - listitem [ref=e1410]:
+                - link "数字人对话" [ref=e1411] [cursor=pointer]:
+                  - /url: /ai?tab=chat
+          - generic [ref=e1413]:
+            - paragraph [ref=e1414]:
+              - generic [ref=e1415]: "03"
+              - text: 学习
+            - list [ref=e1416]:
+              - listitem [ref=e1417]:
+                - link "知识库" [ref=e1418] [cursor=pointer]:
+                  - /url: /learn
+          - generic [ref=e1420]:
+            - paragraph [ref=e1421]:
+              - generic [ref=e1422]: "04"
+              - text: 工作
+            - list [ref=e1423]:
+              - listitem [ref=e1424]:
+                - link "简历" [ref=e1425] [cursor=pointer]:
+                  - /url: /work/resume
+              - listitem [ref=e1427]:
+                - link "百宝箱" [ref=e1428] [cursor=pointer]:
+                  - /url: /work/toolbox
+              - listitem [ref=e1430]:
+                - link "资源中心" [ref=e1431] [cursor=pointer]:
+                  - /url: /work/files
+          - generic [ref=e1433]:
+            - paragraph [ref=e1434]:
+              - generic [ref=e1435]: "05"
+              - text: 生活
+            - list [ref=e1436]:
+              - listitem [ref=e1437]:
+                - link "朋友圈" [ref=e1438] [cursor=pointer]:
+                  - /url: /life/moments
+              - listitem [ref=e1440]:
+                - link "旅拍相册" [ref=e1441] [cursor=pointer]:
+                  - /url: /life/travel
+              - listitem [ref=e1443]:
+                - link "恋爱记录" [ref=e1444] [cursor=pointer]:
+                  - /url: /life/love
+              - listitem [ref=e1446]:
+                - link "音乐盒" [ref=e1447] [cursor=pointer]:
+                  - /url: /life/music
+          - generic [ref=e1449]:
+            - paragraph [ref=e1450]:
+              - generic [ref=e1451]: "06"
+              - text: 我的
+            - list [ref=e1452]:
+              - listitem [ref=e1453]:
+                - link "自我介绍" [ref=e1454] [cursor=pointer]:
+                  - /url: /me
+              - listitem [ref=e1456]:
+                - link "自媒体矩阵" [ref=e1457] [cursor=pointer]:
+                  - /url: /me/media
+              - listitem [ref=e1459]:
+                - link "留言弹幕墙" [ref=e1460] [cursor=pointer]:
+                  - /url: /me/guestbook
+              - listitem [ref=e1462]:
+                - link "友链" [ref=e1463] [cursor=pointer]:
+                  - /url: /me/friends
+      - generic [ref=e1465]:
+        - generic [ref=e1466]: © 2026 晓叶 · 用 React 手搓，AI 只负责打下手
+        - generic [ref=e1467]:
+          - generic [ref=e1468]: BUILD 2026.10.29
+          - link "sitemap" [ref=e1469] [cursor=pointer]:
+            - /url: /sitemap.xml
+          - link "RSS" [ref=e1470] [cursor=pointer]:
+            - /url: /rss.xml
+          - link "后台" [ref=e1471] [cursor=pointer]:
+            - /url: /admin
+  - button "晓叶的 AI 分身头像 问问 AI 分身":
+    - generic:
+      - img "晓叶的 AI 分身头像"
+    - generic: 问问 AI 分身

@@ -1,0 +1,18 @@
+[     661ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[    1154ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://127.0.0.1:5273/api/auth/session:0
+[    1214ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://127.0.0.1:5273/api/auth/session:0
+[    6033ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[    6294ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://127.0.0.1:5273/api/auth/session:0
+[    6340ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://127.0.0.1:5273/api/auth/session:0
+[    8825ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[    9774ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[   10065ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:5273/admin/profile/security:0
+[   10065ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:5273/admin/profile/security:0
+[   10065ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:5273/admin/profile/security:0
+[   10800ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[   11761ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[   12714ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[   13629ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[   14553ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[   15500ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[   16440ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550

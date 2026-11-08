@@ -68,9 +68,9 @@ export function RouteErrorBoundary({ children }: { children: ReactNode }) {
 }
 
 /** 懒加载 chunk 加载失败（部署后旧 chunk 404）时的兜底：提示刷新而不是白屏 */
-export function RouteFallback() {
+export function RouteFallback({ tall = false }: { tall?: boolean }) {
   return (
-    <div className="shell flex min-h-[46vh] flex-col items-center justify-center text-center">
+    <div className={`shell flex flex-col items-center justify-center text-center ${tall ? 'min-h-[calc(100svh-88px)]' : 'min-h-[46vh]'}`}>
       <span className="h-6 w-6 animate-spin rounded-full border-2 border-ink/20 border-t-ink" />
       <p className="mt-3 font-mono text-[10px] tracking-[0.2em] text-ink/40">LOADING…</p>
     </div>

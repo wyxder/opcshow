@@ -28,7 +28,7 @@ const byStatus = (list = []) => {
   return map
 }
 
-route('GET', '/api/admin/overview', async ({ req, res }) => {
+route('GET', '/api/admin/overview', async ({ req, res, url }) => {
   requireRole(await getSession(req))
   const stores = await getStores()
   const [content, guestbook, files, analytics, jobs, ai] = await Promise.all([
@@ -40,10 +40,12 @@ route('GET', '/api/admin/overview', async ({ req, res }) => {
     stores.ai.read(),
   ])
 
-  const weekAgo = Date.now() - 7 * 86400000
+  // 后台总览支持 7d / 30d 窗口，不再固定 7 天
+  const win = url.searchParams.get('window') === '30d' ? 30 : 7
+  const weekAgo = Date.now() - win * 86400000
   const hits = analytics.hits.filter((h) => new Date(h.ts).getTime() >= weekAgo)
   const days = []
-  for (let i = 6; i >= 0; i -= 1) {
+  for (let i = win - 1; i >= 0; i -= 1) {
     const date = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10)
     const list = hits.filter((h) => h.ts.slice(0, 10) === date)
     days.push({
@@ -66,6 +68,7 @@ route('GET', '/api/admin/overview', async ({ req, res }) => {
 
   sendJson(res, 200, {
     generatedAt: new Date().toISOString(),
+    window: win,
     content: {
       articles: { total: articles.length, ...byStatus(articles) },
       projects: { total: projects.length, ...byStatus(projects) },

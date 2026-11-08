@@ -374,6 +374,15 @@
     overflow-x: hidden;
   }
 
+  /* 移动端 Safari / Chrome 对 background-attachment:fixed 会在地址栏收起或滚动时
+     反复重绘背景，观感就是整页轻微上滑/下滑；窄屏改为随文档滚动，
+     固定的纸纹仍由 body::before 负责，视觉基本不变。 */
+  @media (max-width: 1023px) {
+    body {
+      background-attachment: scroll;
+    }
+  }
+
   /* 主题纹理：纸纹 / 精密网格 / 扫描线 */
   body::before {
     content: '';

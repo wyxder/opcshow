@@ -31,7 +31,7 @@ export async function hydrateSiteData(): Promise<void> {
     import('@/data/work'),
   ])
 
-  const [articlesData, projectsData, momentsData, tripsData, tracksData, friendsData, awardsData, skillsData, danmakuData, resourcesData] = await Promise.all([
+  const [articlesData, projectsData, momentsData, tripsData, tracksData, friendsData, awardsData, skillsData, danmakuData, resourcesData, profileData] = await Promise.all([
     get<typeof dataArticles.articles>('/api/content/articles'),
     get<typeof dataProjects.projects>('/api/content/projects'),
     get<typeof dataLife.moments>('/api/content/moments'),
@@ -42,6 +42,7 @@ export async function hydrateSiteData(): Promise<void> {
     get<typeof dataSite.skillGroups>('/api/content/skills'),
     get<typeof dataMe.danmakuSeeds>('/api/content/danmaku'),
     get<typeof dataWork.resourceFiles>('/api/content/resources'),
+    get<Partial<typeof dataSite.profile>>('/api/profile'),
   ])
 
   if (articlesData?.length) {
@@ -77,4 +78,13 @@ export async function hydrateSiteData(): Promise<void> {
   }
   if (danmakuData?.length) replace(dataMe.danmakuSeeds, danmakuData)
   if (resourcesData) replace(dataWork.resourceFiles, resourcesData)
+
+  // 后台「个人中心 → 资料」保存后要真的反映到前台：前台页面直接 import data/site.ts 的 profile，
+  // 这里按白名单把服务端字段原地覆盖，避免把多余字段写进静态数据对象。
+  if (profileData && typeof profileData === 'object') {
+    const target = dataSite.profile as unknown as Record<string, unknown>
+    for (const key of ['name', 'latin', 'handle', 'role', 'tagline', 'location', 'hometown', 'age', 'status', 'availability', 'email', 'wechat', 'phone', 'bio', 'keywords', 'avatar', 'socials']) {
+      if (profileData[key as keyof typeof profileData] !== undefined) target[key] = profileData[key as keyof typeof profileData]
+    }
+  }
 }

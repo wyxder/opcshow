@@ -46,8 +46,9 @@
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- F-12：首屏只阻塞 2 个字族（Bricolage + Noto Sans SC），display=optional 避免字体回退抖动；
-         装饰字族（Caveat / JetBrains Mono）异步加载，加载前回退到系统手写体/等宽体 -->
+    <!-- F-12：全部字族统一 display=optional —— 字体没在 100ms 内到位就一直用系统回退，
+         绝不「加载一会儿」再二次替换并重排整页（移动端表现为自动上滑/下滑）。
+         两个 CSS 都改成 media=print + onload 异步生效，外链字体不再阻塞首屏绘制。 -->
     <link
       rel="preload"
       as="style"
@@ -56,17 +57,23 @@
     <link
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+SC:wght@300;400;500;700;900&display=optional"
       rel="stylesheet"
+      media="print"
+      onload="this.media = 'all'"
     />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&display=optional"
       media="print"
       onload="this.media = 'all'"
     />
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+SC:wght@300;400;500;700;900&display=optional"
+      />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&display=optional"
       />
     </noscript>
     <!-- 首屏防闪烁：同源同步脚本在 CSS 之后、首次绘制之前落好 data-theme。

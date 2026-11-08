@@ -13,7 +13,17 @@ export function clearAnalyticsCache() {
   summaryCache.windows = {}
 }
 
-export async function pushHit({ path, referrer = '', sessionHash = null, stayMs = 0, ipHash = null, kind = 'page' }) {
+/** 从 User-Agent 粗分设备类型；只存类别不存原始 UA，避免采集可识别的浏览器指纹 */
+export function deviceFromUA(ua = '') {
+  const s = String(ua).toLowerCase()
+  if (!s) return '未知'
+  if (/ipad|tablet|kindle|silk|playbook/.test(s) || (/android/.test(s) && !/mobile/.test(s))) return '平板'
+  if (/iphone|ipod|mobile|windows phone|harmonyos|opera mini/.test(s)) return '手机'
+  if (/mozilla|chrome|safari|firefox|edge|msie|trident|curl|postman/.test(s)) return '桌面'
+  return '未知'
+}
+
+export async function pushHit({ path, referrer = '', sessionHash = null, stayMs = 0, ipHash = null, kind = 'page', device = null }) {
   const { analytics } = await getStores()
   await analytics.update((data) => {
     data.hits.unshift({
@@ -24,6 +34,7 @@ export async function pushHit({ path, referrer = '', sessionHash = null, stayMs 
       sessionHash,
       stayMs,
       ipHash,
+      device,
       ts: new Date().toISOString(),
     })
     data.hits = data.hits.slice(0, 20000)

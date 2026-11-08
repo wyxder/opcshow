@@ -15,8 +15,8 @@ import { getStores } from '../lib/store.mjs'
 import { getSession, requireRole, audit } from '../lib/auth.mjs'
 import { text, object, oneOf, httpUrl } from '../lib/validate.mjs'
 
-const PROFILE_FIELDS = ['name', 'latin', 'handle', 'role', 'tagline', 'location', 'hometown', 'age', 'status', 'availability', 'email', 'wechat', 'phone', 'bio', 'keywords']
-const SITE_FIELDS = ['url', 'title', 'description', 'keywords', 'ogImage', 'defaultTheme', 'sitemap', 'structuredData', 'analytics']
+const PROFILE_FIELDS = ['name', 'latin', 'handle', 'role', 'tagline', 'location', 'hometown', 'age', 'status', 'availability', 'email', 'wechat', 'phone', 'bio', 'keywords', 'avatar', 'links', 'socialLinks', 'socials']
+const SITE_FIELDS = ['url', 'title', 'description', 'keywords', 'ogImage', 'ogTitle', 'canonical', 'robots', 'twitter', 'defaultTheme', 'sitemap', 'structuredData', 'analytics']
 
 const pick = (source, fields) => Object.fromEntries(fields.filter((k) => source[k] !== undefined).map((k) => [k, source[k]]))
 

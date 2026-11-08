@@ -26,7 +26,7 @@ import { DEFAULT_PROMPTS, GUARDRAILS, activePrompt, buildMessages, buildSiteFact
 import { detectInjection, filterOutput, INJECTION_REFUSAL } from '../ai/safety.mjs'
 import { modelAvailable, streamModel } from '../ai/gateway.mjs'
 import { cacheKey, checkQuota, checkBudget, consumeQuota, recordUsage, getUsageSummary, costOf } from '../ai/usage.mjs'
-import { pushHit } from '../lib/hits.mjs'
+import { pushHit, deviceFromUA } from '../lib/hits.mjs'
 
 async function ensureAiSeed() {
   const { ai } = await getStores()
@@ -101,7 +101,7 @@ route('POST', '/api/ai/chat', async ({ req, res, reqId }) => {
   const ip = ipHash(req)
   if (!rateLimit(`ai:${ip}`, 20, 60 * 1000).ok) return sendError(res, 429, 'RATE_LIMITED', '问得太快，稍等一下', reqId)
   const quota = await checkQuota(ip)
-  if (!quota.ok) return sendError(res, 429, 'QUOTA_EXCEEDED', `今日额度已用完（${quota.limit} 次），明天再来`, reqId)
+  if (!quota.ok) return sendError(res, 429, 'QUOTA_EXCEEDED', quota.reason === 'global' ? `站点今日 AI 额度已用完（${quota.globalLimit} 次）` : `今日额度已用完（${quota.limit} 次），明天再来`, reqId)
 
   const body = await readJson(req, 128 * 1024)
   const message = text(body.message ?? body.input, { field: '问题', min: 1, max: 800 })
@@ -120,7 +120,7 @@ route('POST', '/api/ai/chat', async ({ req, res, reqId }) => {
   const budget = await checkBudget()
   const facts = await siteFactsNow()
   // 一条 AI 轮次写进埋点，数据看板的「AI 会话」不再恒为 0（BE-09）
-  void pushHit({ path: '/ai', kind: 'ai', ipHash: ip })
+  void pushHit({ path: '/ai', kind: 'ai', ipHash: ip, device: deviceFromUA(req.headers['user-agent']) })
 
   const injection = detectInjection(message)
   if (injection.flagged) {
@@ -311,13 +311,14 @@ route('GET', '/api/ai/feedback', async ({ req, res }) => {
   sendJson(res, 200, data.feedback.slice(0, 100))
 })
 
-route('GET', '/api/ai/sessions/:id', async ({ req, res, reqId, params }) => {
+route('GET', '/api/ai/sessions/:id', async ({ req, res, reqId, params, session: login }) => {
   const { ai } = await getStores()
   const data = await ai.read()
-  const session = data.sessions.find((s) => s.id === params.id)
-  // BE-10：会话按发起 IP 的哈希绑定，知道 id 也拿不到别人的对话
-  if (!session || (session.ipHash && session.ipHash !== ipHash(req))) return sendError(res, 404, 'NOT_FOUND', '会话不存在', reqId)
-  sendJson(res, 200, session)
+  const chat = data.sessions.find((s) => s.id === params.id)
+  // 访客只能读同一出口 IP 发起的会话；后台角色可读全部，避免 NAT 共享 IP 时串读
+  const privileged = Boolean(login && ['admin', 'editor'].includes(login.role))
+  if (!chat || (!privileged && chat.ipHash && chat.ipHash !== ipHash(req))) return sendError(res, 404, 'NOT_FOUND', '会话不存在', reqId)
+  sendJson(res, 200, chat)
 })
 
 /* --------------------------------- 用量/配置 -------------------------------- */
