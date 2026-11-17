@@ -570,15 +570,6 @@ export default function AICharacter() {
               {currentStep === 'chat' && (
                 <div className="flex items-center gap-3 flex-shrink-0 whitespace-nowrap ml-4">
                   <motion.button
-                    onClick={() => setIsConfigOpen(true)}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold bg-teal-500/25 hover:bg-teal-500/35 border border-teal-400/40 backdrop-blur-md transition-all text-white shadow-[0_8px_20px_rgba(20,184,166,0.2),_inset_0_1px_1px_rgba(255,255,255,0.25)] hover:shadow-[0_8px_24px_rgba(20,184,166,0.35),_inset_0_1px_1px_rgba(255,255,255,0.4)]"
-                  >
-                    <Settings size={16} className="text-teal-200" />
-                    <span>数字人配置</span>
-                  </motion.button>
-
-                  <motion.button
                     onClick={() => setIsAvatarDialogOpen(true)}
                     whileTap={{ scale: 0.95 }}
                     className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition-all text-white shadow-lg"
@@ -619,6 +610,15 @@ export default function AICharacter() {
                     >
                       <History size={16} className="text-rose-300" />
                       <span>历史</span>
+                    </motion.button>
+                    {/* 数字人配置紧靠「分享分身」左边，避免操作区分散在两侧 */}
+                    <motion.button
+                      onClick={() => setIsConfigOpen(true)}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold bg-teal-500/25 hover:bg-teal-500/35 border border-teal-400/40 backdrop-blur-md transition-all text-white shadow-[0_8px_20px_rgba(20,184,166,0.2),_inset_0_1px_1px_rgba(255,255,255,0.25)] hover:shadow-[0_8px_24px_rgba(20,184,166,0.35),_inset_0_1px_1px_rgba(255,255,255,0.4)]"
+                    >
+                      <Settings size={16} className="text-teal-200" />
+                      <span>数字人配置</span>
                     </motion.button>
                     <motion.button
                       onClick={() => setIsShareOpen(true)}
@@ -682,20 +682,20 @@ export default function AICharacter() {
               {currentStep === 'chat' && (
                 <div className="flex flex-col items-end gap-1.5 z-[60] pt-1">
                   <button 
-                    onClick={() => setIsConfigOpen(true)}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-teal-500/20 border border-teal-500/30 text-teal-200 backdrop-blur-md active:scale-95 transition-all"
-                    title="数字人配置"
-                  >
-                    <Settings size={13} />
-                    <span>数字人配置</span>
-                  </button>
-                  <button 
                     onClick={() => setIsHistoryOpen(true)}
                     className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-rose-500/20 border border-rose-500/30 text-rose-200 backdrop-blur-md active:scale-95 transition-all"
                     title="历史对话"
                   >
                     <History size={13} />
                     <span>历史对话</span>
+                  </button>
+                  <button 
+                    onClick={() => setIsConfigOpen(true)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-teal-500/20 border border-teal-500/30 text-teal-200 backdrop-blur-md active:scale-95 transition-all"
+                    title="数字人配置"
+                  >
+                    <Settings size={13} />
+                    <span>数字人配置</span>
                   </button>
                   <button 
                     onClick={() => setIsShareOpen(true)}

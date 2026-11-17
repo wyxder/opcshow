@@ -30,22 +30,10 @@ export const navItems: NavItem[] = [
     ],
   },
   {
-    key: 'ai',
-    label: 'AI分身',
-    en: 'AVATAR',
-    index: '02',
-    to: '/ai',
-    children: [
-      { label: '声音克隆', desc: '30 秒复刻你的音色', to: '/ai?tab=voice', icon: 'mic' },
-      { label: '形象复刻', desc: '一张照片生成数字形象', to: '/ai?tab=avatar', icon: 'wand' },
-      { label: '数字人对话', desc: '和专属分身聊两句 · 默认入口', to: '/ai?tab=chat', icon: 'bot' },
-    ],
-  },
-  {
     key: 'learn',
     label: 'AI知识库',
     en: 'AI KNOWLEDGE',
-    index: '03',
+    index: '02',
     to: '/learn',
     children: [
       { label: '知识库', desc: 'RAG / Agent / 工程手记', to: '/learn', icon: 'book' },
@@ -55,7 +43,7 @@ export const navItems: NavItem[] = [
     key: 'work',
     label: '百宝箱',
     en: 'TOOLBOX',
-    index: '04',
+    index: '03',
     // 默认入口 = 百宝箱（原简历页已下线），/work 会在 App 路由里重定向到这里
     to: '/work/toolbox',
     children: [
@@ -67,7 +55,7 @@ export const navItems: NavItem[] = [
     key: 'life',
     label: '生活',
     en: 'LIFE',
-    index: '05',
+    index: '04',
     // 默认入口 = 朋友圈（菜单第一项），/life 会在 App 路由里重定向到这里
     to: '/life/moments',
     children: [
@@ -75,6 +63,18 @@ export const navItems: NavItem[] = [
       { label: '旅拍相册', desc: '地图上的 11 座城市', to: '/life/travel', icon: 'map' },
       { label: '恋爱记录', desc: '1240 天的异地手记', to: '/life/love', icon: 'heart' },
       { label: '音乐盒', desc: '写代码时在听什么', to: '/life/music', icon: 'music' },
+    ],
+  },
+  {
+    key: 'ai',
+    label: 'AI分身',
+    en: 'AVATAR',
+    index: '05',
+    to: '/ai',
+    children: [
+      { label: '声音克隆', desc: '30 秒复刻你的音色', to: '/ai?tab=voice', icon: 'mic' },
+      { label: '形象复刻', desc: '一张照片生成数字形象', to: '/ai?tab=avatar', icon: 'wand' },
+      { label: '数字人对话', desc: '和专属分身聊两句 · 默认入口', to: '/ai?tab=chat', icon: 'bot' },
     ],
   },
   {

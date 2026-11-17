@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Copy, Download, Check, Share2, Mic, Bot, Sparkles, Zap, User } from 'lucide-react'
 import html2canvas from 'html2canvas'
@@ -366,7 +367,9 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
 
   const s = getCardStyles()
 
-  return (
+  // 分享弹窗 portal 到 body：页面切换动画的 transform 会形成新的包含块与层叠上下文，
+  // 留在组件树里会被固定顶栏（z-70）盖住；挂到 body 后 z-[150] 才是真正的全屏置顶。
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 overflow-y-auto bg-black/75 backdrop-blur-md">
@@ -807,6 +810,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

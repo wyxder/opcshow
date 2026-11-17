@@ -32,17 +32,6 @@ export const sections = [
     ],
   },
   {
-    key: 'profile',
-    label: '个人中心',
-    sub: '资料 / 账号 / 安全',
-    icon: CircleUserRound,
-    tabs: [
-      { key: 'profile', label: '资料' },
-      { key: 'account', label: '账号' },
-      { key: 'security', label: '安全' },
-    ],
-  },
-  {
     key: 'content',
     label: '内容管理',
     sub: '文章 / 项目 / 动态',
@@ -95,6 +84,17 @@ export const sections = [
       { key: 'models', label: '模型' },
       { key: 'prompts', label: '提示词' },
       { key: 'usage', label: '用量' },
+    ],
+  },
+  {
+    key: 'profile',
+    label: '个人中心',
+    sub: '资料 / 账号 / 安全',
+    icon: CircleUserRound,
+    tabs: [
+      { key: 'profile', label: '资料' },
+      { key: 'account', label: '账号' },
+      { key: 'security', label: '安全' },
     ],
   },
   {

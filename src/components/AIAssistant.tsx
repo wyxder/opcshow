@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUp, ExternalLink, Loader2, Minus, RotateCcw, Square, X } from 'lucide-react'
+import { ArrowUp, ExternalLink, Image as ImageIcon, Loader2, Mic, Minus, RotateCcw, Smile, Square, X } from 'lucide-react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
 import { useFocusTrap } from '@/lib/a11y'
@@ -25,6 +25,8 @@ type Msg = {
   stopped?: boolean
   /** 本会话内流式生成的回答才打打字机；问候语与历史恢复直接显示 */
   streamed?: boolean
+  /** 用户随消息附带的图片（本地预览，数据 URL） */
+  images?: { url: string; name: string }[]
 }
 
 const sourceLabel = (source: AnswerSource, degraded?: boolean) => {
@@ -32,6 +34,14 @@ const sourceLabel = (source: AnswerSource, degraded?: boolean) => {
   if (source === 'retrieval') return '站内检索摘录 · 未接模型'
   return '预置问答 · 作者手写'
 }
+
+/** 输入区表情面板：与 AI 分身页 MultiModalInput 同一组，保持体验一致 */
+const EMOJIS = [
+  '😊', '😂', '🤣', '😍', '🥰', '😘', '😭', '😢', '🤔', '👍',
+  '🎉', '🌟', '❤️', '🔥', '✨', '🙏', '👏', '🤗', '😴', '🤯',
+  '🥳', '🤩', '😎', '🤓', '😇', '🥺', '😅', '😆', '😉', '😌',
+  '👀', '💪', '🙌', '👋', '🤝', '💯', '💥', '💫', '💦', '🌈',
+]
 
 /** AI 分身的头像：回复气泡、浮标、面板头部共用。后台资料页可热改 URL，未设置时用站内默认图 */
 const DEFAULT_AVATAR = '/image/toux.jpg'
@@ -150,9 +160,17 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
   const [degraded, setDegraded] = useState(false)
   const [lastAsk, setLastAsk] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
+  /** 多模态输入：图片附件 / 表情面板 / 语音识别状态 */
+  const [attachments, setAttachments] = useState<{ url: string; name: string }[]>([])
+  const [emojiOpen, setEmojiOpen] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const [inputNotice, setInputNotice] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const cancelRef = useRef<null | (() => void)>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const recognitionRef = useRef<{ stop: () => void; abort: () => void } | null>(null)
 
   useFocusTrap(open, panelRef)
 
@@ -214,9 +232,19 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
     if (wasTyping) setMsgs((list) => list.map((m, i) => (i === list.length - 1 && m.role === 'bot' ? { ...m, stopped: true } : m)))
   }
 
+  const clearInput = () => {
+    recognitionRef.current?.abort()
+    recognitionRef.current = null
+    setRecording(false)
+    setEmojiOpen(false)
+    setAttachments([])
+    setInputNotice(null)
+  }
+
   const reset = () => {
     stop()
     clearSessionId()
+    clearInput()
     setMsgs([greeting(mode)])
     setLastSource(mode === 'preset' ? 'preset' : mode === 'retrieval' ? 'retrieval' : 'model')
     setDegraded(false)
@@ -225,6 +253,7 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
 
   const close = () => {
     stop()
+    clearInput()
     setOpen(false)
   }
 
@@ -236,7 +265,14 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  useEffect(() => () => cancelRef.current?.(), [])
+  // 语音 / 图片的输入提示几秒后自动淡出，不长期占据面板底部
+  useEffect(() => {
+    if (!inputNotice) return
+    const timer = window.setTimeout(() => setInputNotice(null), 3500)
+    return () => window.clearTimeout(timer)
+  }, [inputNotice])
+
+  useEffect(() => () => { cancelRef.current?.(); recognitionRef.current?.abort() }, [])
 
   const reply = (input: string) => {
     const id = newId('bot')
@@ -273,12 +309,87 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
     )
   }
 
+  const addEmoji = (emoji: string) => {
+    setDraft((v) => v + emoji)
+    setEmojiOpen(false)
+    setInputNotice(null)
+    textareaRef.current?.focus()
+  }
+
+  const handleImages = (files: FileList | null) => {
+    if (!files?.length) return
+    const picked = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    if (!picked.length) {
+      setInputNotice('请选择图片文件')
+      return
+    }
+    let rejected = false
+    picked.slice(0, 4).forEach((file) => {
+      if (file.size > 5 * 1024 * 1024) {
+        rejected = true
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = () => {
+        const url = String(reader.result ?? '')
+        setAttachments((prev) => (prev.length >= 4 ? prev : [...prev, { url, name: file.name }]))
+      }
+      reader.readAsDataURL(file)
+    })
+    setInputNotice(rejected ? '单张图片请控制在 5MB 以内' : null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const toggleVoice = () => {
+    if (recording) {
+      recognitionRef.current?.stop()
+      return
+    }
+    const Speech = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!Speech) {
+      setInputNotice('当前浏览器不支持语音输入，建议使用 Chrome 或 Edge')
+      return
+    }
+    try {
+      const recognition = new Speech()
+      recognition.lang = 'zh-CN'
+      recognition.continuous = false
+      recognition.interimResults = false
+      recognition.onstart = () => {
+        setRecording(true)
+        setInputNotice(null)
+      }
+      recognition.onend = () => setRecording(false)
+      recognition.onerror = () => {
+        setRecording(false)
+        setInputNotice('语音识别失败，请重试或直接输入')
+      }
+      recognition.onresult = (e: any) => {
+        const transcript = String(e?.results?.[0]?.[0]?.transcript ?? '').trim()
+        if (transcript) setDraft((v) => (v ? `${v} ${transcript}` : transcript))
+      }
+      recognitionRef.current = recognition
+      recognition.start()
+    } catch {
+      setRecording(false)
+      setInputNotice('语音识别启动失败，请直接输入')
+    }
+  }
+
   const send = (value?: string) => {
-    const text = (value ?? draft).trim()
-    if (!text || typing) return
-    setMsgs((m) => [...m, { id: newId('user'), role: 'user', text }])
+    // 快捷提示词走显式文本，不带上尚未发送的附件
+    const explicit = typeof value === 'string'
+    const text = ((explicit ? value : draft) ?? '').trim()
+    const images = explicit ? [] : attachments
+    if ((!text && images.length === 0) || typing) return
+    // 当前网关只吃文本：图片随消息本地展示，文本里如实带出文件名，不伪装成已看懂图片
+    const userText = text || `（我上传了图片：${images.map((i) => i.name).join('、')}）`
+    setMsgs((m) => [...m, { id: newId('user'), role: 'user', text: userText, images: images.length ? images : undefined }])
     setDraft('')
-    reply(text)
+    setAttachments([])
+    setEmojiOpen(false)
+    setInputNotice(null)
+    reply(userText)
   }
 
   const retry = () => {
@@ -369,6 +480,15 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
                   <div key={m.id} className="flex justify-end">
                     <div className="max-w-[86%] whitespace-pre-line rounded-2xl rounded-br-md border-1.5 border-ink bg-lime px-3 py-2 text-[12px] leading-relaxed text-ink">
                       {m.text}
+                      {m.images?.length ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {m.images.map((img, imgIdx) => (
+                            <a key={imgIdx} href={img.url} target="_blank" rel="noopener noreferrer" title={`查看 ${img.name}`}>
+                              <img src={img.url} alt={img.name} className="h-16 w-16 rounded-lg border border-ink/25 object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 )
@@ -391,7 +511,7 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
               )}
             </div>
 
-            <div className="border-t border-ink/10 px-3 pb-3 pt-2">
+            <div className="relative border-t border-ink/10 px-3 pb-3 pt-2">
               <div className="mb-2 flex gap-1.5 overflow-x-auto no-scrollbar">
                 {quickPrompts.map((q) => (
                   <button
@@ -403,11 +523,35 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
                   </button>
                 ))}
               </div>
+
+              {/* 待发送图片：本地预览，可逐张移除 */}
+              {attachments.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {attachments.map((img, idx) => (
+                    <div key={idx} className="group relative">
+                      <img src={img.url} alt={img.name} className="h-12 w-12 rounded-lg border border-ink/20 object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                        aria-label={`移除 ${img.name}`}
+                        className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-ink bg-coral text-[10px] leading-none text-paper"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex items-end gap-2 rounded-xl border-1.5 border-ink/20 bg-paper p-1.5 focus-within:border-ink">
                 <textarea
+                  ref={textareaRef}
                   rows={1}
                   value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
+                  onChange={(e) => {
+                    setDraft(e.target.value)
+                    if (inputNotice) setInputNotice(null)
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
@@ -420,13 +564,81 @@ export function AIAssistant({ defaultOpen = false }: { defaultOpen?: boolean }) 
                 />
                 <button
                   onClick={() => send()}
-                  disabled={!draft.trim() || typing}
+                  disabled={(!draft.trim() && attachments.length === 0) || typing}
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink bg-ink text-paper transition disabled:opacity-30"
                   aria-label="发送"
                 >
                   <ArrowUp size={14} />
                 </button>
               </div>
+
+              {/* 输入工具栏：图片 / 表情 / 语音 */}
+              <div className="mt-1.5 flex items-center gap-1">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleImages(e.target.files)}
+                  aria-label="选择图片"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={typing}
+                  title="上传图片"
+                  aria-label="上传图片"
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-ink/45 transition hover:bg-lime/40 hover:text-ink disabled:opacity-30"
+                >
+                  <ImageIcon size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEmojiOpen((v) => !v)}
+                  disabled={typing}
+                  title="表情"
+                  aria-label="表情"
+                  aria-expanded={emojiOpen}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded-md text-ink/45 transition hover:bg-lime/40 hover:text-ink disabled:opacity-30', emojiOpen && 'bg-lime/50 text-ink')}
+                >
+                  <Smile size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleVoice}
+                  disabled={typing}
+                  title={recording ? '停止录音' : '语音输入'}
+                  aria-label={recording ? '停止录音' : '语音输入'}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded-md text-ink/45 transition hover:bg-lime/40 hover:text-ink disabled:opacity-30', recording && 'animate-pulse bg-coral/15 text-coral')}
+                >
+                  <Mic size={14} />
+                </button>
+                {recording && <span className="ml-1 text-[10px] text-coral">正在听…</span>}
+              </div>
+
+              {inputNotice && (
+                <p className="mt-1 text-[10px] text-coral" role="status">{inputNotice}</p>
+              )}
+
+              {emojiOpen && (
+                <div className="absolute bottom-full left-3 right-3 z-[70] mb-1 max-h-40 overflow-y-auto rounded-xl border-1.5 border-ink bg-cream p-2 shadow-hard-lg no-scrollbar">
+                  <div className="grid grid-cols-8 gap-0.5">
+                    {EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => addEmoji(emoji)}
+                        className="rounded p-1 text-[17px] leading-none transition hover:bg-lime/50"
+                        aria-label={`插入表情 ${emoji}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <p className="mt-1.5 text-center font-mono text-[9.5px] tracking-wide text-ink/30">
                 {serverConfig.enabled
                   ? lastSource === 'model'

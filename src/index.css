@@ -359,6 +359,8 @@
   }
 
   html {
+    /* 桌面端保留锚点平滑；移动端在下方媒体查询里关掉全局 smooth——否则浏览器
+       原生的滚动锚定 / focus 调整都会带平滑动画，表现为「停留首页时页面自己上滑」。 */
     scroll-behavior: smooth;
     background-color: rgb(var(--c-bg));
   }
@@ -371,6 +373,9 @@
     background-repeat: no-repeat;
     color: rgb(var(--c-ink));
     font-feature-settings: 'ss01' 1;
+    /* 关闭滚动锚定：打字机 / CountUp / 图片加载引起的高度微变，浏览器默认会
+       自动改 scrollTop 去「锚定」视觉位置，偶发表现就是停留时页面自己上滑一下。 */
+    overflow-anchor: none;
     /* 用 clip 而不是 hidden：hidden 会把 body 变成滚动容器，部分 Android WebView /
        iOS Safari 会因此让挂在 body 上的 position:fixed 底栏随页面滚动跑出视口。
        clip 同样裁掉横向溢出，但不创建滚动容器；旧内核回退到 hidden。 */
@@ -384,6 +389,11 @@
   @media (max-width: 1023px) {
     body {
       background-attachment: scroll;
+    }
+    html {
+      /* 站内锚点 / 回到顶部的平滑仍由 JS 显式 behavior:'smooth' 控制，体验不变；
+         这里只关掉浏览器原生的全局平滑，杜绝意外自动滚动。 */
+      scroll-behavior: auto;
     }
   }
 
@@ -423,6 +433,15 @@
     background-size: var(--tex-size);
     opacity: var(--tex-opacity);
     mix-blend-mode: var(--tex-blend);
+  }
+
+  /* 全屏 fixed + mix-blend-mode 纹理层在移动端每帧都要读回背景重算混合，
+     是长页下滑卡顿的主因；窄屏去掉混合模式（不动位置与透明度），
+     视觉几乎不变但滚动合成大幅变轻。放在主定义之后才能覆盖。 */
+  @media (max-width: 1023px) {
+    body::before {
+      mix-blend-mode: normal;
+    }
   }
 
   ::selection {

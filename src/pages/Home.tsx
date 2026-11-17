@@ -539,7 +539,7 @@ function SkillsBento() {
   const reduce = usePrefersReducedMotion()
 
   return (
-    <section id="skills" className="scroll-mt-28">
+    <section id="skills" className="hidden scroll-mt-28 lg:block">
       <SectionHead
         index="01"
         title="技能图谱"
