@@ -363,9 +363,11 @@ function ProjectCarousel({ onOpen, paused }: { onOpen: (p: Project) => void; pau
           </div>
         </div>
 
-        {/* 卡片轨道 */}
+        {/* 卡片轨道：overflow-x:clip 裁掉平移到视口外的相邻卡，
+            避免移动端文档被撑宽（用户表现为整页可横向滑、顶部品牌区被"拉长"）。
+            clip 不像 hidden 会把 y 轴变 auto，阴影与 focus outline 不受影响。 */}
         <div
-          className="relative outline-none"
+          className="relative outline-none overflow-x-clip"
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
           onFocus={() => setFocus(true)}
@@ -539,7 +541,7 @@ function SkillsBento() {
   const reduce = usePrefersReducedMotion()
 
   return (
-    <section id="skills" className="hidden scroll-mt-28 lg:block">
+    <section id="skills" className="scroll-mt-28">
       <SectionHead
         index="01"
         title="技能图谱"
@@ -573,7 +575,8 @@ function SkillsBento() {
             持续迭代中 · last update 2026.10
           </p>
 
-          <div className="mt-7 overflow-hidden rounded-2xl border-1.5 border-ink bg-cream shadow-hard-sm">
+          {/* FOCUS/NOW 面板：移动端隐藏，电脑端保留 */}
+          <div className="mt-7 hidden overflow-hidden rounded-2xl border-1.5 border-ink bg-cream shadow-hard-sm lg:block">
             <div className="flex items-center justify-between border-b border-ink/12 bg-sand/70 px-4 py-2.5">
               <span className="font-mono text-[9.5px] tracking-[0.2em] text-ink/55">FOCUS / NOW</span>
               <span className="font-mono text-[9.5px] tracking-[0.2em] text-ink/40">{pad2(focusNow.length)} ITEMS</span>
@@ -588,8 +591,9 @@ function SkillsBento() {
           </div>
         </div>
 
-        {/* 右：能力模块手风琴，展开后看描述 / 关键词 / 可验证结果 */}
-        <div className="min-w-0 border-t border-ink/12">
+        {/* 右：能力模块手风琴，展开后看描述 / 关键词 / 可验证结果。
+            移动端整块隐藏（含底部「看结果落在哪」引导语），电脑端保留。 */}
+        <div className="hidden min-w-0 border-t border-ink/12 lg:block">
           {skillGroups.map((s, i) => {
             const color = colorMap[s.color]
             const isOpen = openKey === s.key
@@ -828,6 +832,10 @@ type SceneShot = {
   motif: (typeof shotMotifs)[number]
   to: string
   rotate: number
+  /** 真实照片 URL（缩略图）。有值时卡片渲染真实图片，否则回退到程序化 Plate */
+  image?: string
+  /** 点击卡片打开的原始大图 URL（缺省则用 to 站内跳转） */
+  full?: string
 }
 
 /** 复用朋友圈数据：上方一排向左滚动 */
@@ -856,13 +864,98 @@ const tripShots: SceneShot[] = trips.slice(0, 7).map((t, i) => ({
   rotate: shotRotations[(i + 2) % shotRotations.length],
 }))
 
-function ShotCard({ shot, duplicate = false }: { shot: SceneShot; duplicate?: boolean }) {
+/**
+ * 比赛现场实拍：来自 public/images/比赛 的 29 张照片。
+ * 图片已在构建期压成 480×360 的 webp 缩略图（public/images/match/match-01..29.webp），
+ * 原图保留在比赛目录供灯箱点开查看，避免首页一次拉几十 MB。
+ */
+const matchCaptions = [
+  '路演现场，把项目讲给评委听',
+  '决赛展台前的一张留影',
+  '最佳实践奖 · 团队合影',
+  'Demo Day 的蓝色大屏',
+  'XI-HACK 2026，开物成器',
+  '凌晨还在改最后一版 PPT',
+  '拿到参赛证的那一刻',
+  '和队友在展区合影',
+  '评审提问环节',
+  '路演候场',
+  '获奖公示墙',
+  '赛场外的合影',
+  '演示 specimen 的展台',
+  '拿到奖杯的瞬间',
+  '团队讨论方案',
+  '决赛现场的观众席',
+  '签到处打卡',
+  '赛场外的城市一角',
+  '和同频的人同框',
+  '颁奖典礼',
+  '赛后复盘',
+  '展台前的完整留影',
+  '现场速记',
+  '黑客松的最后一个夜晚',
+  '拿到名次的朋友圈',
+  '赛道展板的细节',
+  '赛场清晨',
+  '答辩现场',
+  '收官合影',
+]
+const matchOriginals = [
+  '0.png', '1.png', '20260124-155819.jpg', '20260124-155837.jpg',
+  'Snipaste_2026-11-17_22-06-04.png', 'Snipaste_2026-11-17_22-06-54.png', 'Snipaste_2026-11-17_22-13-09.png',
+  'Snipaste_2026-11-17_22-29-50.png', 'Snipaste_2026-11-17_22-29-57.png', 'Snipaste_2026-11-17_22-33-55.png',
+  'Snipaste_2026-11-17_22-34-08.png', 'Snipaste_2026-11-17_22-34-23.png', 'Snipaste_2026-11-17_22-34-36.png',
+  'Snipaste_2026-11-17_22-34-47.png', 'Snipaste_2026-11-17_22-35-32.png', 'Snipaste_2026-11-17_22-35-38.png',
+  'Snipaste_2026-11-17_22-40-55.png', 'Snipaste_2026-11-17_22-41-01.png', 'Snipaste_2026-11-17_22-41-20.png',
+  'Snipaste_2026-11-17_22-42-52.png', 'Snipaste_2026-11-17_22-43-09.png', 'Snipaste_2026-11-17_22-44-45.png',
+  'Snipaste_2026-11-17_22-49-37.png',
+  '微信图片_2026-11-17_221830_110.jpg', '微信图片_2026-11-17_223343_421.jpg', '微信图片_2026-11-17_223551_473.jpg',
+  '微信图片_2026-11-17_224032_903.jpg', '微信图片_2026-11-17_224211_452.jpg', '微信图片_2026-11-17_224840_371.jpg',
+]
+const matchShots: SceneShot[] = Array.from({ length: 29 }, (_, i) => {
+  const n = String(i + 1).padStart(2, '0')
+  return {
+    id: `match-${n}`,
+    kind: '比赛现场',
+    caption: matchCaptions[i] ?? '比赛现场',
+    meta: '2026 · 黑客松与竞赛',
+    label: `SNAP ${n} / 29`,
+    accent: 'rgb(var(--c-blue))',
+    motif: shotMotifs[i % shotMotifs.length],
+    to: '/life/moments',
+    rotate: shotRotations[i % shotRotations.length],
+    image: `/images/match/match-${n}.webp`,
+    full: `/images/比赛/${matchOriginals[i]}`,
+  }
+})
+/** 29 张比赛图拆成三行轮播（10 / 10 / 9），让它们分布在不同行，而不是挤在一行 */
+const matchRows = [matchShots.slice(0, 10), matchShots.slice(10, 20), matchShots.slice(20)]
+
+/** 有真实照片时渲染图片，加载失败回退到程序化 Plate，任何坏图都不会出现空白块 */
+function ScenePhoto({ shot }: { shot: SceneShot }) {
+  const [failed, setFailed] = useState(false)
+  if (!shot.image || failed) {
+    return <Plate motif={shot.motif} accent={shot.accent} className="absolute inset-0" />
+  }
+  return (
+    <img
+      src={shot.image}
+      alt={shot.caption}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+  )
+}
+
+function ShotCard({ shot, duplicate = false, onOpen }: { shot: SceneShot; duplicate?: boolean; onOpen?: (s: SceneShot) => void }) {
   const cardClass = 'flex w-[206px] shrink-0 flex-col rounded-[16px] border-1.5 border-ink bg-cream p-2 shadow-hard-sm sm:w-[236px]'
 
   const content = (
     <>
       <div className="relative aspect-[4/3] overflow-hidden rounded-[11px] border border-ink/15">
-        <Plate motif={shot.motif} accent={shot.accent} className="absolute inset-0" />
+        <ScenePhoto shot={shot} />
         <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/20 via-transparent to-transparent" />
         <span className="absolute left-2 top-2 rounded-full border border-ink/25 bg-cream/90 px-1.5 py-0.5 font-mono text-[8.5px] tracking-wide text-ink/65">
           {shot.kind}
@@ -892,6 +985,24 @@ function ShotCard({ shot, duplicate = false }: { shot: SceneShot; duplicate?: bo
     )
   }
 
+  // 有原图的比赛照片：点击打开大图灯箱（用 button，避免和 Link 的站内跳转冲突）
+  if (shot.full && onOpen) {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpen(shot)}
+        aria-label={`${shot.kind}：${shot.caption}（点击查看大图）`}
+        className={cn(
+          cardClass,
+          'group text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-hard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
+        )}
+        style={{ rotate: `${shot.rotate}deg` }}
+      >
+        {content}
+      </button>
+    )
+  }
+
   return (
     <Link
       to={shot.to}
@@ -912,11 +1023,13 @@ function SceneRow({
   reverse = false,
   speed = 50,
   label,
+  onOpen,
 }: {
   shots: SceneShot[]
   reverse?: boolean
   speed?: number
   label: string
+  onOpen?: (s: SceneShot) => void
 }) {
   return (
     <div className="group relative overflow-hidden py-1" data-marquee role="group" aria-label={label}>
@@ -926,7 +1039,7 @@ function SceneRow({
       >
         <div className="flex shrink-0 gap-3 pr-3">
           {shots.map((s) => (
-            <ShotCard key={s.id} shot={s} />
+            <ShotCard key={s.id} shot={s} onOpen={onOpen} />
           ))}
         </div>
         <div className="flex shrink-0 gap-3 pr-3">
@@ -942,6 +1055,26 @@ function SceneRow({
 }
 
 function SceneWall() {
+  const [active, setActive] = useState<SceneShot | null>(null)
+  const openShot = (s: SceneShot) => setActive(s)
+  const step = (dir: 1 | -1) => {
+    setActive((cur) => {
+      if (!cur) return cur
+      const idx = matchShots.findIndex((m) => m.id === cur.id)
+      if (idx < 0) return cur
+      return matchShots[(idx + dir + matchShots.length) % matchShots.length]
+    })
+  }
+  useEffect(() => {
+    if (!active) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') step(1)
+      if (e.key === 'ArrowLeft') step(-1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [active])
+
   return (
     <section id="scenes" className="scroll-mt-28">
       <SectionHead
@@ -964,9 +1097,50 @@ function SceneWall() {
         }
       />
       <div className="space-y-2.5">
-        <SceneRow shots={momentShots} label="朋友圈现场，向左连续滚动" speed={52} />
-        <SceneRow shots={tripShots} label="旅拍现场，向右连续滚动" speed={58} reverse />
+        {/* 比赛现场实拍：public/images/比赛 下 29 张，拆成三行分布展示，点击查看原图大图 */}
+        <SceneRow shots={matchRows[0]} label="比赛现场 · 第一排，向左连续滚动" speed={90} onOpen={openShot} />
+        <SceneRow shots={matchRows[1]} label="比赛现场 · 第二排，向右连续滚动" speed={100} reverse onOpen={openShot} />
+        <SceneRow shots={matchRows[2]} label="比赛现场 · 第三排，向左连续滚动" speed={82} onOpen={openShot} />
       </div>
+
+      {/* 比赛照片大图灯箱 */}
+      <Modal open={!!active} onClose={() => setActive(null)} bare className="max-w-5xl">
+        {active && (
+          <div className="p-3 sm:p-4">
+            <div className="mb-3 pr-12">
+              <div className="kicker mb-1">比赛现场 · {active.label}</div>
+              <h3 className="text-lg font-extrabold leading-tight">{active.caption}</h3>
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => step(-1)}
+                aria-label="上一张"
+                className="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border-1.5 border-ink bg-cream/90 shadow-hard-sm transition hover:bg-lime"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <img
+                src={active.full ?? active.image}
+                alt={active.caption}
+                onError={(e) => { e.currentTarget.src = active.image ?? '' }}
+                className="mx-auto max-h-[68vh] w-auto rounded-xl border border-ink/20 object-contain"
+              />
+              <button
+                type="button"
+                onClick={() => step(1)}
+                aria-label="下一张"
+                className="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border-1.5 border-ink bg-cream/90 shadow-hard-sm transition hover:bg-lime"
+              >
+                <ArrowRight size={18} />
+              </button>
+            </div>
+            <p className="mt-3 text-center font-mono text-[10px] tracking-wide text-ink/45">
+              {matchShots.findIndex((m) => m.id === active.id) + 1} / {matchShots.length} · ← → 切换 · ESC 关闭
+            </p>
+          </div>
+        )}
+      </Modal>
     </section>
   )
 }
@@ -1017,7 +1191,7 @@ function LifeTeaser() {
 
       {/* hobbies + latest articles */}
       <div className="mt-3 grid gap-3 lg:grid-cols-12">
-        <div className="lg:col-span-5">
+        <div className="min-w-0 lg:col-span-5">
           <div className="relative h-full overflow-hidden rounded-2xl border-1.5 border-ink grid-paper bg-paper p-5">
             <div className="flex items-center justify-between">
               <h3 className="text-[15px] font-extrabold">兴趣爱好</h3>
@@ -1044,7 +1218,7 @@ function LifeTeaser() {
           </div>
         </div>
 
-        <div className="lg:col-span-7">
+        <div className="min-w-0 lg:col-span-7">
           <div className="h-full rounded-2xl border-1.5 border-ink bg-cream p-5">
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-[15px] font-extrabold">

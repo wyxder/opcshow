@@ -11,6 +11,12 @@ export type NavItem = {
   children: NavChild[]
   /** true = 该一级项不展开下拉（首页的锚点子项只在页脚 / ⌘K 里保留） */
   noDropdown?: boolean
+  /** true = 仅从桌面顶部主导航隐藏；移动底栏 / 页脚 / ⌘K 仍保留该入口 */
+  hideInTopNav?: boolean
+  /** true = 仅从移动底栏隐藏；桌面顶部 / 页脚 / ⌘K 仍保留该入口 */
+  hideInBottomNav?: boolean
+  /** true = 仅从页脚导航组隐藏；顶部 / 底栏 / ⌘K / 所属下拉仍保留该入口 */
+  hideInFooter?: boolean
 }
 
 export const navItems: NavItem[] = [
@@ -37,6 +43,8 @@ export const navItems: NavItem[] = [
     to: '/learn',
     children: [
       { label: '知识库', desc: 'RAG / Agent / 工程手记', to: '/learn', icon: 'book' },
+      { label: '百宝箱', desc: '收藏的工具与 Prompt', to: '/work/toolbox', icon: 'box' },
+      { label: '资源中心', desc: '课件 / 数据集 / 源码', to: '/work/files', icon: 'folder' },
     ],
   },
   {
@@ -46,6 +54,13 @@ export const navItems: NavItem[] = [
     index: '03',
     // 默认入口 = 百宝箱（原简历页已下线），/work 会在 App 路由里重定向到这里
     to: '/work/toolbox',
+    // 子菜单已上移到「AI知识库」；桌面顶部、移动底栏、页脚都隐藏这一级入口，
+    // AI知识库下拉 / ⌘K 仍保留百宝箱、资源中心入口
+    noDropdown: true,
+    hideInTopNav: true,
+    hideInBottomNav: true,
+    hideInFooter: true,
+    // children 保留：页脚 6 组导航与 ⌘K 仍从这里取入口，避免空组
     children: [
       { label: '百宝箱', desc: '收藏的工具与 Prompt', to: '/work/toolbox', icon: 'box' },
       { label: '资源中心', desc: '课件 / 数据集 / 源码', to: '/work/files', icon: 'folder' },
@@ -66,27 +81,27 @@ export const navItems: NavItem[] = [
     ],
   },
   {
-    key: 'ai',
-    label: 'AI分身',
-    en: 'AVATAR',
-    index: '05',
-    to: '/ai',
-    children: [
-      { label: '声音克隆', desc: '30 秒复刻你的音色', to: '/ai?tab=voice', icon: 'mic' },
-      { label: '形象复刻', desc: '一张照片生成数字形象', to: '/ai?tab=avatar', icon: 'wand' },
-      { label: '数字人对话', desc: '和专属分身聊两句 · 默认入口', to: '/ai?tab=chat', icon: 'bot' },
-    ],
-  },
-  {
     key: 'me',
     label: '我的',
     en: 'ME',
-    index: '06',
+    index: '05',
     to: '/me',
     children: [
       { label: '自媒体矩阵', desc: `${formatWan(totalFollowers)} 粉丝的 ${platforms.length} 个平台`, to: '/me/media', icon: 'share' },
       { label: '留言弹幕墙', desc: '说点什么，它会飞过去', to: '/me/guestbook', icon: 'send' },
       { label: '友链', desc: '同频的人与站', to: '/me/friends', icon: 'link' },
+    ],
+  },
+  {
+    key: 'ai',
+    label: 'AI分身',
+    en: 'AVATAR',
+    index: '06',
+    to: '/ai',
+    children: [
+      { label: '声音克隆', desc: '30 秒复刻你的音色', to: '/ai?tab=voice', icon: 'mic' },
+      { label: '形象复刻', desc: '一张照片生成数字形象', to: '/ai?tab=avatar', icon: 'wand' },
+      { label: '数字人对话', desc: '和专属分身聊两句 · 默认入口', to: '/ai?tab=chat', icon: 'bot' },
     ],
   },
 ]

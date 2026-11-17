@@ -1,0 +1,5 @@
+[    1084ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:4173/theme-boot.js:0
+[    1085ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:4173/assets/index-B0MuBJwU.js:0
+[    1085ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:4173/assets/react-DvIg6R6U.js:0
+[    1085ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:4173/assets/motion-CXc2diai.js:0
+[    1085ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:4173/assets/icons-CJ3Fmj6n.js:0

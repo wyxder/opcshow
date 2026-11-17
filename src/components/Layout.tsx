@@ -197,10 +197,13 @@ function Header() {
     if (base === '/') return false
     return pathname === base
   }
+  // 一级高亮只认自身路径前缀。子菜单已允许跨分组挂载（如「百宝箱/资源中心」上移到
+  // AI知识库），若再用 children.some(isChildActive) 会让两个一级项同时高亮。
+  // 各分组子项路径本就以自身 key 开头，纯前缀判断即可精准命中。
   const isActive = (item: (typeof navItems)[number]) =>
     item.to === '/'
       ? pathname === '/'
-      : pathname.startsWith('/' + item.key) || item.children.some(isChildActive)
+      : pathname.startsWith('/' + item.key)
   // 当前所在的 01—06 分组：移动端顶栏只展开这一组的子菜单
   const currentSection = navItems.find((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key)))
   // 「交朋友 / 后台」胶囊在移动端顶栏只挂「我的」；桌面端右上角 CTA 则全站常驻
@@ -308,7 +311,7 @@ function Header() {
               }}
               aria-label="主导航"
             >
-              {navItems.map((item, i) => {
+              {navItems.filter((item) => !item.hideInTopNav).map((item, i, arr) => {
                 // 首页是「直达型」一级项：hover / 聚焦 / 点击都不展开下拉，也不显示箭头
                 const plain = item.noDropdown === true
                 return (
@@ -358,7 +361,7 @@ function Header() {
                       // 展开项的 wrapper 抬到 z-[95]，避免相邻一级项的桥接热区盖在其之上抢走 hover
                       'absolute top-full -mt-1.5 hidden w-[244px] pt-1.5 lg:block',
                       openKey === item.key ? 'z-[95]' : 'z-[80]',
-                      i === 0 ? 'left-0' : i === navItems.length - 1 ? 'right-0' : 'left-1/2 -translate-x-1/2',
+                      i === 0 ? 'left-0' : i === arr.length - 1 ? 'right-0' : 'left-1/2 -translate-x-1/2',
                     )}
                   >
                     <AnimatePresence>
@@ -600,6 +603,12 @@ const tabIcons: Record<string, LucideIcon> = { home: Home, ai: Sparkles, learn: 
 
 export function MobileTabBar() {
   const { pathname } = useLocation()
+  // React 版底栏就绪后移除 index.html 的首帧静态骨架，避免两份底栏重叠。
+  // 依赖为空：只挂载时执行一次；createPortal 已在本次 commit 把真底栏挂到 body，
+  // 此时移除骨架不会出现「底栏消失」的空窗。
+  useEffect(() => {
+    document.getElementById('boot-tabbar')?.remove()
+  }, [])
   if (typeof document === 'undefined') return null
   return createPortal(
     <nav
@@ -608,7 +617,7 @@ export function MobileTabBar() {
     >
       <div className="mx-auto max-w-md">
         <div className="flex items-stretch gap-0.5 rounded-[20px] border-1.5 border-ink bg-cream/95 p-1.5 shadow-hard">
-          {navItems.map((item) => {
+          {navItems.filter((item) => !item.hideInBottomNav).map((item) => {
             const Icon = tabIcons[item.key] ?? Sparkles
             const active = item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key)
             return (
@@ -877,13 +886,13 @@ function Footer() {
 
           {/* 移动端：两列胶囊芯片，排在二维码之前 */}
           <div className="order-2 grid w-full grid-cols-2 gap-x-4 gap-y-6 lg:hidden">
-            {navItems.map((item) => (
+            {navItems.filter((item) => !item.hideInFooter).map((item) => (
               <FooterNavSection key={item.key} item={item} compact />
             ))}
           </div>
-          {/* lg：6 列；xl：与联系区、二维码同一行，列间距由 16px 收紧到 6px */}
-          <div className="order-2 hidden w-full grid-cols-6 gap-4 lg:grid xl:w-auto xl:min-w-0 xl:flex-1 xl:gap-x-1.5">
-            {navItems.map((item) => (
+          {/* lg：5 列（百宝箱组已下线）；xl：与联系区、二维码同一行，列间距由 16px 收紧到 6px */}
+          <div className="order-2 hidden w-full grid-cols-5 gap-4 lg:grid xl:w-auto xl:min-w-0 xl:flex-1 xl:gap-x-1.5">
+            {navItems.filter((item) => !item.hideInFooter).map((item) => (
               <FooterNavSection key={item.key} item={item} />
             ))}
           </div>
