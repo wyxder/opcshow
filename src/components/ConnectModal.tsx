@@ -81,11 +81,11 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
                   <QrFallback />
                 ) : (
                   <img
-                    src="/wechat-qr.png"
+                    src="/image/微信.png"
                     alt={`微信二维码：${profile.wechat}`}
                     width={190}
                     height={190}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                     onError={() => setQrFailed(true)}
                   />
                 )}
@@ -165,7 +165,7 @@ function QrFallback() {
       </span>
       <p className="mt-1 font-mono text-[9px] tracking-[0.18em] text-ink/40">WECHAT ID</p>
       <p className="font-display text-[16px] font-extrabold">{profile.wechat}</p>
-      <p className="text-[10.5px] leading-snug text-ink/45">把微信名片二维码放到<br />public/wechat-qr.png</p>
+      <p className="text-[10.5px] leading-snug text-ink/45">把微信名片二维码放到<br />public/image/微信.png</p>
     </div>
   )
 }

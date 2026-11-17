@@ -428,7 +428,7 @@ Content-Type: application/json
 POST /api/ai/chat
 Accept: text/event-stream
 
-{ "message": "他做过哪些 RAG 项目？", "context": { "path": "/work/resume" }, "stream": true }
+{ "message": "他做过哪些 RAG 项目？", "context": { "path": "/work/toolbox" }, "stream": true }
 ```
 
 ```
@@ -665,7 +665,7 @@ POST /api/files/sign → 200
 | --- | --- | --- | --- | --- |
 | §2.1 首页总览 | P0 | `src/pages/Home.tsx` + 预渲染 + `/api/content/meta` | 2.1、7.1 | 首屏有正文；`check:budget` |
 | §2.1 学习/阅读 | P0 | `Learn.tsx`、`Reader.tsx` + `/api/content/articles` | 2.1、5.2 | cursor 分页、OG 可取 |
-| §2.1 简历/工具箱/文件 | P0/P1 | `Resume.tsx`、`Toolbox.tsx`、`Files.tsx` + `/api/files` | 2.1、5.2 | 下载/筛选可用 |
+| §2.1 百宝箱/资源中心 | P0/P1 | `Toolbox.tsx`、`Files.tsx` + `/api/files` | 2.1、5.2 | 下载/筛选可用 |
 | §2.1 生活/关于/留言/友链 | P1/P0 | `Moments/Love/Travel/MusicBox/About/Timeline/Guestbook/Friends` | 2.1、4.3 | 留言先审后发 |
 | §2.1 全站 AI 助手 | P0 | `AIAssistant.tsx` + `/api/ai/chat`（SSE） | 4.5、5.3 | 引用 ≥ 3；降级可用 |
 | §2.2 首页总览（总览/数据看板） | P0 | `OverviewPage`、`AnalyticsPage` + `/api/admin/overview`、`/api/analytics/summary` | 2.1、5.2 | KPI 与接口一致；缓存分窗 |

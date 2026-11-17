@@ -1,0 +1,65 @@
+[     483ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:21550
+[    4440ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:21550
+[    4616ms] [ERROR] [DEBUG BAD MOMENT] {"id":"moment-8428572c-4edd-437f-b730-f6cf2d9178a0","from":"published"} @ http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:260
+[    4617ms] [ERROR] [DEBUG BAD MOMENT] {"id":"moment-8428572c-4edd-437f-b730-f6cf2d9178a0","from":"published"} @ http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:260
+[    4619ms] TypeError: Cannot read properties of undefined (reading 'trim')
+    at readableInk (http://localhost:5274/src/lib/utils.ts:45:48)
+    at http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:280:217
+    at Array.map (<anonymous>)
+    at Moments (http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:259:188)
+    at renderWithHooks (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:11548:26)
+    at updateFunctionComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:14582:28)
+    at mountLazyComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:14833:23)
+    at beginWork (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:15918:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:3674:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:3699:24)
+[    4627ms] [ERROR] [DEBUG BAD MOMENT] {"id":"moment-8428572c-4edd-437f-b730-f6cf2d9178a0","from":"published"} @ http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:260
+[    4628ms] [ERROR] [DEBUG BAD MOMENT] {"id":"moment-8428572c-4edd-437f-b730-f6cf2d9178a0","from":"published"} @ http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:260
+[    4633ms] TypeError: Cannot read properties of undefined (reading 'trim')
+    at readableInk (http://localhost:5274/src/lib/utils.ts:45:48)
+    at http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:280:217
+    at Array.map (<anonymous>)
+    at Moments (http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:259:188)
+    at renderWithHooks (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:11548:26)
+    at updateFunctionComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:14582:28)
+    at mountLazyComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:14833:23)
+    at beginWork (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:15918:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:3674:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:3699:24)
+[    4635ms] [ERROR] The above error occurred in the <Moments> component:
+
+    at Moments (http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:49:29)
+    at RenderedRoute (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=20b01fde:4112:5)
+    at Outlet (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=20b01fde:4518:26)
+    at Suspense
+    at main
+    at div
+    at Layout (http://localhost:5274/src/components/Layout.tsx:1472:24)
+    at RenderedRoute (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=20b01fde:4112:5)
+    at Routes (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=20b01fde:4582:5)
+    at div
+    at MotionComponent (http://localhost:5274/node_modules/.vite/deps/framer-motion.js?v=464f23b5:945:40)
+    at PresenceChild (http://localhost:5274/node_modules/.vite/deps/framer-motion.js?v=464f23b5:121:24)
+    at AnimatePresence (http://localhost:5274/node_modules/.vite/deps/framer-motion.js?v=464f23b5:210:26)
+    at AnimatedOutlet (http://localhost:5274/src/App.tsx?t=1794195914683:57:20)
+    at ErrorBoundary (http://localhost:5274/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5274/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5274/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5274/src/App.tsx?t=1794195914683:262:20)
+    at Router (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=20b01fde:4525:15)
+    at BrowserRouter (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=20b01fde:5263:5)
+    at ThemeProvider (http://localhost:5274/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5274/src/components/ErrorBoundary.tsx:22:8)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary. @ http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:14031
+[    4636ms] [ERROR] [ErrorBoundary] {boundary: route:/life/moments, component: at Moments (http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:49:29)} TypeError: Cannot read properties of undefined (reading 'trim')
+    at readableInk (http://localhost:5274/src/lib/utils.ts:45:48)
+    at http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:280:217
+    at Array.map (<anonymous>)
+    at Moments (http://localhost:5274/src/pages/Moments.tsx?t=1794195914683:259:188)
+    at renderWithHooks (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:11548:26)
+    at updateFunctionComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:14582:28)
+    at mountLazyComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:14833:23)
+    at beginWork (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:15918:22)
+    at beginWork$1 (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:19753:22)
+    at performUnitOfWork (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=a28ed814:19198:20) @ http://localhost:5274/src/services/observability.ts:12

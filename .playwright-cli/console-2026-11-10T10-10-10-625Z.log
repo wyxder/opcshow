@@ -1,0 +1,201 @@
+[     292ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:21550
+[    3697ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:21550
+[    8156ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:21550
+[    8487ms] [ERROR] Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s moment-8428572c-4edd-437f-b730-f6cf2d9178a0 
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at div
+    at div
+    at div
+    at div
+    at Moments (http://localhost:5273/src/pages/Moments.tsx:49:29)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Outlet (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4518:26)
+    at Suspense
+    at main
+    at div
+    at Layout (http://localhost:5273/src/components/Layout.tsx:1476:24)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Routes (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4582:5)
+    at div
+    at MotionComponent (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:945:40)
+    at PresenceChild (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:121:24)
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at AnimatedOutlet (http://localhost:5273/src/App.tsx:57:20)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5273/src/App.tsx:262:20)
+    at Router (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4525:15)
+    at BrowserRouter (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:5263:5)
+    at ThemeProvider (http://localhost:5273/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8) @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:520
+[    8487ms] [ERROR] Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s m1 
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at div
+    at div
+    at div
+    at div
+    at Moments (http://localhost:5273/src/pages/Moments.tsx:49:29)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Outlet (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4518:26)
+    at Suspense
+    at main
+    at div
+    at Layout (http://localhost:5273/src/components/Layout.tsx:1476:24)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Routes (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4582:5)
+    at div
+    at MotionComponent (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:945:40)
+    at PresenceChild (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:121:24)
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at AnimatedOutlet (http://localhost:5273/src/App.tsx:57:20)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5273/src/App.tsx:262:20)
+    at Router (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4525:15)
+    at BrowserRouter (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:5263:5)
+    at ThemeProvider (http://localhost:5273/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8) @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:520
+[    8487ms] [ERROR] Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s m2 
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at div
+    at div
+    at div
+    at div
+    at Moments (http://localhost:5273/src/pages/Moments.tsx:49:29)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Outlet (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4518:26)
+    at Suspense
+    at main
+    at div
+    at Layout (http://localhost:5273/src/components/Layout.tsx:1476:24)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Routes (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4582:5)
+    at div
+    at MotionComponent (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:945:40)
+    at PresenceChild (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:121:24)
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at AnimatedOutlet (http://localhost:5273/src/App.tsx:57:20)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5273/src/App.tsx:262:20)
+    at Router (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4525:15)
+    at BrowserRouter (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:5263:5)
+    at ThemeProvider (http://localhost:5273/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8) @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:520
+[    8487ms] [ERROR] Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s m3 
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at div
+    at div
+    at div
+    at div
+    at Moments (http://localhost:5273/src/pages/Moments.tsx:49:29)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Outlet (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4518:26)
+    at Suspense
+    at main
+    at div
+    at Layout (http://localhost:5273/src/components/Layout.tsx:1476:24)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Routes (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4582:5)
+    at div
+    at MotionComponent (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:945:40)
+    at PresenceChild (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:121:24)
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at AnimatedOutlet (http://localhost:5273/src/App.tsx:57:20)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5273/src/App.tsx:262:20)
+    at Router (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4525:15)
+    at BrowserRouter (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:5263:5)
+    at ThemeProvider (http://localhost:5273/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8) @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:520
+[    8488ms] [ERROR] Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s m4 
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at div
+    at div
+    at div
+    at div
+    at Moments (http://localhost:5273/src/pages/Moments.tsx:49:29)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Outlet (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4518:26)
+    at Suspense
+    at main
+    at div
+    at Layout (http://localhost:5273/src/components/Layout.tsx:1476:24)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Routes (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4582:5)
+    at div
+    at MotionComponent (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:945:40)
+    at PresenceChild (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:121:24)
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at AnimatedOutlet (http://localhost:5273/src/App.tsx:57:20)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5273/src/App.tsx:262:20)
+    at Router (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4525:15)
+    at BrowserRouter (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:5263:5)
+    at ThemeProvider (http://localhost:5273/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8) @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:520
+[    8488ms] [ERROR] Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s m5 
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at div
+    at div
+    at div
+    at div
+    at Moments (http://localhost:5273/src/pages/Moments.tsx:49:29)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Outlet (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4518:26)
+    at Suspense
+    at main
+    at div
+    at Layout (http://localhost:5273/src/components/Layout.tsx:1476:24)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Routes (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4582:5)
+    at div
+    at MotionComponent (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:945:40)
+    at PresenceChild (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:121:24)
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at AnimatedOutlet (http://localhost:5273/src/App.tsx:57:20)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5273/src/App.tsx:262:20)
+    at Router (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4525:15)
+    at BrowserRouter (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:5263:5)
+    at ThemeProvider (http://localhost:5273/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8) @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:520
+[    8488ms] [ERROR] Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s m6 
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at div
+    at div
+    at div
+    at div
+    at Moments (http://localhost:5273/src/pages/Moments.tsx:49:29)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Outlet (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4518:26)
+    at Suspense
+    at main
+    at div
+    at Layout (http://localhost:5273/src/components/Layout.tsx:1476:24)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Routes (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4582:5)
+    at div
+    at MotionComponent (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:945:40)
+    at PresenceChild (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:121:24)
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at AnimatedOutlet (http://localhost:5273/src/App.tsx:57:20)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5273/src/App.tsx:262:20)
+    at Router (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4525:15)
+    at BrowserRouter (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:5263:5)
+    at ThemeProvider (http://localhost:5273/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8) @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:520
+[   10858ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:21550
+[   13221ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:21550

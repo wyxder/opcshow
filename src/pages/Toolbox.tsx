@@ -61,7 +61,7 @@ export default function Toolbox() {
   return (
     <div className="shell">
       <PageHead
-        kicker="03 / WORK · TOOLBOX"
+        kicker="04 / TOOLBOX"
         title="我的百宝箱"
         right={
           <span className="font-mono text-[9.5px] text-ink/45">

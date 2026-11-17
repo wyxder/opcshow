@@ -296,7 +296,7 @@ export default function Reader() {
       {/* breadcrumb：窄屏下标题截断，不把面包屑顶成两行乱序 */}
       <div className="mb-4 flex flex-nowrap items-center gap-1.5 overflow-hidden font-mono text-[9.5px] tracking-wide text-ink/40">
         <Link to="/learn" className="shrink-0 hover:text-ink">
-          学习
+          AI知识库
         </Link>
         <ChevronRight size={10} className="shrink-0" />
         <span className="hidden shrink-0 sm:inline">{article.category}</span>

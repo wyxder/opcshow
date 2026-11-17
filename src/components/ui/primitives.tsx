@@ -242,7 +242,7 @@ export function SectionHead({
 /**
  * 紧凑页头：一行 kicker + 标题（+ 可选右侧操作）。
  * 取代原来的大张 PageIntro 卡片，把首屏让给真正的内容；
- * 需要保留的操作（如简历页的打印/下载）放在 right 槽里。
+ * 需要保留的操作（如打印 / 下载按钮）放在 right 槽里。
  */
 export function PageHead({
   kicker,

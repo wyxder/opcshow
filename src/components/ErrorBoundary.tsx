@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Component, lazy, type ComponentType, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, ArrowLeft, Home, RotateCcw } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { reportError } from '@/services/observability'
@@ -27,7 +27,8 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     const { error } = this.state
     if (!error) return this.props.children
-    if (this.props.fallback) return this.props.fallback
+    // 允许显式传 fallback={null}：用于「这个附属组件挂了就静默隐藏，不影响主页面」
+    if (this.props.fallback !== undefined) return this.props.fallback
 
     const dev = import.meta.env.DEV
     return (
@@ -65,6 +66,29 @@ export function RouteErrorBoundary({ children }: { children: ReactNode }) {
       {children}
     </ErrorBoundary>
   )
+}
+
+/**
+ * 懒加载 chunk 失败（dev server 热更新期间旧 ?t= URL 失效 / 部署后旧 chunk 404）时自动重试。
+ * 直接把异常抛给最近的 ErrorBoundary，会把整页（连顶栏与底部菜单栏）替换成错误卡片；
+ * 先短延时重试一次可消化绝大多数瞬时失败，仍失败才交给边界处理。
+ */
+export function lazyWithRetry<T extends ComponentType<any>>(
+  load: () => Promise<{ default: T }>,
+  retries = 1,
+) {
+  return lazy(async () => {
+    let last: unknown
+    for (let i = 0; i <= retries; i++) {
+      try {
+        return await load()
+      } catch (e) {
+        last = e
+        if (i < retries) await new Promise((r) => setTimeout(r, 350))
+      }
+    }
+    throw last
+  })
 }
 
 /** 懒加载 chunk 加载失败（部署后旧 chunk 404）时的兜底：提示刷新而不是白屏 */

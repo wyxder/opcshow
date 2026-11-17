@@ -1,4 +1,4 @@
-import { ArrowUpCircle, Eye, EyeOff, FileText, Loader2, Pencil, Pin, Plus, Star, Trash2 } from 'lucide-react'
+import { ArrowUpCircle, Eye, EyeOff, FileText, ImagePlus, Loader2, MapPin, Pencil, Pin, Play, Plus, Star, Trash2, Video } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { adminArticles, adminPosts, adminProjects } from '@/admin/data'
@@ -56,16 +56,20 @@ type ProjectRow = {
   version?: number
 }
 
+type MediaItem = { label: string; kind: 'photo' | 'video'; poster?: string }
+
 type MomentRow = {
   id: string
   date: string
   text: string
   tag: string
+  place: string
   visibility: string
   likes: number
   comments: number
   pinned: boolean
   status: string
+  media: MediaItem[]
   version?: number
 }
 
@@ -90,6 +94,19 @@ const num = (v: unknown) => (typeof v === 'number' ? v : 0)
 const arr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 const statusLabel = (s?: string) => (s && STATUS_LABELS[s as PublishStatus]) || s || '草稿'
 const today = () => new Date().toISOString().slice(0, 10)
+const parseLines = (raw: string) => raw.split('\n').map((s) => s.trim()).filter(Boolean)
+/** 前台只渲染 http(s) 直链与站内 / 路径，后台先挡住非法输入，避免发出去是破图 */
+const isMediaUrl = (s: string) => /^(https?:\/\/|\/)/i.test(s)
+/** 一个地方解析「配图 / 视频 / 封面」，Compose 发布、实时预览、编辑弹窗共用，避免三处逻辑漂移 */
+const buildMedia = (images: string, videos: string, poster: string): MediaItem[] => [
+  ...parseLines(images).map((label) => ({ label, kind: 'photo' as const })),
+  ...parseLines(videos).map((label, i) => ({
+    label,
+    kind: 'video' as const,
+    ...(i === 0 && isMediaUrl(poster.trim()) ? { poster: poster.trim() } : {}),
+  })),
+]
+const ACCENTS = ['rgb(var(--c-grape))', 'rgb(var(--c-rose))', 'rgb(var(--c-sky))', 'rgb(var(--c-lime))']
 
 const demoArticles: ArticleRow[] = adminArticles.map((a) => ({
   id: a.id,
@@ -121,11 +138,13 @@ const demoMoments: MomentRow[] = adminPosts.map((p) => ({
   date: p.date,
   text: p.text,
   tag: p.tag,
+  place: '',
   visibility: p.visibility,
   likes: p.likes,
   comments: p.comments,
   pinned: Boolean(p.pinned),
   status: '已发布',
+  media: [],
 }))
 
 export default function ContentPage({
@@ -157,12 +176,28 @@ export default function ContentPage({
   const [projectDraft, setProjectDraft] = useState({ title: '', category: '项目', status: '草稿' })
 
   const [editingMoment, setEditingMoment] = useState<MomentRow | null>(null)
-  const [momentDraft, setMomentDraft] = useState({ text: '', tag: '生活', visibility: '公开' })
+  const [momentDraft, setMomentDraft] = useState<{ text: string; tag: string; place: string; visibility: string }>({
+    text: '',
+    tag: '生活',
+    place: '',
+    visibility: '公开',
+  })
+  const [editImages, setEditImages] = useState('')
+  const [editVideos, setEditVideos] = useState('')
+  const [editPoster, setEditPoster] = useState('')
 
   const [postText, setPostText] = useState('')
+  const [postImages, setPostImages] = useState('')
+  const [postVideos, setPostVideos] = useState('')
+  const [postPoster, setPostPoster] = useState('')
+  const [postPlace, setPostPlace] = useState('')
+  const [postTag, setPostTag] = useState('生活')
   const [postVisibility, setPostVisibility] = useState('公开')
   const [publishing, setPublishing] = useState(false)
   const [composeError, setComposeError] = useState('')
+
+  /** Compose 里的媒体草稿，实时预览与真正发布共用同一份解析结果 */
+  const draftMedia: MediaItem[] = buildMedia(postImages, postVideos, postPoster)
 
   /** 真实模式下拉全量（含草稿 / 已下线）；演示模式只读本地快照 */
   const load = useCallback(async (spinner = true) => {
@@ -218,11 +253,23 @@ export default function ContentPage({
           date: str(r.date) || str(r.time) || '—',
           text: str(r.text),
           tag: str(r.tag) || arr(r.tags)[0] || '生活',
+          place: str(r.place),
           visibility: str(r.visibility, '公开'),
           likes: num(r.likes),
           comments: Array.isArray(r.comments) ? r.comments.length : num(r.comments),
           pinned: Boolean(r.pinned),
           status: statusLabel(str(r.status)),
+          media: Array.isArray(r.media)
+            ? (r.media as { label: unknown; kind: unknown; poster?: unknown }[])
+                .filter((x): x is { label: string; kind: 'photo' | 'video'; poster?: unknown } =>
+                  !!x && typeof x.label === 'string' && (x.kind === 'photo' || x.kind === 'video'),
+                )
+                .map((x) => ({
+                  label: x.label,
+                  kind: x.kind,
+                  ...(typeof x.poster === 'string' && x.poster ? { poster: x.poster } : {}),
+                }))
+            : [],
           version: typeof r.version === 'number' ? r.version : undefined,
         })),
       )
@@ -417,24 +464,41 @@ export default function ContentPage({
 
   const publishMoment = async () => {
     if (!real) return show('未配置服务端，发布不可用')
-    if (!postText.trim()) return setComposeError('先说点什么吧')
+    const text = postText.trim()
+    if (!text) return setComposeError('先说点什么吧')
+    if (text.length > 500) return setComposeError('动态内容最多 500 字，请先精简一下')
     if (publishing) return
+    const urls = [...draftMedia.map((x) => x.label), ...(postPoster.trim() ? [postPoster.trim()] : [])]
+    const invalid = urls.find((u) => !isMediaUrl(u))
+    if (invalid) return setComposeError(`媒体链接需以 http(s):// 或 / 开头：${invalid}`)
+    const tag = postTag.trim() || '生活'
     setPublishing(true)
     setComposeError('')
     try {
       await contents.create('moments', newId('moment'), {
-        text: postText.trim(),
-        tag: '生活',
-        place: '西安',
+        text,
+        tag,
+        tags: [tag],
+        place: postPlace.trim(),
+        time: today(),
+        date: today(),
         visibility: postVisibility,
         pinned: false,
         likes: 0,
+        comments: [],
+        accent: ACCENTS[moments.length % ACCENTS.length],
         status: 'published',
-        date: today(),
+        media: draftMedia,
       })
       setPostText('')
+      setPostImages('')
+      setPostVideos('')
+      setPostPoster('')
+      setPostPlace('')
+      setPostTag('生活')
+      setPostVisibility('公开')
       await load(false)
-      show('动态已发布')
+      show('动态已发布，前台朋友圈立即可见')
     } catch (err) {
       setComposeError(`发布失败：${(err as Error).message}`)
       show(`发布失败：${(err as Error).message}`)
@@ -444,7 +508,10 @@ export default function ContentPage({
   }
 
   const openMomentEdit = (m: MomentRow) => {
-    setMomentDraft({ text: m.text, tag: m.tag, visibility: m.visibility })
+    setMomentDraft({ text: m.text, tag: m.tag, place: m.place, visibility: m.visibility })
+    setEditImages(m.media.filter((x) => x.kind === 'photo').map((x) => x.label).join('\n'))
+    setEditVideos(m.media.filter((x) => x.kind === 'video').map((x) => x.label).join('\n'))
+    setEditPoster(m.media.find((x) => x.kind === 'video')?.poster ?? '')
     setFormError('')
     setEditingMoment(m)
   }
@@ -454,13 +521,24 @@ export default function ContentPage({
     if (!momentDraft.text.trim()) return setFormError('动态内容不能为空')
     if (!real) return setFormError(DEMO_NOTE)
     if (saving) return
+    const tag = momentDraft.tag.trim() || '生活'
+    const media = buildMedia(editImages, editVideos, editPoster)
+    const badUrl = media.find((x) => !isMediaUrl(x.label))?.label || (editPoster.trim() && !isMediaUrl(editPoster.trim()) ? editPoster.trim() : '')
+    if (badUrl) return setFormError(`媒体链接需以 http(s):// 或 / 开头：${badUrl}`)
     setSaving(true)
     setFormError('')
     try {
       await contents.upsert(
         'moments',
         editingMoment.id,
-        { text: momentDraft.text.trim(), tag: momentDraft.tag.trim() || '生活', visibility: momentDraft.visibility },
+        {
+          text: momentDraft.text.trim(),
+          tag,
+          tags: [tag],
+          place: momentDraft.place.trim(),
+          visibility: momentDraft.visibility,
+          media,
+        },
         editingMoment.version,
       )
       setEditingMoment(null)
@@ -760,7 +838,7 @@ export default function ContentPage({
       {tab === 'moments' && (
         <div className="grid gap-3 xl:grid-cols-[1.5fr_1fr]">
           <div className="space-y-3">
-            <Panel kicker="Compose" title="发布新动态" desc={real ? '发布后立即进入动态流；可随时下架。' : '未配置服务端：编辑框与发布按钮已禁用。'}>
+            <Panel kicker="Compose" title="发布新动态" desc={real ? '支持图文、多个视频、视频封面与发布位置；发布后立即进入朋友圈流。' : '未配置服务端：编辑框与发布按钮已禁用。'}>
               <Textarea
                 value={postText}
                 onChange={(e) => {
@@ -768,9 +846,52 @@ export default function ContentPage({
                   if (composeError) setComposeError('')
                 }}
                 disabled={!real || publishing}
-                placeholder={real ? '记录一下今天… 支持换行，发布后会出现在「生活 / 动态」。' : '未配置服务端（VITE_API_BASE），暂时不能发布动态'}
+                placeholder={real ? '记录一下今天… 支持换行，发布后会出现在「生活 / 朋友圈」。' : '未配置服务端（VITE_API_BASE），暂时不能发布动态'}
                 rows={4}
               />
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Field label="配图链接（每行一个）" hint="图片直链或站内 /image/xx.jpg">
+                  <div className="flex items-start gap-2">
+                    <ImagePlus size={14} className="mt-2 shrink-0 text-admin-muted" />
+                    <Textarea
+                      value={postImages}
+                      onChange={(e) => setPostImages(e.target.value)}
+                      disabled={!real || publishing}
+                      rows={2}
+                      placeholder="https://…/cover.jpg 或 /image/xx.jpg，每行一条"
+                      className="text-[11px]"
+                    />
+                  </div>
+                </Field>
+                <Field label="视频链接（每行一个）" hint="mp4/webm 直链可直接播放；视频页地址显示成可点卡片">
+                  <div className="flex items-start gap-2">
+                    <Video size={14} className="mt-2 shrink-0 text-admin-muted" />
+                    <Textarea
+                      value={postVideos}
+                      onChange={(e) => setPostVideos(e.target.value)}
+                      disabled={!real || publishing}
+                      rows={2}
+                      placeholder="https://…/clip.mp4，每行一条"
+                      className="text-[11px]"
+                    />
+                  </div>
+                </Field>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <Field label="视频封面（可选）" hint="视频加载前显示的第一帧">
+                  <Input value={postPoster} onChange={(e) => setPostPoster(e.target.value)} disabled={!real || publishing} placeholder="/image/cover.jpg" />
+                </Field>
+                <Field label="发布位置" hint="显示在时间旁边">
+                  <div className="flex items-center gap-2">
+                    <MapPin size={13} className="shrink-0 text-admin-muted" />
+                    <Input value={postPlace} onChange={(e) => setPostPlace(e.target.value)} disabled={!real || publishing} placeholder="西安 · 实验室" />
+                  </div>
+                </Field>
+                <Field label="标签" hint="显示在动态右上角">
+                  <Input value={postTag} onChange={(e) => setPostTag(e.target.value)} disabled={!real || publishing} placeholder="生活" />
+                </Field>
+              </div>
+              <ComposePreview text={postText} tag={postTag} place={postPlace} media={draftMedia} />
               {composeError && <p className="mt-2 text-[10.5px] text-admin-danger">{composeError}</p>}
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Select
@@ -782,7 +903,8 @@ export default function ContentPage({
                   <option>公开</option>
                   <option>仅自己</option>
                 </Select>
-                <span className="text-[10px] text-admin-muted">{postText.length} / 500 字</span>
+                <span className={cn('text-[10px]', postText.length > 500 ? 'text-admin-danger' : 'text-admin-muted')}>{postText.length} / 500 字</span>
+                <span className="text-[10px] text-admin-muted">{draftMedia.filter((x) => x.kind === 'photo').length} 图 · {draftMedia.filter((x) => x.kind === 'video').length} 视频</span>
                 <AButton
                   variant="primary"
                   className="ml-auto"
@@ -810,12 +932,21 @@ export default function ContentPage({
                     const removeKey = `moments-${m.id}-remove`
                     const pinKey = `moments-${m.id}-pin`
                     const published = m.status === '已发布'
+                    const photoCount = m.media.filter((x) => x.kind === 'photo').length
+                    const videoCount = m.media.filter((x) => x.kind === 'video').length
                     return (
                       <div key={m.id} className="px-4 py-3 sm:px-5">
                         <div className="flex flex-wrap items-center gap-2 text-[10px] text-admin-muted">
                           <span className="font-mono">{m.date}</span>
                           <Badge tone="neutral">{m.tag}</Badge>
                           <span>{m.visibility}</span>
+                          {m.place && (
+                            <span className="inline-flex items-center gap-0.5">
+                              <MapPin size={9} /> {m.place}
+                            </span>
+                          )}
+                          {photoCount > 0 && <Badge tone="neutral">🖼 {photoCount}</Badge>}
+                          {videoCount > 0 && <Badge tone="neutral">▶ {videoCount}</Badge>}
                           <Status>{m.status}</Status>
                           {m.pinned && <Badge tone="red">置顶</Badge>}
                           <div className="ml-auto flex items-center gap-1">
@@ -856,6 +987,11 @@ export default function ContentPage({
                           </div>
                         </div>
                         <p className="mt-1.5 text-[11.5px] leading-relaxed text-admin-ink/85">{m.text}</p>
+                        {m.media.length > 0 && (
+                          <p className="mt-1 truncate font-mono text-[9px] text-admin-muted" title={m.media.map((x) => x.label).join('\n')}>
+                            {m.media.map((x) => `${x.kind === 'video' ? '▶' : '🖼'} ${x.label}`).join('   ')}
+                          </p>
+                        )}
                         <p className="mt-1.5 flex items-center gap-3 font-mono text-[9.5px] text-admin-muted">
                           <span>♥ {m.likes}</span>
                           <span>💬 {m.comments}</span>
@@ -874,10 +1010,11 @@ export default function ContentPage({
           <div className="space-y-3">
             <Panel kicker="Visibility" title="发布规则">
               <ul className="space-y-2 text-[11px] leading-relaxed text-admin-muted">
-                <li>· 公开动态会同步到首页动态流与 RSS。</li>
-                <li>· 「仅自己」只出现在后台，不会进入 sitemap。</li>
-                <li>· 置顶动态最多展示 1 条，其余按时间排序。</li>
-                <li>· 下架后仍保留在后台，可重新发布。</li>
+                <li>· 公开动态会同步到朋友圈流首页，草稿 / 已下线不会出现在前台。</li>
+                <li>· 配图、视频都支持多行；链接需以 <span className="font-mono">http(s)://</span> 或 <span className="font-mono">/</span> 开头。</li>
+                <li>· mp4 / webm 直链内嵌播放；视频页地址渲染成可点开的卡片；可另填封面图。</li>
+                <li>· 发布位置与标签会显示在动态头部；「仅自己」只出现在后台。</li>
+                <li>· 置顶动态最多展示 1 条，其余按时间排序；下架后仍保留在后台，可重新发布。</li>
               </ul>
             </Panel>
             <Panel kicker="Status" title="状态说明">
@@ -1105,7 +1242,33 @@ export default function ContentPage({
               rows={4}
             />
           </Field>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="配图链接（每行一个）">
+            <Textarea
+              value={editImages}
+              disabled={saving}
+              onChange={(e) => setEditImages(e.target.value)}
+              rows={2}
+              placeholder="https://…/cover.jpg 或 /image/xx.jpg"
+              className="text-[11px]"
+            />
+          </Field>
+          <Field label="视频链接（每行一个）">
+            <Textarea
+              value={editVideos}
+              disabled={saving}
+              onChange={(e) => setEditVideos(e.target.value)}
+              rows={2}
+              placeholder="mp4 直链或视频页地址"
+              className="text-[11px]"
+            />
+          </Field>
+          <Field label="视频封面（可选）">
+            <Input value={editPoster} disabled={saving} onChange={(e) => setEditPoster(e.target.value)} placeholder="/image/cover.jpg" />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="发布位置">
+              <Input value={momentDraft.place} disabled={saving} onChange={(e) => setMomentDraft({ ...momentDraft, place: e.target.value })} placeholder="西安 · 实验室" />
+            </Field>
             <Field label="标签">
               <Input value={momentDraft.tag} disabled={saving} onChange={(e) => setMomentDraft({ ...momentDraft, tag: e.target.value })} placeholder="生活" />
             </Field>
@@ -1123,6 +1286,68 @@ export default function ContentPage({
           )}
         </div>
       </AdminModal>
+    </div>
+  )
+}
+
+/** 预览里的单个媒体缩略图：链接非法或加载失败直接显示占位，不出现破图 */
+function PreviewThumb({ item }: { item: MediaItem }) {
+  const [failed, setFailed] = useState(false)
+  const src = item.kind === 'video' ? item.poster ?? '' : item.label
+  if (!isMediaUrl(src) || failed) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-lime/15 text-admin-muted">
+        {item.kind === 'video' ? <Play size={12} /> : <ImagePlus size={12} />}
+        <span className="font-mono text-[8px]">{item.kind === 'video' ? '视频' : '图片'}</span>
+      </div>
+    )
+  }
+  return (
+    <div className="relative h-full w-full">
+      <img src={src} alt="" onError={() => setFailed(true)} className="h-full w-full object-cover" />
+      {item.kind === 'video' && (
+        <span className="absolute inset-0 flex items-center justify-center bg-ink/25 text-paper">
+          <Play size={14} fill="currentColor" />
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** 发布前的轻量预览：与前台动态同构，位置 / 标签 / 图文视频都能在发布前确认 */
+function ComposePreview({ text, tag, place, media }: { text: string; tag: string; place: string; media: MediaItem[] }) {
+  return (
+    <div className="mt-3 rounded-xl border border-dashed border-ink/20 bg-paper/60 p-3">
+      <p className="font-mono text-[9px] tracking-[0.14em] text-admin-muted">前台预览 / PREVIEW</p>
+      <div className="mt-2 rounded-xl border border-ink/12 bg-cream p-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-ink/20 bg-lime/40 text-[10px] font-bold">魏</div>
+          <div className="min-w-0 leading-tight">
+            <p className="text-[10.5px] font-bold">晓叶</p>
+            <p className="flex items-center gap-1 font-mono text-[8.5px] text-admin-muted">
+              {today()}
+              {place.trim() && (
+                <>
+                  <MapPin size={8} /> {place.trim()}
+                </>
+              )}
+            </p>
+          </div>
+          <span className="ml-auto shrink-0 rounded-full border border-ink/15 px-1.5 py-0.5 font-mono text-[8.5px] text-admin-muted">{tag.trim() || '生活'}</span>
+        </div>
+        <p className="mt-2 whitespace-pre-line text-[10.5px] leading-relaxed text-admin-ink/80">
+          {text.trim() || <span className="text-admin-muted">（还没有内容）</span>}
+        </p>
+        {media.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {media.map((item, i) => (
+              <div key={`${item.label}-${i}`} className="h-14 w-20 overflow-hidden rounded-lg border border-ink/12">
+                <PreviewThumb item={item} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

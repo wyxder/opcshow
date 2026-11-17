@@ -60,8 +60,7 @@ const now = new Date().toISOString().slice(0, 10)
 const routes = [
   { path: '/', priority: '1.0', freq: 'weekly' },
   { path: '/learn', priority: '0.9', freq: 'weekly' },
-  { path: '/work/resume', priority: '0.9', freq: 'monthly' },
-  { path: '/work/toolbox', priority: '0.6', freq: 'monthly' },
+  { path: '/work/toolbox', priority: '0.9', freq: 'weekly' },
   { path: '/work/files', priority: '0.7', freq: 'monthly' },
   { path: '/life/love', priority: '0.6', freq: 'monthly' },
   { path: '/life/moments', priority: '0.7', freq: 'weekly' },

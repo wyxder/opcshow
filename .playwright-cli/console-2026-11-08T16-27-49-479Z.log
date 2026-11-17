@@ -1,0 +1,11 @@
+[     260ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[    8835ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[   10438ms] [LOG] [CSM][I]Live2D Cubism Core version: 05.00.0000 (83886080)
+ @ http://127.0.0.1:5273/src/features/ai-avatar/lib/live2d/src/lapppal.ts:31
+[   10438ms] [LOG] [CSM][I]CubismFramework.startUp() is complete.
+ @ http://127.0.0.1:5273/src/features/ai-avatar/lib/live2d/src/lapppal.ts:31
+[   10439ms] [LOG] [CSM][I]CubismFramework.initialize() is complete.
+ @ http://127.0.0.1:5273/src/features/ai-avatar/lib/live2d/src/lapppal.ts:31
+[   10840ms] [LOG] Live2D Cubism SDK Core Version 5.0.0 @ http://127.0.0.1:5273/sentio/core/live2dcubismcore.min.js:8
+[   11684ms] [LOG] [CSM][I]CubismFramework.dispose() is complete.
+ @ http://127.0.0.1:5273/src/features/ai-avatar/lib/live2d/src/lapppal.ts:31

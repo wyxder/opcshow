@@ -479,9 +479,6 @@ export default function ResumeAdminPage({
                 >
                   上传纯文本简历
                 </AButton>
-                <AButton variant="soft" onClick={() => window.open('/work/resume', '_blank')}>
-                  预览前台简历
-                </AButton>
                 <AButton disabled={pdfDisabled} title={pdfReason}>
                   上传 PDF / DOCX
                 </AButton>
@@ -705,9 +702,6 @@ export default function ResumeAdminPage({
                   ))}
                 {modules.filter((m) => m.enabled).length === 0 && <p className="py-3 text-center text-[10.5px] text-admin-muted">没有启用的模块</p>}
               </ol>
-              <AButton className="mt-3 w-full" onClick={() => window.open('/work/resume', '_blank')}>
-                打开前台简历
-              </AButton>
             </Panel>
 
             <Panel kicker="Tips" title="展示建议">

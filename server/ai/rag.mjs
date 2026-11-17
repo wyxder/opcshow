@@ -168,7 +168,7 @@ export function verifyReferences(index, references, minCoverage = 0.6) {
 export function extractiveAnswer(hits) {
   if (!hits.length) {
     return {
-      text: '站内没有找到直接依据。可以换一个更具体的问法，或者看看「学习手记」里的文章目录。',
+      text: '站内没有找到直接依据。可以换一个更具体的问法，或者看看「AI知识库」里的文章目录。',
       references: [],
     }
   }

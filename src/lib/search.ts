@@ -16,7 +16,7 @@ const ALIASES: Record<string, string[]> = {
   指标: ['评测', 'hitrate', 'mrr'],
   agent: ['智能体', '多智能体', '工具调用'],
   智能体: ['agent', '工具调用'],
-  简历: ['resume', 'cv', '求职', '工作'],
+  简历: ['resume', 'cv', '求职', '履历'],
   项目: ['作品', 'project', 'case'],
   文章: ['手记', '博客', '笔记'],
   文件: ['下载', '资源', '附件'],

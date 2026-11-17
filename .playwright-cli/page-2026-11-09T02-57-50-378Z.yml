@@ -1,0 +1,466 @@
+- generic [ref=e4]:
+  - link "跳到主内容" [ref=e5] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=e6]:
+    - generic [ref=e8]:
+      - link "晓叶 · WYX.SPACE 标志 晓叶 WYX.SPACE / 2026" [ref=e9] [cursor=pointer]:
+        - /url: /
+        - img "晓叶 · WYX.SPACE 标志" [ref=e11]
+        - generic [ref=e12]:
+          - generic [ref=e13]: 晓叶
+          - generic [ref=e14]: WYX.SPACE / 2026
+      - navigation "主导航" [ref=e15]:
+        - link "01 首页" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e18]: "01"
+          - text: 首页
+        - link "02 AI分身" [ref=e20] [cursor=pointer]:
+          - /url: /ai
+          - generic [ref=e21]: "02"
+          - text: AI分身
+        - link "03 学习" [ref=e26] [cursor=pointer]:
+          - /url: /learn
+          - generic [ref=e27]: "03"
+          - text: 学习
+        - link "04 工作" [ref=e32] [cursor=pointer]:
+          - /url: /work/resume
+          - generic [ref=e33]: "04"
+          - text: 工作
+        - link "05 生活" [ref=e38] [cursor=pointer]:
+          - /url: /life/moments
+          - generic [ref=e40]: "05"
+          - text: 生活
+        - link "06 我的" [ref=e45] [cursor=pointer]:
+          - /url: /me
+          - generic [ref=e46]: "06"
+          - text: 我的
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - button "搜索" [ref=e52] [cursor=pointer]:
+            - generic [ref=e57]: ⌘K
+          - button "切换主题，当前 纸感极简" [ref=e59] [cursor=pointer]
+        - link "后台管理" [ref=e74] [cursor=pointer]:
+          - /url: /admin
+        - button "交个朋友" [ref=e78] [cursor=pointer]
+  - main [ref=e80]:
+    - generic [ref=e81]:
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - paragraph [ref=e84]: 04 / LIFE · MOMENTS
+          - heading "碎碎念与深夜复盘" [level=1] [ref=e85]
+        - generic [ref=e86]: LIVE · 12 条 · 0 条有真实配图
+      - generic [ref=e89]:
+        - complementary [ref=e90]:
+          - generic [ref=e94]:
+            - generic [ref=e95]: 魏
+            - paragraph [ref=e96]: 晓叶
+            - paragraph [ref=e97]: 白天写 Agent，晚上剪视频。朋友圈是我的公开笔记本。
+            - generic [ref=e98]:
+              - generic [ref=e99]:
+                - paragraph [ref=e100]: "12"
+                - paragraph [ref=e101]: 动态
+              - generic [ref=e102]:
+                - paragraph [ref=e103]: 2,403
+                - paragraph [ref=e104]: 照片
+              - generic [ref=e105]:
+                - paragraph [ref=e106]: "86"
+                - paragraph [ref=e107]: 好友
+          - generic [ref=e108]:
+            - paragraph [ref=e109]: HOT TAGS
+            - generic [ref=e110]:
+              - generic [ref=e111]: "# 深夜 coding"
+              - generic [ref=e112]: "# 黑客松"
+              - generic [ref=e113]: "# debug 日常"
+              - generic [ref=e114]: "# 骑行"
+              - generic [ref=e115]: "# 开源"
+              - generic [ref=e116]: "# 分享"
+          - generic [ref=e117]:
+            - paragraph [ref=e118]: VISITORS
+            - generic [ref=e119]:
+              - generic [ref=e120]: 羊
+              - generic [ref=e121]: 陈
+              - generic [ref=e122]: 哲
+              - generic [ref=e123]: L
+              - generic [ref=e124]: K
+            - paragraph [ref=e125]: 最近来过的朋友。留言墙那边也能看到他们。
+        - generic [ref=e127]:
+          - article [ref=e128]:
+            - generic [ref=e129]: "12"
+            - generic [ref=e130]:
+              - generic [ref=e131]: 魏
+              - generic [ref=e132]:
+                - paragraph [ref=e133]: 晓叶
+                - paragraph [ref=e134]: 今天 01:42 西安 · 实验室
+              - generic [ref=e139]: 深夜 coding
+            - paragraph [ref=e140]: 把评测中台的第 42 个用例写完了。RSI 闭环终于能自己跑完一整轮，看着 pass_rate 从 0.71 爬到 0.93，比喝咖啡还提神。
+            - generic [ref=e142]:
+              - generic [ref=e143]: eval-report.png
+              - generic [ref=e150]: 配图待传
+            - generic [ref=e151]:
+              - button "128" [ref=e152] [cursor=pointer]
+              - button "2" [ref=e155] [cursor=pointer]
+              - button "复制本页链接" [ref=e158] [cursor=pointer]
+            - generic [ref=e165]:
+              - paragraph [ref=e166]: 老陈：这个曲线可以发朋友圈了
+              - paragraph [ref=e167]: 小羊：又是凌晨一点，记得睡觉
+          - article [ref=e168]:
+            - generic [ref=e169]: "11"
+            - generic [ref=e170]:
+              - generic [ref=e171]: 魏
+              - generic [ref=e172]:
+                - paragraph [ref=e173]: 晓叶
+                - paragraph [ref=e174]: 昨天 19:20 长沙 · 马栏山
+              - generic [ref=e179]: 黑客松
+            - paragraph [ref=e180]: 长沙决赛结束，第二名。评委问「你的自进化会不会自己乱改生产」，我说有三层刹车。他笑了，我也笑了。
+            - generic [ref=e181]:
+              - generic [ref=e182]:
+                - generic [ref=e183]: csdn-final.jpg
+                - generic [ref=e190]: 配图待传
+              - generic [ref=e191]:
+                - generic [ref=e192]: score-card
+                - generic [ref=e198]: note
+            - generic [ref=e199]:
+              - button "342" [ref=e200] [cursor=pointer]
+              - button "1" [ref=e203] [cursor=pointer]
+              - button "复制本页链接" [ref=e206] [cursor=pointer]
+            - paragraph [ref=e214]: 阿哲：下次带我们一起飞
+          - article [ref=e215]:
+            - generic [ref=e216]: "10"
+            - generic [ref=e217]:
+              - generic [ref=e218]: 魏
+              - generic [ref=e219]:
+                - paragraph [ref=e220]: 晓叶
+                - paragraph [ref=e221]: 3 天前
+              - generic [ref=e222]: debug 日常
+            - paragraph [ref=e223]: 黑了一整天：多轨道时间轴的拖拽在 Safari 上位置差了 12px。最后发现是 transform-origin 和 rem 换算的问题。前端真的是一门玄学。
+            - generic [ref=e225]:
+              - generic [ref=e226]: timeline-bug.mov
+              - generic [ref=e233]: 配图待传
+            - generic [ref=e234]:
+              - button "96" [ref=e235] [cursor=pointer]
+              - button "2" [ref=e238] [cursor=pointer]
+              - button "复制本页链接" [ref=e241] [cursor=pointer]
+            - generic [ref=e248]:
+              - paragraph [ref=e249]: 前端群友：12px 我可以作证，是 rem
+              - paragraph [ref=e250]: 小羊：注意眼睛
+          - article [ref=e251]:
+            - generic [ref=e252]: "09"
+            - generic [ref=e253]:
+              - generic [ref=e254]: 魏
+              - generic [ref=e255]:
+                - paragraph [ref=e256]: 晓叶
+                - paragraph [ref=e257]: 2026.09.18 杭州 · 初芯 OPC
+              - generic [ref=e262]: 分享
+            - paragraph [ref=e263]: 第一次给线下 80 个人讲 Agent Harness。讲到「工具越权要返回 404」的时候，前排有个同学疯狂点头，那一刻觉得做内容是有意义的。
+            - generic [ref=e265]:
+              - generic [ref=e266]: opc-talk.jpg
+              - generic [ref=e273]: 配图待传
+            - generic [ref=e274]:
+              - button "512" [ref=e275] [cursor=pointer]
+              - button "2" [ref=e278] [cursor=pointer]
+              - button "复制本页链接" [ref=e281] [cursor=pointer]
+            - generic [ref=e288]:
+              - paragraph [ref=e289]: 初芯小编：回放已经剪好了，等你的教程
+              - paragraph [ref=e290]: Lily：求 PPT
+          - article [ref=e291]:
+            - generic [ref=e292]: "08"
+            - generic [ref=e293]:
+              - generic [ref=e294]: 魏
+              - generic [ref=e295]:
+                - paragraph [ref=e296]: 晓叶
+                - paragraph [ref=e297]: 2026.09.02 西安 · 浐灞
+              - generic [ref=e302]: 骑行
+            - paragraph [ref=e303]: 骑车 42 公里环了西安一圈，从大唐不夜城到浐灞，在河边坐着看落日。写代码之外，城市也需要被阅读。
+            - generic [ref=e304]:
+              - generic [ref=e305]:
+                - generic [ref=e306]: cycling-42km.jpg
+                - generic [ref=e313]: 配图待传
+              - generic [ref=e314]:
+                - generic [ref=e315]: sunset.heic
+                - generic [ref=e322]: 配图待传
+            - generic [ref=e323]:
+              - button "208" [ref=e324] [cursor=pointer]
+              - button "1" [ref=e327] [cursor=pointer]
+              - button "复制本页链接" [ref=e330] [cursor=pointer]
+            - paragraph [ref=e338]: 小羊：下次带我，我骑得慢你等我
+          - article [ref=e339]:
+            - generic [ref=e340]: "07"
+            - generic [ref=e341]:
+              - generic [ref=e342]: 魏
+              - generic [ref=e343]:
+                - paragraph [ref=e344]: 晓叶
+                - paragraph [ref=e345]: 2026.08.11
+              - generic [ref=e346]: 开源
+            - paragraph [ref=e347]: 给开源项目补了 README 和 3 个 demo。凌晨收到第一个 star，比拿奖还开心一点。
+            - generic [ref=e349]:
+              - generic [ref=e350]: github-star.png
+              - generic [ref=e356]: note
+            - generic [ref=e357]:
+              - button "174" [ref=e358] [cursor=pointer]
+              - button "1" [ref=e361] [cursor=pointer]
+              - button "复制本页链接" [ref=e364] [cursor=pointer]
+            - paragraph [ref=e372]: 匿名网友：demo 直接能跑，赞
+          - article [ref=e373]:
+            - generic [ref=e374]: "06"
+            - generic [ref=e375]:
+              - generic [ref=e376]: 魏
+              - generic [ref=e377]:
+                - paragraph [ref=e378]: 晓叶
+                - paragraph [ref=e379]: 今天 01:42 西安 · 实验室
+              - generic [ref=e384]: 深夜 coding
+            - paragraph [ref=e385]: 把评测中台的第 42 个用例写完了。RSI 闭环终于能自己跑完一整轮，看着 pass_rate 从 0.71 爬到 0.93，比喝咖啡还提神。
+            - generic [ref=e387]:
+              - generic [ref=e388]: eval-report.png
+              - generic [ref=e395]: 配图待传
+            - generic [ref=e396]:
+              - button "128" [ref=e397] [cursor=pointer]
+              - button "2" [ref=e400] [cursor=pointer]
+              - button "复制本页链接" [ref=e403] [cursor=pointer]
+            - generic [ref=e410]:
+              - paragraph [ref=e411]: 老陈：这个曲线可以发朋友圈了
+              - paragraph [ref=e412]: 小羊：又是凌晨一点，记得睡觉
+          - article [ref=e413]:
+            - generic [ref=e414]: "05"
+            - generic [ref=e415]:
+              - generic [ref=e416]: 魏
+              - generic [ref=e417]:
+                - paragraph [ref=e418]: 晓叶
+                - paragraph [ref=e419]: 昨天 19:20 长沙 · 马栏山
+              - generic [ref=e424]: 黑客松
+            - paragraph [ref=e425]: 长沙决赛结束，第二名。评委问「你的自进化会不会自己乱改生产」，我说有三层刹车。他笑了，我也笑了。
+            - generic [ref=e426]:
+              - generic [ref=e427]:
+                - generic [ref=e428]: csdn-final.jpg
+                - generic [ref=e435]: 配图待传
+              - generic [ref=e436]:
+                - generic [ref=e437]: score-card
+                - generic [ref=e443]: note
+            - generic [ref=e444]:
+              - button "342" [ref=e445] [cursor=pointer]
+              - button "1" [ref=e448] [cursor=pointer]
+              - button "复制本页链接" [ref=e451] [cursor=pointer]
+            - paragraph [ref=e459]: 阿哲：下次带我们一起飞
+          - article [ref=e460]:
+            - generic [ref=e461]: "04"
+            - generic [ref=e462]:
+              - generic [ref=e463]: 魏
+              - generic [ref=e464]:
+                - paragraph [ref=e465]: 晓叶
+                - paragraph [ref=e466]: 3 天前
+              - generic [ref=e467]: debug 日常
+            - paragraph [ref=e468]: 黑了一整天：多轨道时间轴的拖拽在 Safari 上位置差了 12px。最后发现是 transform-origin 和 rem 换算的问题。前端真的是一门玄学。
+            - generic [ref=e470]:
+              - generic [ref=e471]: timeline-bug.mov
+              - generic [ref=e478]: 配图待传
+            - generic [ref=e479]:
+              - button "96" [ref=e480] [cursor=pointer]
+              - button "2" [ref=e483] [cursor=pointer]
+              - button "复制本页链接" [ref=e486] [cursor=pointer]
+            - generic [ref=e493]:
+              - paragraph [ref=e494]: 前端群友：12px 我可以作证，是 rem
+              - paragraph [ref=e495]: 小羊：注意眼睛
+          - article [ref=e496]:
+            - generic [ref=e497]: "03"
+            - generic [ref=e498]:
+              - generic [ref=e499]: 魏
+              - generic [ref=e500]:
+                - paragraph [ref=e501]: 晓叶
+                - paragraph [ref=e502]: 2026.09.18 杭州 · 初芯 OPC
+              - generic [ref=e507]: 分享
+            - paragraph [ref=e508]: 第一次给线下 80 个人讲 Agent Harness。讲到「工具越权要返回 404」的时候，前排有个同学疯狂点头，那一刻觉得做内容是有意义的。
+            - generic [ref=e510]:
+              - generic [ref=e511]: opc-talk.jpg
+              - generic [ref=e518]: 配图待传
+            - generic [ref=e519]:
+              - button "512" [ref=e520] [cursor=pointer]
+              - button "2" [ref=e523] [cursor=pointer]
+              - button "复制本页链接" [ref=e526] [cursor=pointer]
+            - generic [ref=e533]:
+              - paragraph [ref=e534]: 初芯小编：回放已经剪好了，等你的教程
+              - paragraph [ref=e535]: Lily：求 PPT
+          - article [ref=e536]:
+            - generic [ref=e537]: "02"
+            - generic [ref=e538]:
+              - generic [ref=e539]: 魏
+              - generic [ref=e540]:
+                - paragraph [ref=e541]: 晓叶
+                - paragraph [ref=e542]: 2026.09.02 西安 · 浐灞
+              - generic [ref=e547]: 骑行
+            - paragraph [ref=e548]: 骑车 42 公里环了西安一圈，从大唐不夜城到浐灞，在河边坐着看落日。写代码之外，城市也需要被阅读。
+            - generic [ref=e549]:
+              - generic [ref=e550]:
+                - generic [ref=e551]: cycling-42km.jpg
+                - generic [ref=e558]: 配图待传
+              - generic [ref=e559]:
+                - generic [ref=e560]: sunset.heic
+                - generic [ref=e567]: 配图待传
+            - generic [ref=e568]:
+              - button "208" [ref=e569] [cursor=pointer]
+              - button "1" [ref=e572] [cursor=pointer]
+              - button "复制本页链接" [ref=e575] [cursor=pointer]
+            - paragraph [ref=e583]: 小羊：下次带我，我骑得慢你等我
+          - article [ref=e584]:
+            - generic [ref=e585]: "01"
+            - generic [ref=e586]:
+              - generic [ref=e587]: 魏
+              - generic [ref=e588]:
+                - paragraph [ref=e589]: 晓叶
+                - paragraph [ref=e590]: 2026.08.11
+              - generic [ref=e591]: 开源
+            - paragraph [ref=e592]: 给开源项目补了 README 和 3 个 demo。凌晨收到第一个 star，比拿奖还开心一点。
+            - generic [ref=e594]:
+              - generic [ref=e595]: github-star.png
+              - generic [ref=e601]: note
+            - generic [ref=e602]:
+              - button "174" [ref=e603] [cursor=pointer]
+              - button "1" [ref=e606] [cursor=pointer]
+              - button "复制本页链接" [ref=e609] [cursor=pointer]
+            - paragraph [ref=e617]: 匿名网友：demo 直接能跑，赞
+  - contentinfo [ref=e618]:
+    - generic [ref=e621]:
+      - generic [ref=e622]:
+        - generic [ref=e623]:
+          - generic [ref=e624]: OPEN TO INTERNSHIP
+          - generic [ref=e625]: ✦
+        - generic [ref=e626]:
+          - generic [ref=e627]: AI 全栈 / 智能体开发
+          - generic [ref=e628]: ✦
+        - generic [ref=e629]:
+          - generic [ref=e630]: 6 个月 · 5 天/周 · 随时到岗
+          - generic [ref=e631]: ✦
+        - generic [ref=e632]:
+          - generic [ref=e633]: 西安 · 可远程
+          - generic [ref=e634]: ✦
+        - generic [ref=e635]:
+          - generic [ref=e636]: WYXCODE@QQ.COM
+          - generic [ref=e637]: ✦
+      - generic [ref=e638]:
+        - generic [ref=e639]:
+          - generic [ref=e640]: OPEN TO INTERNSHIP
+          - generic [ref=e641]: ✦
+        - generic [ref=e642]:
+          - generic [ref=e643]: AI 全栈 / 智能体开发
+          - generic [ref=e644]: ✦
+        - generic [ref=e645]:
+          - generic [ref=e646]: 6 个月 · 5 天/周 · 随时到岗
+          - generic [ref=e647]: ✦
+        - generic [ref=e648]:
+          - generic [ref=e649]: 西安 · 可远程
+          - generic [ref=e650]: ✦
+        - generic [ref=e651]:
+          - generic [ref=e652]: WYXCODE@QQ.COM
+          - generic [ref=e653]: ✦
+    - generic [ref=e654]:
+      - generic [ref=e655]:
+        - generic [ref=e656]:
+          - paragraph [ref=e657]: LET'S BUILD SOMETHING
+          - link "一起做点有用的东西" [ref=e658] [cursor=pointer]:
+            - /url: mailto:wyxcode@qq.com
+          - generic [ref=e659]:
+            - link "Email" [ref=e660] [cursor=pointer]:
+              - /url: mailto:wyxcode@qq.com
+              - text: wyxcode@qq.com
+            - link "GitHub" [ref=e664] [cursor=pointer]:
+              - /url: https://github.com/wyx-code
+              - text: "@wyx-code"
+            - generic "小红书：暂未公开主页" [ref=e668]: 2.3w 粉
+            - generic "微信：暂未公开主页" [ref=e671]: wyx200265
+        - generic [ref=e678]:
+          - generic [ref=e679]:
+            - paragraph [ref=e680]:
+              - generic [ref=e681]: "01"
+              - text: 首页
+            - list [ref=e682]:
+              - listitem [ref=e683]:
+                - link "今日概览" [ref=e684] [cursor=pointer]:
+                  - /url: /#top
+              - listitem [ref=e686]:
+                - link "精选项目" [ref=e687] [cursor=pointer]:
+                  - /url: /#projects
+              - listitem [ref=e689]:
+                - link "技能图谱" [ref=e690] [cursor=pointer]:
+                  - /url: /#skills
+              - listitem [ref=e692]:
+                - link "竞赛荣誉" [ref=e693] [cursor=pointer]:
+                  - /url: /#awards
+          - generic [ref=e695]:
+            - paragraph [ref=e696]:
+              - generic [ref=e697]: "02"
+              - text: AI分身
+            - list [ref=e698]:
+              - listitem [ref=e699]:
+                - link "声音克隆" [ref=e700] [cursor=pointer]:
+                  - /url: /ai?tab=voice
+              - listitem [ref=e702]:
+                - link "形象复刻" [ref=e703] [cursor=pointer]:
+                  - /url: /ai?tab=avatar
+              - listitem [ref=e705]:
+                - link "数字人对话" [ref=e706] [cursor=pointer]:
+                  - /url: /ai?tab=chat
+          - generic [ref=e708]:
+            - paragraph [ref=e709]:
+              - generic [ref=e710]: "03"
+              - text: 学习
+            - list [ref=e711]:
+              - listitem [ref=e712]:
+                - link "知识库" [ref=e713] [cursor=pointer]:
+                  - /url: /learn
+          - generic [ref=e715]:
+            - paragraph [ref=e716]:
+              - generic [ref=e717]: "04"
+              - text: 工作
+            - list [ref=e718]:
+              - listitem [ref=e719]:
+                - link "简历" [ref=e720] [cursor=pointer]:
+                  - /url: /work/resume
+              - listitem [ref=e722]:
+                - link "百宝箱" [ref=e723] [cursor=pointer]:
+                  - /url: /work/toolbox
+              - listitem [ref=e725]:
+                - link "资源中心" [ref=e726] [cursor=pointer]:
+                  - /url: /work/files
+          - generic [ref=e728]:
+            - paragraph [ref=e729]:
+              - generic [ref=e730]: "05"
+              - text: 生活
+            - list [ref=e731]:
+              - listitem [ref=e732]:
+                - link "朋友圈" [ref=e733] [cursor=pointer]:
+                  - /url: /life/moments
+              - listitem [ref=e736]:
+                - link "旅拍相册" [ref=e737] [cursor=pointer]:
+                  - /url: /life/travel
+              - listitem [ref=e739]:
+                - link "恋爱记录" [ref=e740] [cursor=pointer]:
+                  - /url: /life/love
+              - listitem [ref=e742]:
+                - link "音乐盒" [ref=e743] [cursor=pointer]:
+                  - /url: /life/music
+          - generic [ref=e745]:
+            - paragraph [ref=e746]:
+              - generic [ref=e747]: "06"
+              - text: 我的
+            - list [ref=e748]:
+              - listitem [ref=e749]:
+                - link "自媒体矩阵" [ref=e750] [cursor=pointer]:
+                  - /url: /me/media
+              - listitem [ref=e752]:
+                - link "留言弹幕墙" [ref=e753] [cursor=pointer]:
+                  - /url: /me/guestbook
+              - listitem [ref=e755]:
+                - link "友链" [ref=e756] [cursor=pointer]:
+                  - /url: /me/friends
+      - generic [ref=e758]:
+        - generic [ref=e759]: © 2026 晓叶 · 用 React 手搓，AI 只负责打下手
+        - generic [ref=e760]:
+          - generic [ref=e761]: BUILD 2026.10.29
+          - link "sitemap" [ref=e762] [cursor=pointer]:
+            - /url: /sitemap.xml
+          - link "RSS" [ref=e763] [cursor=pointer]:
+            - /url: /rss.xml
+          - link "后台" [ref=e764] [cursor=pointer]:
+            - /url: /admin
+  - button "晓叶的 AI 分身头像 问问 AI 分身":
+    - generic:
+      - img "晓叶的 AI 分身头像"
+    - generic: 问问 AI 分身

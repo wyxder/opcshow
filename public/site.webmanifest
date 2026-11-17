@@ -30,8 +30,8 @@
     }
   ],
   "shortcuts": [
-    { "name": "知识库", "url": "/learn" },
-    { "name": "简历", "url": "/work/resume" },
+    { "name": "AI知识库", "url": "/learn" },
+    { "name": "百宝箱", "url": "/work/toolbox" },
     { "name": "资源中心", "url": "/work/files" },
     { "name": "留言弹幕墙", "url": "/me/guestbook" }
   ]

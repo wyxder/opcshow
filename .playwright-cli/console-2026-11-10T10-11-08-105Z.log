@@ -1,0 +1,63 @@
+[     402ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:21550
+[    4317ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:21550
+[    4442ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:5273/src/components/AIAssistant.tsx:0
+[    4804ms] Failed to fetch dynamically imported module: http://localhost:5273/src/components/AIAssistant.tsx
+[    4807ms] Failed to fetch dynamically imported module: http://localhost:5273/src/components/AIAssistant.tsx
+[    4808ms] [ERROR] The above error occurred in one of your React components:
+
+    at Lazy
+    at Suspense
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at GlobalAssistant (http://localhost:5273/src/components/Layout.tsx:1450:32)
+    at div
+    at Layout (http://localhost:5273/src/components/Layout.tsx:1476:24)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Routes (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4582:5)
+    at div
+    at MotionComponent (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:945:40)
+    at PresenceChild (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:121:24)
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at AnimatedOutlet (http://localhost:5273/src/App.tsx?t=1794305447305:57:20)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5273/src/App.tsx?t=1794305447305:262:20)
+    at Router (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4525:15)
+    at BrowserRouter (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:5263:5)
+    at ThemeProvider (http://localhost:5273/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary. @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:14031
+[    4808ms] [ERROR] [ErrorBoundary] {boundary: assistant, component: at Lazy} TypeError: Failed to fetch dynamically imported module: http://localhost:5273/src/components/AIAssistant.tsx @ http://localhost:5273/src/services/observability.ts:12
+[    8012ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:21550
+[    8192ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:5273/src/pages/MusicBox.tsx:0
+[    8545ms] Failed to fetch dynamically imported module: http://localhost:5273/src/pages/MusicBox.tsx
+[    8548ms] Failed to fetch dynamically imported module: http://localhost:5273/src/pages/MusicBox.tsx
+[    8552ms] [ERROR] The above error occurred in one of your React components:
+
+    at Lazy
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Outlet (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4518:26)
+    at Suspense
+    at main
+    at div
+    at Layout (http://localhost:5273/src/components/Layout.tsx:1476:24)
+    at RenderedRoute (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4112:5)
+    at Routes (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4582:5)
+    at div
+    at MotionComponent (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:945:40)
+    at PresenceChild (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:121:24)
+    at AnimatePresence (http://localhost:5273/node_modules/.vite/deps/framer-motion.js?v=6f7c81a1:210:26)
+    at AnimatedOutlet (http://localhost:5273/src/App.tsx?t=1794305447305:57:20)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5273/src/App.tsx?t=1794305447305:262:20)
+    at Router (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:4525:15)
+    at BrowserRouter (http://localhost:5273/node_modules/.vite/deps/react-router-dom.js?v=a2a62150:5263:5)
+    at ThemeProvider (http://localhost:5273/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5273/src/components/ErrorBoundary.tsx:22:8)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary. @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:14031
+[    8552ms] [ERROR] [ErrorBoundary] {boundary: route:/life/music, component: at Lazy} TypeError: Failed to fetch dynamically imported module: http://localhost:5273/src/pages/MusicBox.tsx @ http://localhost:5273/src/services/observability.ts:12
+[   11653ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=3da3e118:21550

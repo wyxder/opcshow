@@ -43,8 +43,8 @@ export const navItems: NavItem[] = [
   },
   {
     key: 'learn',
-    label: '学习',
-    en: 'LEARN',
+    label: 'AI知识库',
+    en: 'AI KNOWLEDGE',
     index: '03',
     to: '/learn',
     children: [
@@ -53,14 +53,14 @@ export const navItems: NavItem[] = [
   },
   {
     key: 'work',
-    label: '工作',
-    en: 'WORK',
+    label: '百宝箱',
+    en: 'TOOLBOX',
     index: '04',
-    to: '/work/resume',
+    // 默认入口 = 百宝箱（原简历页已下线），/work 会在 App 路由里重定向到这里
+    to: '/work/toolbox',
     children: [
-      { label: '简历', desc: '一页纸的完整履历', to: '/work/resume', icon: 'file' },
       { label: '百宝箱', desc: '收藏的工具与 Prompt', to: '/work/toolbox', icon: 'box' },
-      { label: '资源中心', desc: '简历 / 课件 / 数据集', to: '/work/files', icon: 'folder' },
+      { label: '资源中心', desc: '课件 / 数据集 / 源码', to: '/work/files', icon: 'folder' },
     ],
   },
   {
@@ -84,7 +84,6 @@ export const navItems: NavItem[] = [
     index: '06',
     to: '/me',
     children: [
-      { label: '自我介绍', desc: '四张卡片认识我', to: '/me', icon: 'user' },
       { label: '自媒体矩阵', desc: `${formatWan(totalFollowers)} 粉丝的 ${platforms.length} 个平台`, to: '/me/media', icon: 'share' },
       { label: '留言弹幕墙', desc: '说点什么，它会飞过去', to: '/me/guestbook', icon: 'send' },
       { label: '友链', desc: '同频的人与站', to: '/me/friends', icon: 'link' },

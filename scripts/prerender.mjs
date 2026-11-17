@@ -5,7 +5,6 @@
  *   · dist/index.html                 首页静态正文
  *   · dist/learn/index.html           文章列表
  *   · dist/learn/<id>/index.html      6 篇文章全文（爬虫与分享卡可直接读到）
- *   · dist/work/resume/index.html     简历摘要
  *   · dist/og/<id>.svg                每篇文章专属 OG 图
  *
  * 说明：这是「静态壳 + 正文」方案，不是 SSR。浏览器加载后 React 仍按 SPA 接管，
@@ -206,7 +205,7 @@ function homeBody({ siteMeta, profile, figures, articles }) {
     <p>${esc(profile.bio[0])}</p>
     <p>${esc(profile.bio[1])}</p>
     <nav class="pr-nav">
-      <a href="/work/resume">简历</a><a href="/learn">学习笔记</a><a href="/work/toolbox">百宝箱</a><a href="/work/files">资源中心</a><a href="/life/moments">生活碎片</a><a href="/me/guestbook">留言墙</a>
+      <a href="/learn">AI知识库</a><a href="/work/toolbox">百宝箱</a><a href="/work/files">资源中心</a><a href="/life/moments">生活碎片</a><a href="/me/guestbook">留言墙</a>
     </nav>
   </header>
   <section>
@@ -228,7 +227,7 @@ function homeBody({ siteMeta, profile, figures, articles }) {
 function learnBody(articles) {
   return `<div class="pr-wrap">
   <header class="pr-hero">
-    <p class="pr-kicker">学习笔记</p>
+    <p class="pr-kicker">AI知识库</p>
     <h1>把踩过的坑写成可复用的方法</h1>
     <p>${articles.length} 篇长文，覆盖 RAG 工程化、Agent 评测与工程手记。</p>
   </header>
@@ -236,45 +235,10 @@ function learnBody(articles) {
 </div>`
 }
 
-function resumeBody({ profile, figures, education, skillGroups, resumeSnapshot }) {
-  return `<div class="pr-wrap">
-  <header class="pr-hero">
-    <p class="pr-kicker">${esc(profile.name)} · ${esc(profile.latin)}</p>
-    <h1>${esc(profile.role)}</h1>
-    <p class="pr-lead">${esc(resumeSnapshot.target)} · ${esc(resumeSnapshot.availability)}</p>
-  </header>
-  <section>
-    <h2>核心亮点</h2>
-    <ul>${resumeSnapshot.highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>
-  </section>
-  <section>
-    <h2>技能栈</h2>
-    <ul>${skillGroups.map((g) => `<li><strong>${esc(g.title)}</strong>：${esc(g.summary)}</li>`).join('')}</ul>
-  </section>
-  <section>
-    <h2>教育经历</h2>
-    ${education
-      .map(
-        (e) => `<article class="pr-card">
-      <h3>${esc(e.school)} · ${esc(e.degree)}</h3>
-      <p class="pr-meta">${esc(e.period)} · ${esc(e.direction)}</p>
-      <ul>${e.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
-    </article>`,
-      )
-      .join('')}
-  </section>
-  <section>
-    <h2>数据口径</h2>
-    <ul><li>付费产品 ${figures.products} 款</li><li>竞赛获奖 ${figures.awards} 项</li><li>主阵地粉丝 ${esc(figures.mainPlatformFollowers)}</li></ul>
-  </section>
-  <p class="pr-footer">简历原件：<a href="/files/wyx-resume-2026.docx">DOCX</a></p>
-</div>`
-}
-
 /* --------------------------------- 主流程 -------------------------------- */
 
 const data = await loadData()
-let { articles, siteMeta, profile, figures, education, skillGroups, resumeSnapshot } = data
+let { articles, siteMeta, profile, figures } = data
 
 // X-05：有运行时快照时，预渲染页与后台改过的内容保持一致；否则回落 src/data
 try {
@@ -342,25 +306,7 @@ pages.push({
   }),
 })
 
-pages.push({
-  file: join(dist, 'work', 'resume', 'index.html'),
-  html: buildPage(template, {
-    title: `简历 · ${profile.name} · ${siteMeta.name}`,
-    description: `${profile.role}｜${resumeSnapshot.target}｜${resumeSnapshot.availability}`,
-    canonical: `${BASE}/work/resume`,
-    ogImage: `${BASE}/og-cover.png`,
-    ogType: 'profile',
-    jsonLd: JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'ProfilePage',
-      name: `简历 · ${profile.name}`,
-      url: `${BASE}/work/resume`,
-      mainEntity: { '@type': 'Person', name: profile.name, jobTitle: profile.role, email: profile.email },
-    }),
-    body: resumeBody(data),
-  }),
-})
-
+/* 百宝箱 / 资源中心为交互型页面，正文由 SPA 接管；简历页已下线，不再生成静态壳 */
 for (const a of articles) {
   const og = `${BASE}/og/${a.id}.svg`
   const svg = articleOgSvg(a)
@@ -398,5 +344,5 @@ for (const page of pages) {
 
 rmSync(tmp, { recursive: true, force: true })
 console.log(
-  `[prerender] ${pages.length} 个静态页（首页 / 学习列表 / 简历 / ${articles.length} 篇文章）+ ${articles.length} 张文章 OG`,
+  `[prerender] ${pages.length} 个静态页（首页 / AI知识库 / ${articles.length} 篇文章）+ ${articles.length} 张文章 OG`,
 )

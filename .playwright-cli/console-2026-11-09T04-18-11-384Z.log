@@ -1,0 +1,62 @@
+[     281ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:21550
+[    5089ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:21550
+[    5201ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:21550
+[    5355ms] TypeError: Cannot read properties of undefined (reading 'trim')
+    at readableInk (http://localhost:5274/src/lib/utils.ts:45:48)
+    at http://localhost:5274/src/pages/Moments.tsx:277:217
+    at Array.map (<anonymous>)
+    at Moments (http://localhost:5274/src/pages/Moments.tsx:259:188)
+    at renderWithHooks (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:11548:26)
+    at updateFunctionComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:14582:28)
+    at mountLazyComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:14833:23)
+    at beginWork (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:15918:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:3674:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:3699:24)
+[    5362ms] TypeError: Cannot read properties of undefined (reading 'trim')
+    at readableInk (http://localhost:5274/src/lib/utils.ts:45:48)
+    at http://localhost:5274/src/pages/Moments.tsx:277:217
+    at Array.map (<anonymous>)
+    at Moments (http://localhost:5274/src/pages/Moments.tsx:259:188)
+    at renderWithHooks (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:11548:26)
+    at updateFunctionComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:14582:28)
+    at mountLazyComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:14833:23)
+    at beginWork (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:15918:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:3674:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:3699:24)
+[    5367ms] [ERROR] The above error occurred in the <Moments> component:
+
+    at Moments (http://localhost:5274/src/pages/Moments.tsx:49:29)
+    at RenderedRoute (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=b51a917c:4112:5)
+    at Outlet (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=b51a917c:4518:26)
+    at Suspense
+    at main
+    at div
+    at Layout (http://localhost:5274/src/components/Layout.tsx:1472:24)
+    at RenderedRoute (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=b51a917c:4112:5)
+    at Routes (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=b51a917c:4582:5)
+    at div
+    at MotionComponent (http://localhost:5274/node_modules/.vite/deps/framer-motion.js?v=2f95d845:945:40)
+    at PresenceChild (http://localhost:5274/node_modules/.vite/deps/framer-motion.js?v=2f95d845:121:24)
+    at AnimatePresence (http://localhost:5274/node_modules/.vite/deps/framer-motion.js?v=2f95d845:210:26)
+    at AnimatedOutlet (http://localhost:5274/src/App.tsx:57:20)
+    at ErrorBoundary (http://localhost:5274/src/components/ErrorBoundary.tsx:22:8)
+    at RouteErrorBoundary (http://localhost:5274/src/components/ErrorBoundary.tsx:101:38)
+    at ErrorBoundary (http://localhost:5274/src/components/ErrorBoundary.tsx:22:8)
+    at App (http://localhost:5274/src/App.tsx:262:20)
+    at Router (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=b51a917c:4525:15)
+    at BrowserRouter (http://localhost:5274/node_modules/.vite/deps/react-router-dom.js?v=b51a917c:5263:5)
+    at ThemeProvider (http://localhost:5274/src/theme/ThemeProvider.tsx:32:33)
+    at ErrorBoundary (http://localhost:5274/src/components/ErrorBoundary.tsx:22:8)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary. @ http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:14031
+[    5367ms] [ERROR] [ErrorBoundary] {boundary: route:/life/moments, component: at Moments (http://localhost:5274/src/pages/Moments.tsx:49:29)} TypeError: Cannot read properties of undefined (reading 'trim')
+    at readableInk (http://localhost:5274/src/lib/utils.ts:45:48)
+    at http://localhost:5274/src/pages/Moments.tsx:277:217
+    at Array.map (<anonymous>)
+    at Moments (http://localhost:5274/src/pages/Moments.tsx:259:188)
+    at renderWithHooks (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:11548:26)
+    at updateFunctionComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:14582:28)
+    at mountLazyComponent (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:14833:23)
+    at beginWork (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:15918:22)
+    at beginWork$1 (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:19753:22)
+    at performUnitOfWork (http://localhost:5274/node_modules/.vite/deps/chunk-NUMECXU6.js?v=0f764503:19198:20) @ http://localhost:5274/src/services/observability.ts:12

@@ -67,8 +67,10 @@ export function daysBetween(from: string, to = new Date()) {
 }
 
 /** 给彩色背景挑一个可读的前景色。令牌色（rgb(var(--c-*))）直接用 --c-on-accent。 */
-export function readableInk(color: string) {
-  const hex = /^#([0-9a-fA-F]{6})$/.exec(color.trim())
+export function readableInk(color?: string | null) {
+  // 后台内容可能没带颜色字段：undefined / null 不能 .trim()，统一按「无颜色」处理，
+  // 回落到 --c-on-accent，与传入令牌色时的结果一致，不改变正常调用的行为。
+  const hex = /^#([0-9a-fA-F]{6})$/.exec(String(color ?? '').trim())
   if (!hex) return 'rgb(var(--c-on-accent))'
   const clean = hex[1]
   const r = parseInt(clean.slice(0, 2), 16) || 0

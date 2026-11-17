@@ -124,8 +124,11 @@ export type Moment = {
   likes: number
   comments: { user: string; text: string }[]
   accent: string
-  media: { label: string; kind: 'photo' | 'note' | 'code' }[]
+  /** 后台发布的媒体：label 为 http(s) 直链或站内 / 路径；poster 为视频封面，caption 为可选说明 */
+  media: { label: string; kind: 'photo' | 'note' | 'code' | 'video'; poster?: string; caption?: string }[]
   tags: string[]
+  /** 后台发布的动态带服务端状态；预置数据无此字段 */
+  status?: string
 }
 
 export const moments: Moment[] = [

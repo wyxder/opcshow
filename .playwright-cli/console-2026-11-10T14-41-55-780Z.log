@@ -1,0 +1,5 @@
+[     220ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[    4734ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550
+[    5576ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5273/api/auth/session:0
+[    5637ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5273/api/auth/session:0
+[    8614ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5273/node_modules/.vite/deps/chunk-NUMECXU6.js?v=ee641e38:21550

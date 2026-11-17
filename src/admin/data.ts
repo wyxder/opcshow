@@ -103,8 +103,8 @@ export const realtime = {
 
 export const pageRank = [
   { path: '/', title: '首页', pv: 1842, uv: 1210, stay: '1m 42s', bounce: '38%' },
-  { path: '/learn', title: '学习手记', pv: 986, uv: 704, stay: '3m 08s', bounce: '42%' },
-  { path: '/work/resume', title: '简历', pv: 764, uv: 612, stay: '2m 21s', bounce: '31%' },
+  { path: '/learn', title: 'AI知识库', pv: 986, uv: 704, stay: '3m 08s', bounce: '42%' },
+  { path: '/work/toolbox', title: '百宝箱', pv: 764, uv: 612, stay: '2m 21s', bounce: '31%' },
   { path: '/work/files', title: '文件资源', pv: 512, uv: 388, stay: '1m 56s', bounce: '47%' },
   { path: '/me/guestbook', title: '留言板', pv: 402, uv: 331, stay: '2m 40s', bounce: '52%' },
   { path: '/life/moments', title: '动态', pv: 388, uv: 296, stay: '1m 18s', bounce: '44%' },
@@ -144,7 +144,7 @@ export const funnels = [
 export const aiSessions = [
   { label: '简历问答', value: 96, color: 'rgb(var(--c-coral))' },
   { label: '项目咨询', value: 68, color: 'rgb(var(--c-blue))' },
-  { label: '学习手记', value: 47, color: 'rgb(var(--c-amber))' },
+  { label: 'AI知识库', value: 47, color: 'rgb(var(--c-amber))' },
   { label: '闲聊', value: 28, color: 'rgb(var(--c-grape))' },
 ]
 
@@ -294,7 +294,7 @@ export const danmakuQueue = [
   { id: 'dm3', user: 'Lily', text: '求 RAG 系列的完整代码～', time: '2 小时前', page: '/learn/rag-engineering', status: '已通过' },
   { id: 'dm4', user: '陈师兄', text: 'ICCV 加油，等你中稿。', time: '5 小时前', page: '/me/timeline', status: '已通过' },
   { id: 'dm5', user: '匿名网友', text: '第一次看到把评测讲这么清楚的博主。', time: '昨天', page: '/learn/agent-eval', status: '已通过' },
-  { id: 'dm6', user: '西交学妹', text: '学长，本科怎么准备 AI 实习？', time: '昨天', page: '/work/resume', status: '待审' },
+  { id: 'dm6', user: '西交学妹', text: '学长，本科怎么准备 AI 实习？', time: '昨天', page: '/work/toolbox', status: '待审' },
 ]
 
 export const guestbookQueue = [

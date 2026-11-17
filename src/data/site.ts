@@ -75,9 +75,8 @@ export const profile = {
   keywords: ['RAG', 'Multi-Agent', 'Harness', '全栈', '多模态', '评测驱动'],
   socials: [
     { label: 'Email', value: 'wyxcode@qq.com', href: links.email, icon: 'mail' },
-    // href 为 null 时组件渲染成 <span>，不再出现 href="#" 死链（F4）
-    { label: 'GitHub', value: '@wyx-code', href: links.github, icon: 'github' },
-    { label: '小红书', value: `${figures.mainPlatformFollowers} 粉`, href: links.xhs, icon: 'book' },
+    // 页脚只保留联系方式：GitHub / 小红书（@wyx-code、2.3w 粉）已下线，
+    // 右侧改放微信名片与交流群两个二维码。href 为 null 时渲染成 <span>，避免死链（F4）
     { label: '微信', value: 'wyx200265', href: links.wechat, icon: 'chat' },
   ],
 }

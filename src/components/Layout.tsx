@@ -5,6 +5,7 @@ import {
   BookOpen,
   Bot,
   Box,
+  Check,
   ChevronDown,
   Command,
   Compass,
@@ -29,10 +30,11 @@ import {
   Sparkles,
   Trophy,
   User,
+  Users,
   Wand2,
   type LucideIcon,
 } from 'lucide-react'
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { navItems, type NavChild } from '@/data/nav'
@@ -43,13 +45,13 @@ import { cn, usePrefersReducedMotion } from '@/lib/utils'
 import { openAssistant, setAssistantContext } from '@/lib/assistant'
 import { highlightParts, matchScore, pushRecentSearch, readRecentSearches } from '@/lib/search'
 import { Marquee } from '@/components/ui/primitives'
-import { RouteFallback } from '@/components/ErrorBoundary'
+import { ErrorBoundary, RouteFallback, lazyWithRetry } from '@/components/ErrorBoundary'
 import { Modal } from '@/components/ui/Modal'
 import { ConnectModal } from '@/components/ConnectModal'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 
 // 右下角 AI 助手：所有页面都要有，但组件本体懒加载，不进首屏包
-const AIAssistant = lazy(() => import('@/components/AIAssistant').then((m) => ({ default: m.AIAssistant })))
+const AIAssistant = lazyWithRetry(() => import('@/components/AIAssistant').then((m) => ({ default: m.AIAssistant })))
 
 const icons: Record<string, LucideIcon> = {
   home: Home,
@@ -148,7 +150,7 @@ function Header() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const reduce = usePrefersReducedMotion()
   // 首页只走底部 6 个主菜单栏，顶部那排分栏菜单在首页不显示
   const isHome = pathname === '/'
@@ -199,9 +201,9 @@ function Header() {
     item.to === '/'
       ? pathname === '/'
       : pathname.startsWith('/' + item.key) || item.children.some(isChildActive)
-  // 移动端顶部的分栏入口：跟随当前所在的 01—06 分组
+  // 当前所在的 01—06 分组：移动端顶栏只展开这一组的子菜单
   const currentSection = navItems.find((item) => (item.to === '/' ? pathname === '/' : pathname.startsWith('/' + item.key)))
-  // 「交朋友 / 后台」只在「我的」这一栏出现：移动端顶栏胶囊 + 桌面端右上角 CTA 一起收口
+  // 「交朋友 / 后台」胶囊在移动端顶栏只挂「我的」；桌面端右上角 CTA 则全站常驻
   const isMeSection = currentSection?.key === 'me'
 
   return (
@@ -236,58 +238,46 @@ function Header() {
               </span>
             </Link>
 
-            {/* 移动端顶部菜单栏：只在非首页分组显示（6 个一级入口 + 本组子项），
-                当前分组高亮；「交朋友 / 后台」只挂在「我的」这一栏。
-                首页不显示顶部菜单，导航交给底部 6 个主菜单栏；整行单行、高度稳定。 */}
+            {/* 移动端顶部分栏：只展示「当前所在分组」的子菜单，不重复铺 6 个一级大菜单
+                —— 一级入口由常驻的底部菜单栏承担。子项放不下时左右滑动选择。
+                首页不显示顶部菜单，导航完全交给底部 6 个主菜单栏。 */}
             <nav
               aria-label="分栏导航"
               className={cn(
-                'flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-0.5 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden',
+                'flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overscroll-x-contain py-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden',
                 isHome && 'hidden',
               )}
             >
-              {navItems.map((item) => {
-                const active = currentSection?.key === item.key
+              {currentSection && (
+                <span aria-hidden className="mr-1 shrink-0 whitespace-nowrap font-mono text-[9px] tracking-[0.12em] text-ink/40">
+                  {currentSection.index} {currentSection.en}
+                </span>
+              )}
+              {currentSection && !currentSection.noDropdown && currentSection.children.map((c) => {
+                const Icon = icons[c.icon ?? 'sparkles'] ?? Sparkles
+                // /ai?tab=voice 这类同路径不同 query 的子项必须按 tab 精确高亮，
+                // 否则 3 个 AI 子项会同时亮；无 query 的页面按 pathname 命中即可。
+                const [pathAndHash, query = ''] = c.to.split('?')
+                const base = pathAndHash.split('#')[0]
+                const tabParam = new URLSearchParams(query).get('tab')
+                const activeTab = new URLSearchParams(search).get('tab') ?? 'chat'
+                const active = base !== '/' && pathname === base &&
+                  (tabParam ? activeTab === tabParam : !new URLSearchParams(search).get('tab'))
                 return (
                   <Link
-                    key={item.key}
-                    to={item.to}
+                    key={c.to}
+                    to={c.to}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      // 一级入口不带图标：底部菜单栏已有图标，这里 6 个纯文字胶囊才能在
-                      // 390px 视口内一次排完，不用横滑才看得到「生活 / 我的」
-                      'flex shrink-0 items-center whitespace-nowrap rounded-full border px-1.5 py-1 text-[10px] font-medium transition-colors',
+                      'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10.5px] transition-colors',
                       active ? 'border-ink bg-lime text-ink' : 'border-ink/15 bg-paper text-ink/60',
                     )}
                   >
-                    {item.label}
+                    <Icon size={10.5} className="shrink-0 opacity-60" />
+                    {c.label}
                   </Link>
                 )
               })}
-              {currentSection && !currentSection.noDropdown && (
-                <>
-                  <span aria-hidden className="mx-0.5 h-4 w-px shrink-0 bg-ink/15" />
-                  {currentSection.children.map((c) => {
-                    const Icon = icons[c.icon ?? 'sparkles'] ?? Sparkles
-                    const base = c.to.split(/[?#]/)[0]
-                    const active = base !== '/' && pathname === base
-                    return (
-                      <Link
-                        key={c.to}
-                        to={c.to}
-                        aria-current={active ? 'page' : undefined}
-                        className={cn(
-                          'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10.5px] transition-colors',
-                          active ? 'border-ink bg-lime text-ink' : 'border-ink/15 bg-paper text-ink/60',
-                        )}
-                      >
-                        <Icon size={10.5} className="shrink-0 opacity-60" />
-                        {c.label}
-                      </Link>
-                    )
-                  })}
-                </>
-              )}
               {isMeSection && (
                 <>
                   <button
@@ -430,25 +420,22 @@ function Header() {
                 </button>
                 <ThemeSwitcher className="hidden lg:block" />
               </div>
-              {/* 「交朋友 / 后台」与移动端顶栏保持同一规则：只在「我的」分组出现 */}
-              {isMeSection && (
-                <>
-                  <Link
-                    to="/admin"
-                    className="hidden h-8 w-8 items-center justify-center rounded-full border-1.5 border-ink/15 bg-paper text-ink/55 transition hover:border-ink hover:text-ink sm:flex"
-                    aria-label="后台管理"
-                  >
-                    <Settings size={14} />
-                  </Link>
-                  <button
-                    onClick={() => setConnectOpen(true)}
-                    className="hidden shrink-0 items-center gap-1.5 rounded-full border-1.5 border-ink bg-ink px-3.5 py-1.5 text-[12px] font-medium text-paper transition hover:-translate-y-0.5 hover:shadow-hard-sm sm:flex"
-                  >
-                    <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime" />
-                    交个朋友
-                  </button>
-                </>
-              )}
+              {/* 桌面端：01 首页 — 06 我的 全站常驻，主题钮旁边与「我的」界面完全一致；
+                  移动端顶栏的「交朋友 / 后台」胶囊仍只挂在「我的」分组。 */}
+              <Link
+                to="/admin"
+                className="hidden h-8 w-8 items-center justify-center rounded-full border-1.5 border-ink/15 bg-paper text-ink/55 transition hover:border-ink hover:text-ink sm:flex"
+                aria-label="后台管理"
+              >
+                <Settings size={14} />
+              </Link>
+              <button
+                onClick={() => setConnectOpen(true)}
+                className="hidden shrink-0 items-center gap-1.5 rounded-full border-1.5 border-ink bg-ink px-3.5 py-1.5 text-[12px] font-medium text-paper transition hover:-translate-y-0.5 hover:shadow-hard-sm sm:flex"
+              >
+                <span className="h-1.5 w-1.5 animate-blink rounded-full bg-lime" />
+                交个朋友
+              </button>
               {/* 移动端右上角：主题切换（展开按钮已下线，导航由顶栏分栏 + 底部菜单栏接管） */}
               <ThemeSwitcher variant="dot" className="lg:hidden" />
             </div>
@@ -560,7 +547,7 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
             <div className="px-5 py-8 text-center text-[13px] text-ink/40">
               没有找到「{q.trim()}」。
               <p className="mt-2 text-[11.5px] text-ink/35">
-                试试「RAG 切片」「评测指标」「简历」，或按 <kbd className="rounded border border-ink/20 px-1">Esc</kbd> 关掉后问 AI 助手。
+                试试「RAG 切片」「评测指标」「百宝箱」，或按 <kbd className="rounded border border-ink/20 px-1">Esc</kbd> 关掉后问 AI 助手。
               </p>
             </div>
           )}
@@ -604,12 +591,14 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 /* ------------------------------ mobile tab bar ----------------------------- */
-/* 移动端底部菜单栏：首页 / AI分身 / 学习 / 工作 / 生活 / 我的（lg 以下显示）。
-   子菜单已移到顶栏，这里只保留 6 个主入口，避免底部堆两层。
-   用 portal 挂到 body：即使页面切换动画给祖先加了 transform，fixed 也始终贴着视口底部。 */
-const tabIcons: Record<string, LucideIcon> = { home: Home, ai: Sparkles, learn: BookOpen, work: FileText, life: Heart, me: User }
+/* 移动端底部菜单栏：首页 / AI分身 / AI知识库 / 百宝箱 / 生活 / 我的（lg 以下显示）。
+   子菜单归顶栏，这里只保留 6 个主入口，避免底部堆两层。
+   用 portal 挂到 body：即使页面切换动画给祖先加了 transform，fixed 也始终贴着视口底部。
+   真机兜底在 index.css：body 用 overflow-x:clip 不形成滚动容器，并对本 nav 强制
+   position:fixed + 独立合成层，避免地址栏收起 / 长列表滚动时底栏被移出可视区。 */
+const tabIcons: Record<string, LucideIcon> = { home: Home, ai: Sparkles, learn: BookOpen, work: Box, life: Heart, me: User }
 
-function MobileTabBar() {
+export function MobileTabBar() {
   const { pathname } = useLocation()
   if (typeof document === 'undefined') return null
   return createPortal(
@@ -696,6 +685,114 @@ function BackToTop() {
 }
 
 /* ---------------------------------- footer -------------------------------- */
+/** 剪贴板写入：优先 async API，非安全上下文 / 旧浏览器回退到 execCommand */
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      const ok = document.execCommand('copy')
+      ta.remove()
+      return ok
+    } catch {
+      return false
+    }
+  }
+}
+
+/**
+ * 页脚联系标签：点击即复制邮箱 / 微信号，不再触发 mailto 跳转或渲染 href="#" 死链（F4）。
+ * 后台资料里的 http(s) 外链仍按普通链接打开，只有 mailto 与无链接项走复制。
+ */
+function FooterSocialTags() {
+  const [copied, setCopied] = useState<string | null>(null)
+  const timer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  const copy = async (key: string, value: string) => {
+    if (!(await copyToClipboard(value))) return
+    setCopied(key)
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setCopied(null), 1600)
+  }
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {profile.socials.map((s, i) => {
+        const key = `${s.label}-${i}`
+        const Icon = s.icon === 'mail' ? Mail : s.icon === 'github' ? Github : s.icon === 'chat' ? WeChatIcon : s.icon === 'book' ? BookOpen : Link2
+        const inner = <><Icon size={12} /> {s.value}</>
+        const externalHref = typeof s.href === 'string' && /^https?:\/\//.test(s.href) ? s.href : null
+        if (externalHref) {
+          return (
+            <a key={key} href={externalHref} target="_blank" rel="noopener noreferrer" className="tag hover:bg-lime" aria-label={s.label}>
+              {inner}
+            </a>
+          )
+        }
+        const isCopied = copied === key
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => void copy(key, s.value)}
+            className={cn('tag cursor-pointer hover:bg-lime', isCopied && 'bg-lime')}
+            title={`点击复制${s.label}：${s.value}`}
+            aria-label={`点击复制${s.label}：${s.value}`}
+          >
+            {isCopied ? <><Check size={12} /> 已复制</> : inner}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * 页脚二维码卡片：微信名片 / 交流群各一张。白底保证扫码对比度，
+ * 图片缺失时回落到图形说明而不是破图（微信 / QQ 群码分别放在 public/image/微信.png、public/image/QQ群.jpg）。
+ */
+function FooterQrCard({ label, caption, src, hint, icon: Icon }: {
+  label: string
+  caption: string
+  src: string
+  hint: string
+  icon: LucideIcon
+}) {
+  const [failed, setFailed] = useState(false)
+  return (
+    <div className="w-[132px] rounded-2xl border-1.5 border-ink bg-cream p-2.5 shadow-hard-sm">
+      <div className="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-ink/12 bg-white">
+        {failed ? (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-[repeating-linear-gradient(45deg,rgb(var(--c-rose)/0.16)_0_8px,transparent_8px_16px)] px-2 text-center">
+            <Icon size={18} />
+            <p className="font-mono text-[8px] tracking-[0.16em] text-ink/40">QR CODE</p>
+            <p className="text-[9px] leading-snug text-ink/45">{hint}</p>
+          </div>
+        ) : (
+          <img
+            src={src}
+            alt={`${label}二维码`}
+            loading="lazy"
+            decoding="async"
+            onError={() => setFailed(true)}
+            className="h-full w-full object-contain p-1"
+          />
+        )}
+      </div>
+      <p className="mt-2 text-center text-[11.5px] font-bold">{label}</p>
+      <p className="mt-0.5 text-center font-mono text-[8.5px] leading-tight text-ink/40">{caption}</p>
+    </div>
+  )
+}
+
 /* 同一份 navItems 渲染两套：移动端=胶囊芯片（省空间、可点区域大），桌面=传统链接列表 */
 function FooterNavSection({ item, compact }: { item: (typeof navItems)[number]; compact?: boolean }) {
   return (
@@ -724,20 +821,17 @@ function FooterNavSection({ item, compact }: { item: (typeof navItems)[number]; 
 }
 
 function FooterChildLink({ child, className }: { child: NavChild; className?: string }) {
-  const { pathname } = useLocation()
-  const target = child.to.split(/[?#]/)[0]
-  const active = target === '/' ? pathname === '/' : pathname === target || pathname.startsWith(target + '/')
+  // 页脚 6 组一律同样的字重与灰度，不做当前页高亮：
+  // 首页 4 个子项都是 /#anchor，原先会被同时判为 active 染成深色 + 绿点，
+  // 看起来像整组被「加粗」，与右侧各组不一致。
   return (
     <Link
       to={child.to}
-      aria-current={active ? 'page' : undefined}
       className={cn(
-        'inline-flex max-w-full items-center gap-1 text-[12.5px]',
-        active ? 'text-ink' : 'text-ink/55 hover:text-ink',
+        'inline-flex max-w-full items-center gap-1 text-[12.5px] font-normal text-ink/55 hover:text-ink',
         className,
       )}
     >
-      {active && <span className="h-1 w-1 shrink-0 rounded-full bg-lime" />}
       <span className="truncate">{child.label}</span>
     </Link>
   )
@@ -761,9 +855,14 @@ function Footer() {
       </div>
 
       <div className="shell pb-40 pt-10 lg:pb-12">
-        {/* 联系区：移动端单列紧凑，桌面左侧大标题 */}
-        <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:gap-10">
-          <div>
+        {/*
+          顺序统一为 联系区 → 6 组导航 → 两张二维码：
+          xl 起 flex-nowrap 排成一行（二维码紧接「06 我的」右侧）；
+          窄屏 flex-wrap 自然换成三行，二维码落在导航下方并居中。
+        */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-8 xl:flex-nowrap">
+          {/* 内容宽度自适应，不被 1fr 拉伸 */}
+          <div className="order-1 w-full shrink-0 xl:w-auto">
             <p className="kicker mb-3">LET'S BUILD SOMETHING</p>
             <a
               href={`mailto:${profile.email}`}
@@ -772,42 +871,39 @@ function Footer() {
               一起做点
               <span className="marker ml-1">有用的东西</span>
             </a>
-            {/* 社交链接由后台「个人中心 → 资料」维护，启动时由 /api/profile 水合覆盖；
-                href 为 null 的平台渲染成不可点标签，避免 href="#" 死链（F4） */}
-            <div className="mt-4 flex flex-wrap gap-2">
-              {profile.socials.map((s, i) => {
-                const Icon = s.icon === 'mail' ? Mail : s.icon === 'github' ? Github : s.icon === 'chat' ? WeChatIcon : s.icon === 'book' ? BookOpen : Link2
-                const inner = <><Icon size={12} /> {s.value}</>
-                const external = typeof s.href === 'string' && /^https?:\/\//.test(s.href)
-                return s.href ? (
-                  <a
-                    key={`${s.label}-${i}`}
-                    href={s.href}
-                    target={external ? '_blank' : undefined}
-                    rel={external ? 'noopener noreferrer' : undefined}
-                    className="tag hover:bg-lime"
-                    aria-label={s.label}
-                  >
-                    {inner}
-                  </a>
-                ) : (
-                  <span key={`${s.label}-${i}`} className="tag" title={`${s.label}：暂未公开主页`}>{inner}</span>
-                )
-              })}
-            </div>
+            {/* 联系标签点击即复制；数据由后台「个人中心 → 资料」维护并经 /api/profile 水合 */}
+            <FooterSocialTags />
           </div>
 
-          {/* 导航链接：移动端两列芯片网格，桌面四列链接列表 */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-6 lg:hidden">
+          {/* 移动端：两列胶囊芯片，排在二维码之前 */}
+          <div className="order-2 grid w-full grid-cols-2 gap-x-4 gap-y-6 lg:hidden">
             {navItems.map((item) => (
               <FooterNavSection key={item.key} item={item} compact />
             ))}
           </div>
-          {/* 桌面端 6 个分组各占一列，避免「06 我的」被挤到上一列右侧 / 换行错位 */}
-          <div className="hidden grid-cols-6 gap-4 lg:grid lg:col-span-3">
+          {/* lg：6 列；xl：与联系区、二维码同一行，列间距由 16px 收紧到 6px */}
+          <div className="order-2 hidden w-full grid-cols-6 gap-4 lg:grid xl:w-auto xl:min-w-0 xl:flex-1 xl:gap-x-1.5">
             {navItems.map((item) => (
               <FooterNavSection key={item.key} item={item} />
             ))}
+          </div>
+
+          {/* 两张二维码：窄屏居中排在导航下方；xl 起到最右侧 */}
+          <div className="order-3 flex w-full shrink-0 flex-wrap justify-center gap-2.5 xl:w-auto xl:justify-start">
+            <FooterQrCard
+              label="微信"
+              caption="扫码加我 · 备注来意"
+              src="/image/微信.png"
+              hint={`微信号 ${profile.wechat}`}
+              icon={MessageCircle}
+            />
+            <FooterQrCard
+              label="QQ群"
+              caption="AI / Agent 交流群"
+              src="/image/QQ群.jpg"
+              hint="群码放到 public/image/QQ群.jpg"
+              icon={Users}
+            />
           </div>
         </div>
 
@@ -840,10 +936,14 @@ function GlobalAssistant() {
   // AI 分身页本身就是一个完整对话界面，不再叠加右下角助手，避免功能与视觉重复
   if (pathname.startsWith('/ai')) return null
 
+  // AI 助手只是附属能力：chunk 拉不到时静默隐藏它自己，
+  // 不能让异常冒泡到路由级边界，把整页（顶栏 / 内容 / 底部菜单栏）一起换成错误卡片。
   return (
-    <Suspense fallback={null}>
-      <AIAssistant />
-    </Suspense>
+    <ErrorBoundary boundary="assistant" fallback={null}>
+      <Suspense fallback={null}>
+        <AIAssistant />
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 
@@ -855,13 +955,15 @@ export default function Layout() {
   // 首页 loading 占位与首屏 hero 同高，chunk 到达替换内容区时不再上下推挤
   const isHome = pathname === '/'
 
-  // 锁定页面级滚动：AI 分身页内容自行滚动，避免向下滑动时露出首页式页脚/底部区域
+  // 锁定页面级滚动：AI 分身页内容自行滚动，避免向下滑动时露出首页式页脚/底部区域。
+  // 锁在 html 上而不是 body：给 body 写 overflow 会连带把 overflow-x 从 clip 折算成
+  // hidden（又变成滚动容器），与 index.css 的固定底栏兜底冲突。
   useEffect(() => {
     if (!isAvatarPage) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const prev = document.documentElement.style.overflowY
+    document.documentElement.style.overflowY = 'hidden'
     return () => {
-      document.body.style.overflow = prev
+      document.documentElement.style.overflowY = prev
     }
   }, [isAvatarPage])
 
@@ -889,7 +991,7 @@ export default function Layout() {
         </Suspense>
       </main>
       {!isAvatarPage && <Footer />}
-      <MobileTabBar />
+      {/* 底部菜单栏已上移到 App 顶层（所有错误边界之外），这里不再重复挂载 */}
       <BackToTop />
       <GlobalAssistant />
     </div>

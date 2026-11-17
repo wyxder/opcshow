@@ -1,0 +1,190 @@
+- generic [ref=e4]:
+  - link "跳到主内容" [ref=e5] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=e6]:
+    - generic [ref=e8]:
+      - link "晓叶 · WYX.SPACE 标志 晓叶 WYX.SPACE / 2026" [ref=e9] [cursor=pointer]:
+        - /url: /
+        - img "晓叶 · WYX.SPACE 标志" [ref=e11]
+        - generic [ref=e12]:
+          - generic [ref=e13]: 晓叶
+          - generic [ref=e14]: WYX.SPACE / 2026
+      - navigation "主导航" [ref=e15]:
+        - link "01 首页" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e19]: "01"
+          - text: 首页
+        - link "02 AI分身" [ref=e21] [cursor=pointer]:
+          - /url: /ai
+          - generic [ref=e22]: "02"
+          - text: AI分身
+        - link "03 学习" [ref=e27] [cursor=pointer]:
+          - /url: /learn
+          - generic [ref=e28]: "03"
+          - text: 学习
+        - link "04 工作" [ref=e33] [cursor=pointer]:
+          - /url: /work/resume
+          - generic [ref=e34]: "04"
+          - text: 工作
+        - link "05 生活" [ref=e39] [cursor=pointer]:
+          - /url: /life/moments
+          - generic [ref=e40]: "05"
+          - text: 生活
+        - link "06 我的" [ref=e45] [cursor=pointer]:
+          - /url: /me
+          - generic [ref=e46]: "06"
+          - text: 我的
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - button "搜索" [ref=e52] [cursor=pointer]:
+            - generic [ref=e57]: ⌘K
+          - button "切换主题，当前 纸感极简" [ref=e59] [cursor=pointer]
+        - link "后台管理" [ref=e74] [cursor=pointer]:
+          - /url: /admin
+        - button "交个朋友" [ref=e78] [cursor=pointer]
+  - main [ref=e80]:
+    - paragraph [ref=e83]: LOADING…
+  - contentinfo [ref=e84]:
+    - generic [ref=e87]:
+      - generic [ref=e88]:
+        - generic [ref=e89]:
+          - generic [ref=e90]: OPEN TO INTERNSHIP
+          - generic [ref=e91]: ✦
+        - generic [ref=e92]:
+          - generic [ref=e93]: AI 全栈 / 智能体开发
+          - generic [ref=e94]: ✦
+        - generic [ref=e95]:
+          - generic [ref=e96]: 6 个月 · 5 天/周 · 随时到岗
+          - generic [ref=e97]: ✦
+        - generic [ref=e98]:
+          - generic [ref=e99]: 西安 · 可远程
+          - generic [ref=e100]: ✦
+        - generic [ref=e101]:
+          - generic [ref=e102]: WYXCODE@QQ.COM
+          - generic [ref=e103]: ✦
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - generic [ref=e106]: OPEN TO INTERNSHIP
+          - generic [ref=e107]: ✦
+        - generic [ref=e108]:
+          - generic [ref=e109]: AI 全栈 / 智能体开发
+          - generic [ref=e110]: ✦
+        - generic [ref=e111]:
+          - generic [ref=e112]: 6 个月 · 5 天/周 · 随时到岗
+          - generic [ref=e113]: ✦
+        - generic [ref=e114]:
+          - generic [ref=e115]: 西安 · 可远程
+          - generic [ref=e116]: ✦
+        - generic [ref=e117]:
+          - generic [ref=e118]: WYXCODE@QQ.COM
+          - generic [ref=e119]: ✦
+    - generic [ref=e120]:
+      - generic [ref=e121]:
+        - generic [ref=e122]:
+          - paragraph [ref=e123]: LET'S BUILD SOMETHING
+          - link "一起做点有用的东西" [ref=e124] [cursor=pointer]:
+            - /url: mailto:wyxcode@qq.com
+          - generic [ref=e125]:
+            - link "Email" [ref=e126] [cursor=pointer]:
+              - /url: mailto:wyxcode@qq.com
+              - text: wyxcode@qq.com
+            - link "GitHub" [ref=e130] [cursor=pointer]:
+              - /url: https://github.com/wyx-code
+              - text: "@wyx-code"
+            - generic "小红书：暂未公开主页" [ref=e134]: 2.3w 粉
+            - generic "微信：暂未公开主页" [ref=e137]: wyx200265
+        - generic [ref=e144]:
+          - generic [ref=e145]:
+            - paragraph [ref=e146]:
+              - generic [ref=e147]: "01"
+              - text: 首页
+            - list [ref=e148]:
+              - listitem [ref=e149]:
+                - link "今日概览" [ref=e150] [cursor=pointer]:
+                  - /url: /#top
+              - listitem [ref=e153]:
+                - link "精选项目" [ref=e154] [cursor=pointer]:
+                  - /url: /#projects
+              - listitem [ref=e157]:
+                - link "技能图谱" [ref=e158] [cursor=pointer]:
+                  - /url: /#skills
+              - listitem [ref=e161]:
+                - link "竞赛荣誉" [ref=e162] [cursor=pointer]:
+                  - /url: /#awards
+          - generic [ref=e165]:
+            - paragraph [ref=e166]:
+              - generic [ref=e167]: "02"
+              - text: AI分身
+            - list [ref=e168]:
+              - listitem [ref=e169]:
+                - link "声音克隆" [ref=e170] [cursor=pointer]:
+                  - /url: /ai?tab=voice
+              - listitem [ref=e172]:
+                - link "形象复刻" [ref=e173] [cursor=pointer]:
+                  - /url: /ai?tab=avatar
+              - listitem [ref=e175]:
+                - link "数字人对话" [ref=e176] [cursor=pointer]:
+                  - /url: /ai?tab=chat
+          - generic [ref=e178]:
+            - paragraph [ref=e179]:
+              - generic [ref=e180]: "03"
+              - text: 学习
+            - list [ref=e181]:
+              - listitem [ref=e182]:
+                - link "知识库" [ref=e183] [cursor=pointer]:
+                  - /url: /learn
+          - generic [ref=e185]:
+            - paragraph [ref=e186]:
+              - generic [ref=e187]: "04"
+              - text: 工作
+            - list [ref=e188]:
+              - listitem [ref=e189]:
+                - link "简历" [ref=e190] [cursor=pointer]:
+                  - /url: /work/resume
+              - listitem [ref=e192]:
+                - link "百宝箱" [ref=e193] [cursor=pointer]:
+                  - /url: /work/toolbox
+              - listitem [ref=e195]:
+                - link "资源中心" [ref=e196] [cursor=pointer]:
+                  - /url: /work/files
+          - generic [ref=e198]:
+            - paragraph [ref=e199]:
+              - generic [ref=e200]: "05"
+              - text: 生活
+            - list [ref=e201]:
+              - listitem [ref=e202]:
+                - link "朋友圈" [ref=e203] [cursor=pointer]:
+                  - /url: /life/moments
+              - listitem [ref=e205]:
+                - link "旅拍相册" [ref=e206] [cursor=pointer]:
+                  - /url: /life/travel
+              - listitem [ref=e208]:
+                - link "恋爱记录" [ref=e209] [cursor=pointer]:
+                  - /url: /life/love
+              - listitem [ref=e211]:
+                - link "音乐盒" [ref=e212] [cursor=pointer]:
+                  - /url: /life/music
+          - generic [ref=e214]:
+            - paragraph [ref=e215]:
+              - generic [ref=e216]: "06"
+              - text: 我的
+            - list [ref=e217]:
+              - listitem [ref=e218]:
+                - link "自媒体矩阵" [ref=e219] [cursor=pointer]:
+                  - /url: /me/media
+              - listitem [ref=e221]:
+                - link "留言弹幕墙" [ref=e222] [cursor=pointer]:
+                  - /url: /me/guestbook
+              - listitem [ref=e224]:
+                - link "友链" [ref=e225] [cursor=pointer]:
+                  - /url: /me/friends
+      - generic [ref=e227]:
+        - generic [ref=e228]: © 2026 晓叶 · 用 React 手搓，AI 只负责打下手
+        - generic [ref=e229]:
+          - generic [ref=e230]: BUILD 2026.10.29
+          - link "sitemap" [ref=e231] [cursor=pointer]:
+            - /url: /sitemap.xml
+          - link "RSS" [ref=e232] [cursor=pointer]:
+            - /url: /rss.xml
+          - link "后台" [ref=e233] [cursor=pointer]:
+            - /url: /admin

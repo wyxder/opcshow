@@ -474,8 +474,8 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
                 <div className="flex items-center justify-between border-b px-3 py-2" style={{ borderColor: 'rgb(var(--c-ink) / 0.12)' }}>
                   <span className="text-[10px] font-bold">WYX.SPACE</span>
                   <div className="flex gap-2 text-[8px] opacity-70">
-                    <span>学习</span>
-                    <span>作品</span>
+                    <span>AI知识库</span>
+                    <span>百宝箱</span>
                     <span>生活</span>
                   </div>
                 </div>
@@ -494,7 +494,7 @@ export default function SettingsPage({ tab, setTab, show }: { tab: Tab; setTab: 
                       看作品
                     </span>
                     <span className="rounded-full border px-2 py-1 text-[7px]" style={{ borderColor: 'rgb(var(--c-ink) / 0.25)' }}>
-                      简历
+                      百宝箱
                     </span>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-1.5">

@@ -371,7 +371,11 @@
     background-repeat: no-repeat;
     color: rgb(var(--c-ink));
     font-feature-settings: 'ss01' 1;
+    /* 用 clip 而不是 hidden：hidden 会把 body 变成滚动容器，部分 Android WebView /
+       iOS Safari 会因此让挂在 body 上的 position:fixed 底栏随页面滚动跑出视口。
+       clip 同样裁掉横向溢出，但不创建滚动容器；旧内核回退到 hidden。 */
     overflow-x: hidden;
+    overflow-x: clip;
   }
 
   /* 移动端 Safari / Chrome 对 background-attachment:fixed 会在地址栏收起或滚动时
@@ -380,6 +384,31 @@
   @media (max-width: 1023px) {
     body {
       background-attachment: scroll;
+    }
+  }
+
+  /* 移动端底部菜单栏必须永远贴着视口底部：真机在地址栏收起 / 主题切换 / 长列表滚动时，
+     偶发把 fixed 元素按 body 滚动容器定位而移出可视区。这里给一层硬兜底：
+     强制贴底 + 独立 GPU 合成层，避免滚动过程中被裁剪或重绘丢失。 */
+  @media (max-width: 1023px) {
+    nav[aria-label='底部导航'] {
+      position: fixed !important;
+      inset-inline: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      max-width: 100vw !important;
+      /* 硬保险：即使有其它规则 / 扩展注入的样式把底栏隐藏或禁用点击，也强制常驻可点 */
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      /* 高于顶栏(70)/AI 助手(65)，低于弹窗遮罩(90)，避免把 modal 盖住 */
+      z-index: 85 !important;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      will-change: transform;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
     }
   }
 

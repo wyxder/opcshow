@@ -1,0 +1,354 @@
+- generic [ref=e4]:
+  - link "跳到主内容" [ref=e5] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=e6]:
+    - generic [ref=e8]:
+      - link "晓叶 · WYX.SPACE 标志 晓叶 WYX.SPACE / 2026" [ref=e9] [cursor=pointer]:
+        - /url: /
+        - img "晓叶 · WYX.SPACE 标志" [ref=e11]
+        - generic [ref=e12]:
+          - generic [ref=e13]: 晓叶
+          - generic [ref=e14]: WYX.SPACE / 2026
+      - navigation "主导航" [ref=e15]:
+        - link "01 首页" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e18]: "01"
+          - text: 首页
+        - link "02 AI分身" [ref=e20] [cursor=pointer]:
+          - /url: /ai
+          - generic [ref=e21]: "02"
+          - text: AI分身
+        - link "03 学习" [ref=e26] [cursor=pointer]:
+          - /url: /learn
+          - generic [ref=e27]: "03"
+          - text: 学习
+        - link "04 工作" [ref=e32] [cursor=pointer]:
+          - /url: /work/resume
+          - generic [ref=e33]: "04"
+          - text: 工作
+        - link "05 生活" [ref=e38] [cursor=pointer]:
+          - /url: /life/moments
+          - generic [ref=e40]: "05"
+          - text: 生活
+        - link "06 我的" [ref=e45] [cursor=pointer]:
+          - /url: /me
+          - generic [ref=e46]: "06"
+          - text: 我的
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - button "搜索" [ref=e52] [cursor=pointer]:
+            - generic [ref=e57]: ⌘K
+          - button "切换主题，当前 纸感极简" [ref=e59] [cursor=pointer]
+        - link "后台管理" [ref=e74] [cursor=pointer]:
+          - /url: /admin
+        - button "交个朋友" [ref=e78] [cursor=pointer]
+  - main [ref=e80]:
+    - generic [ref=e81]:
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - paragraph [ref=e84]: 04 / LIFE · LOVE LOG
+          - heading "异地第 4 年 · 西安 · 重庆" [level=1] [ref=e85]
+        - generic [ref=e87]:
+          - paragraph [ref=e88]: TOGETHER
+          - paragraph [ref=e89]: 1,269天
+      - generic [ref=e90]:
+        - generic [ref=e92]:
+          - paragraph [ref=e93]: 1,269天
+          - paragraph [ref=e94]: 在一起
+        - generic [ref=e96]:
+          - paragraph [ref=e97]: 86次
+          - paragraph [ref=e98]: 见面次数
+        - generic [ref=e100]:
+          - paragraph [ref=e101]: 11座城市
+          - paragraph [ref=e102]: 一起去过
+        - generic [ref=e104]:
+          - paragraph [ref=e105]: 2,403张
+          - paragraph [ref=e106]: 合影
+      - generic [ref=e109]:
+        - paragraph [ref=e110]: TOGETHER WITH YOU
+        - paragraph [ref=e111]: 那些一起走过的日子
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - generic [ref=e114]: 叶
+            - generic [ref=e118]: 晓叶
+          - generic [ref=e124]:
+            - generic [ref=e125]: 羊
+            - generic [ref=e129]: 小羊
+        - paragraph [ref=e130]: 这是我们一起走过的时间
+        - generic [ref=e131]:
+          - generic [ref=e132]:
+            - generic [ref=e133]: "1269"
+            - generic [ref=e135]: 天
+          - generic [ref=e136]: ·
+          - generic [ref=e137]:
+            - generic [ref=e138]: "11"
+            - generic [ref=e140]: 时
+          - generic [ref=e141]: ·
+          - generic [ref=e142]:
+            - generic [ref=e143]: "00"
+            - generic [ref=e145]: 分
+          - generic [ref=e146]: ·
+          - generic [ref=e147]:
+            - generic [ref=e148]: "54"
+            - generic [ref=e150]: 秒
+        - generic [ref=e151]:
+          - generic [ref=e152]: 始于 2023 年 5 月 20 日
+          - generic [ref=e155]: 西安 · 重庆
+      - generic [ref=e159]:
+        - generic [ref=e160]:
+          - generic [ref=e161]:
+            - button "全部" [ref=e162] [cursor=pointer]
+            - button "起点" [ref=e163] [cursor=pointer]
+            - button "日常" [ref=e164] [cursor=pointer]
+            - button "旅行" [ref=e165] [cursor=pointer]
+            - button "惊喜" [ref=e166] [cursor=pointer]
+            - button "成长" [ref=e167] [cursor=pointer]
+          - generic [ref=e170]:
+            - article [ref=e176]:
+              - generic [ref=e177]:
+                - img "图书馆四楼，借走同一本《深度学习》" [ref=e178]
+                - generic [ref=e179]: 起点
+              - generic [ref=e180]:
+                - generic [ref=e181]:
+                  - generic [ref=e182]: 2023-05-20
+                  - generic [ref=e183]: 西安 · 未央
+                - heading "图书馆四楼，借走同一本《深度学习》" [level=3] [ref=e187]
+                - paragraph [ref=e188]: 她先伸手，我把书让了出去，然后要到了微信。那天西安 29 度，我在图书馆门口站了十分钟才敢发第一条消息。
+            - article [ref=e194]:
+              - generic [ref=e195]:
+                - img "第一次一起去吃重庆小面" [ref=e196]
+                - generic [ref=e197]: 日常
+              - generic [ref=e198]:
+                - generic [ref=e199]:
+                  - generic [ref=e200]: 2023-09-17
+                  - generic [ref=e201]: 西安 · 万州面馆
+                - heading "第一次一起去吃重庆小面" [level=3] [ref=e205]
+                - paragraph [ref=e206]: 她吃微辣，我吃特辣，然后她被辣到眼泪汪汪还硬说好吃。后来我才知道她其实不能吃辣。
+            - article [ref=e214]:
+              - generic [ref=e215]:
+                - img "异地第一年，寄了一箱「时间胶囊」" [ref=e216]
+                - generic [ref=e217]: 惊喜
+              - generic [ref=e218]:
+                - generic [ref=e219]:
+                  - generic [ref=e220]: 2024-02-14
+                  - generic [ref=e221]: 西安 ↔ 重庆
+                - heading "异地第一年，寄了一箱「时间胶囊」" [level=3] [ref=e225]
+                - paragraph [ref=e226]: 365 张纸条，每天抽一张。她抽到的第一张写着「今天可以要求我唱一首歌」。
+            - article [ref=e234]:
+              - generic [ref=e235]:
+                - img "成都 · 一起看了第一场演唱会" [ref=e236]
+                - generic [ref=e237]: 旅行
+              - generic [ref=e238]:
+                - generic [ref=e239]:
+                  - generic [ref=e240]: 2024-07-21
+                  - generic [ref=e241]: 成都 · 东安湖
+                - heading "成都 · 一起看了第一场演唱会" [level=3] [ref=e245]
+                - paragraph [ref=e246]: 她在副歌的时候哭了，我在旁边偷偷录像，回来剪成了一支 3 分钟的片子。
+            - article [ref=e256]:
+              - generic [ref=e257]:
+                - img "因为「谁该先挂电话」吵了一架" [ref=e258]
+                - generic [ref=e259]: 成长
+              - generic [ref=e260]:
+                - generic [ref=e261]:
+                  - generic [ref=e262]: 2024-11-03
+                  - generic [ref=e263]: 异地
+                - heading "因为「谁该先挂电话」吵了一架" [level=3] [ref=e267]
+                - paragraph [ref=e268]: 吵完她发来一条消息：「我们不吵隔夜架，你先睡，我明天继续喜欢你。」
+            - article [ref=e274]:
+              - generic [ref=e275]:
+                - img "重庆 · 带她回家吃外婆做的饭" [ref=e276]
+                - generic [ref=e277]: 旅行
+              - generic [ref=e278]:
+                - generic [ref=e279]:
+                  - generic [ref=e280]: 2025-05-01
+                  - generic [ref=e281]: 重庆 · 万州
+                - heading "重庆 · 带她回家吃外婆做的饭" [level=3] [ref=e285]
+                - paragraph [ref=e286]: 外婆塞给她一大袋腊肉，她一路抱回西安，说这是「通关文牒」。
+            - article [ref=e292]:
+              - generic [ref=e293]:
+                - img "读研开学，她把我的工位贴满便签" [ref=e294]
+                - generic [ref=e295]: 日常
+              - generic [ref=e296]:
+                - generic [ref=e297]:
+                  - generic [ref=e298]: 2025-09-10
+                  - generic [ref=e299]: 西安 · 陕科大
+                - heading "读研开学，她把我的工位贴满便签" [level=3] [ref=e303]
+                - paragraph [ref=e304]: 每张便签一句「代码写不出来就先吃饭」。现在还在我显示器下面贴着。
+            - article [ref=e312]:
+              - generic [ref=e313]:
+                - img "三周年，用作品集当礼物" [ref=e314]
+                - generic [ref=e315]: 惊喜
+              - generic [ref=e316]:
+                - generic [ref=e317]:
+                  - generic [ref=e318]: 2026-05-20
+                  - generic [ref=e319]: 西安
+                - heading "三周年，用作品集当礼物" [level=3] [ref=e323]
+                - paragraph [ref=e324]: 把这个网站做出来了。她说比花好，因为「这个能一直更新」。
+        - complementary [ref=e325]:
+          - generic [ref=e326]:
+            - paragraph [ref=e327]: NEXT ANNIVERSARY
+            - paragraph [ref=e331]: 192天后
+            - paragraph [ref=e332]: 5 月 20 日 · 第 4 年
+            - paragraph [ref=e333]: 「下次见面，我请她吃两碗面，因为上次她没吃过瘾。」
+          - generic [ref=e334]:
+            - paragraph [ref=e335]: THE RULES
+            - heading "我们的三条约定" [level=3] [ref=e336]
+            - list [ref=e337]:
+              - listitem [ref=e338]: 不吵隔夜架
+              - listitem [ref=e341]: 每天至少一次语音
+              - listitem [ref=e344]: 吵架不许提分手
+          - generic [ref=e347]:
+            - generic [ref=e349]:
+              - generic [ref=e350]: 羊
+              - generic [ref=e351]:
+                - paragraph [ref=e352]: 小羊
+                - paragraph [ref=e353]: 最严格的读者 · 摄影提供
+            - paragraph [ref=e354]: 「你写代码的时候，像一个在搭积木的小孩。」
+  - contentinfo [ref=e355]:
+    - generic [ref=e358]:
+      - generic [ref=e359]:
+        - generic [ref=e360]:
+          - generic [ref=e361]: OPEN TO INTERNSHIP
+          - generic [ref=e362]: ✦
+        - generic [ref=e363]:
+          - generic [ref=e364]: AI 全栈 / 智能体开发
+          - generic [ref=e365]: ✦
+        - generic [ref=e366]:
+          - generic [ref=e367]: 6 个月 · 5 天/周 · 随时到岗
+          - generic [ref=e368]: ✦
+        - generic [ref=e369]:
+          - generic [ref=e370]: 西安 · 可远程
+          - generic [ref=e371]: ✦
+        - generic [ref=e372]:
+          - generic [ref=e373]: WYXCODE@QQ.COM
+          - generic [ref=e374]: ✦
+      - generic [ref=e375]:
+        - generic [ref=e376]:
+          - generic [ref=e377]: OPEN TO INTERNSHIP
+          - generic [ref=e378]: ✦
+        - generic [ref=e379]:
+          - generic [ref=e380]: AI 全栈 / 智能体开发
+          - generic [ref=e381]: ✦
+        - generic [ref=e382]:
+          - generic [ref=e383]: 6 个月 · 5 天/周 · 随时到岗
+          - generic [ref=e384]: ✦
+        - generic [ref=e385]:
+          - generic [ref=e386]: 西安 · 可远程
+          - generic [ref=e387]: ✦
+        - generic [ref=e388]:
+          - generic [ref=e389]: WYXCODE@QQ.COM
+          - generic [ref=e390]: ✦
+    - generic [ref=e391]:
+      - generic [ref=e392]:
+        - generic [ref=e393]:
+          - paragraph [ref=e394]: LET'S BUILD SOMETHING
+          - link "一起做点有用的东西" [ref=e395] [cursor=pointer]:
+            - /url: mailto:wyxcode@qq.com
+          - generic [ref=e396]:
+            - link "Email" [ref=e397] [cursor=pointer]:
+              - /url: mailto:wyxcode@qq.com
+              - text: wyxcode@qq.com
+            - link "GitHub" [ref=e401] [cursor=pointer]:
+              - /url: https://github.com/wyx-code
+              - text: "@wyx-code"
+            - generic "小红书：暂未公开主页" [ref=e405]: 2.3w 粉
+            - generic "微信：暂未公开主页" [ref=e408]: wyx200265
+        - generic [ref=e415]:
+          - generic [ref=e416]:
+            - paragraph [ref=e417]:
+              - generic [ref=e418]: "01"
+              - text: 首页
+            - list [ref=e419]:
+              - listitem [ref=e420]:
+                - link "今日概览" [ref=e421] [cursor=pointer]:
+                  - /url: /#top
+              - listitem [ref=e423]:
+                - link "精选项目" [ref=e424] [cursor=pointer]:
+                  - /url: /#projects
+              - listitem [ref=e426]:
+                - link "技能图谱" [ref=e427] [cursor=pointer]:
+                  - /url: /#skills
+              - listitem [ref=e429]:
+                - link "竞赛荣誉" [ref=e430] [cursor=pointer]:
+                  - /url: /#awards
+          - generic [ref=e432]:
+            - paragraph [ref=e433]:
+              - generic [ref=e434]: "02"
+              - text: AI分身
+            - list [ref=e435]:
+              - listitem [ref=e436]:
+                - link "声音克隆" [ref=e437] [cursor=pointer]:
+                  - /url: /ai?tab=voice
+              - listitem [ref=e439]:
+                - link "形象复刻" [ref=e440] [cursor=pointer]:
+                  - /url: /ai?tab=avatar
+              - listitem [ref=e442]:
+                - link "数字人对话" [ref=e443] [cursor=pointer]:
+                  - /url: /ai?tab=chat
+          - generic [ref=e445]:
+            - paragraph [ref=e446]:
+              - generic [ref=e447]: "03"
+              - text: 学习
+            - list [ref=e448]:
+              - listitem [ref=e449]:
+                - link "知识库" [ref=e450] [cursor=pointer]:
+                  - /url: /learn
+          - generic [ref=e452]:
+            - paragraph [ref=e453]:
+              - generic [ref=e454]: "04"
+              - text: 工作
+            - list [ref=e455]:
+              - listitem [ref=e456]:
+                - link "简历" [ref=e457] [cursor=pointer]:
+                  - /url: /work/resume
+              - listitem [ref=e459]:
+                - link "百宝箱" [ref=e460] [cursor=pointer]:
+                  - /url: /work/toolbox
+              - listitem [ref=e462]:
+                - link "资源中心" [ref=e463] [cursor=pointer]:
+                  - /url: /work/files
+          - generic [ref=e465]:
+            - paragraph [ref=e466]:
+              - generic [ref=e467]: "05"
+              - text: 生活
+            - list [ref=e468]:
+              - listitem [ref=e469]:
+                - link "朋友圈" [ref=e470] [cursor=pointer]:
+                  - /url: /life/moments
+              - listitem [ref=e472]:
+                - link "旅拍相册" [ref=e473] [cursor=pointer]:
+                  - /url: /life/travel
+              - listitem [ref=e475]:
+                - link "恋爱记录" [ref=e476] [cursor=pointer]:
+                  - /url: /life/love
+              - listitem [ref=e479]:
+                - link "音乐盒" [ref=e480] [cursor=pointer]:
+                  - /url: /life/music
+          - generic [ref=e482]:
+            - paragraph [ref=e483]:
+              - generic [ref=e484]: "06"
+              - text: 我的
+            - list [ref=e485]:
+              - listitem [ref=e486]:
+                - link "自媒体矩阵" [ref=e487] [cursor=pointer]:
+                  - /url: /me/media
+              - listitem [ref=e489]:
+                - link "留言弹幕墙" [ref=e490] [cursor=pointer]:
+                  - /url: /me/guestbook
+              - listitem [ref=e492]:
+                - link "友链" [ref=e493] [cursor=pointer]:
+                  - /url: /me/friends
+      - generic [ref=e495]:
+        - generic [ref=e496]: © 2026 晓叶 · 用 React 手搓，AI 只负责打下手
+        - generic [ref=e497]:
+          - generic [ref=e498]: BUILD 2026.10.29
+          - link "sitemap" [ref=e499] [cursor=pointer]:
+            - /url: /sitemap.xml
+          - link "RSS" [ref=e500] [cursor=pointer]:
+            - /url: /rss.xml
+          - link "后台" [ref=e501] [cursor=pointer]:
+            - /url: /admin
+  - button "晓叶的 AI 分身头像 问问 AI 分身":
+    - generic:
+      - img "晓叶的 AI 分身头像"
+    - generic: 问问 AI 分身

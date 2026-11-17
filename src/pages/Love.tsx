@@ -50,8 +50,7 @@ export default function Love() {
         }
       />
 
-      <LoveHeartbeat />
-
+      {/* 统计卡（在一起 / 见面次数 / 一起去过城市 / 合影）放在 TOGETHER WITH YOU 上方 */}
       <div className="mb-6 mt-8 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {loveStats.map((s, i) => (
           <Reveal key={s.label} delay={i * 0.05}>
@@ -66,7 +65,10 @@ export default function Love() {
         ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_290px]">
+      <LoveHeartbeat />
+
+      {/* 分类筛选与上方 TOGETHER WITH YOU 组件之间留出呼吸间距 */}
+      <div className="mt-8 grid gap-5 lg:mt-10 lg:grid-cols-[1fr_290px]">
         <div>
           <div className="mb-4 flex flex-wrap gap-1.5">
             {types.map((t) => (

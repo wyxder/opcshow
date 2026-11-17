@@ -1,0 +1,51 @@
+- generic [ref=e3]:
+  - button "切换主题，当前 纸感极简" [ref=e6] [cursor=pointer]
+  - generic [ref=e22]:
+    - complementary [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - img "WYX.ADMIN 标志" [ref=e27]
+          - generic [ref=e28]:
+            - generic [ref=e29]: WYX.ADMIN
+            - generic [ref=e30]: CONTROL ROOM
+        - paragraph [ref=e31]: 把后台做成一个安静的控制室。
+        - paragraph [ref=e32]: 内容、简历、文件与互动的真实数据都在这里。每一次写操作都以服务端响应为准。
+      - list [ref=e33]:
+        - listitem [ref=e34]:
+          - generic [ref=e38]: HttpOnly Cookie 会话
+          - generic [ref=e39]: ·
+          - generic [ref=e40]: 浏览器不保存令牌
+        - listitem [ref=e41]:
+          - generic [ref=e45]: 服务端限流与审计
+          - generic [ref=e46]: ·
+          - generic [ref=e47]: 失败尝试会被记录
+        - listitem [ref=e48]:
+          - generic [ref=e52]: 写操作真实落库
+          - generic [ref=e53]: ·
+          - generic [ref=e54]: 失败不伪装成功
+      - paragraph [ref=e55]: WYX.SPACE / SIGN IN
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - heading "登录后台" [level=1] [ref=e58]
+        - paragraph [ref=e59]: 使用管理员账号进入控制室，未登录访问后台会回到这里。
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - text: 账号
+            - generic [ref=e63]: 1–64 位
+          - textbox "账号 1–64 位" [active] [ref=e64]:
+            - /placeholder: admin
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - text: 密码
+            - generic [ref=e67]: 至少 6 位
+          - generic [ref=e68]:
+            - textbox "密码 至少 6 位 显示密码" [ref=e69]:
+              - /placeholder: ••••••••
+            - button "显示密码" [ref=e70] [cursor=pointer]
+      - button "登录后台" [ref=e74] [cursor=pointer]
+      - paragraph [ref=e79]: 会话写在 HttpOnly Cookie，浏览器不保存令牌
+      - generic [ref=e83]:
+        - link "返回前台" [ref=e84] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e87]: NOINDEX · PRIVATE

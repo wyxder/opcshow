@@ -110,7 +110,7 @@ export default function Files() {
   return (
     <div className="shell">
       <PageHead
-        kicker="03 / WORK · RESOURCES"
+        kicker="04 / TOOLBOX · RESOURCES"
         title="文件资源中心"
         right={
           <span className="font-mono text-[9.5px] text-ink/45">

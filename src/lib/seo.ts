@@ -93,7 +93,7 @@ export function articleJsonLd(input: { id: string; title: string; abstract: stri
   }
 }
 
-/** 首页 / 简历页的人物画像数据 */
+/** 首页的人物画像数据 */
 export function personJsonLd() {
   return {
     '@context': 'https://schema.org',

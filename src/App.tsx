@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import Layout from '@/components/Layout'
-import { ErrorBoundary, NotFound, RouteErrorBoundary, RouteFallback } from '@/components/ErrorBoundary'
+import Layout, { MobileTabBar } from '@/components/Layout'
+import { ErrorBoundary, NotFound, RouteErrorBoundary, RouteFallback, lazyWithRetry } from '@/components/ErrorBoundary'
 import { flushStay, trackPageview } from '@/services/analytics'
 
 /* ---------------------------------------------------------------------------
@@ -12,22 +12,20 @@ import { flushStay, trackPageview } from '@/services/analytics'
 // 首页是默认路由：模块级就发起 chunk 请求，lazy 复用同一个 promise。
 // 首次进入首页时 Suspense 几乎不再挂起，loading 占位不会把顶栏 / 首屏顶掉。
 const homeChunk = import('@/pages/Home')
-const Home = lazy(() => homeChunk)
-const Avatar = lazy(() => import('@/features/ai-avatar/pages/AICharacter'))
-const Learn = lazy(() => import('@/pages/Learn'))
-const Reader = lazy(() => import('@/pages/Reader'))
-const Resume = lazy(() => import('@/pages/Resume'))
-const Toolbox = lazy(() => import('@/pages/Toolbox'))
-const Files = lazy(() => import('@/pages/Files'))
-const Love = lazy(() => import('@/pages/Love'))
-const Moments = lazy(() => import('@/pages/Moments'))
-const Travel = lazy(() => import('@/pages/Travel'))
-const MusicBox = lazy(() => import('@/pages/MusicBox'))
-const About = lazy(() => import('@/pages/About'))
-const Media = lazy(() => import('@/pages/Media'))
-const Guestbook = lazy(() => import('@/pages/Guestbook'))
-const Friends = lazy(() => import('@/pages/Friends'))
-const Admin = lazy(() => import('@/pages/Admin'))
+const Home = lazyWithRetry(() => homeChunk)
+const Avatar = lazyWithRetry(() => import('@/features/ai-avatar/pages/AICharacter'))
+const Learn = lazyWithRetry(() => import('@/pages/Learn'))
+const Reader = lazyWithRetry(() => import('@/pages/Reader'))
+const Toolbox = lazyWithRetry(() => import('@/pages/Toolbox'))
+const Files = lazyWithRetry(() => import('@/pages/Files'))
+const Love = lazyWithRetry(() => import('@/pages/Love'))
+const Moments = lazyWithRetry(() => import('@/pages/Moments'))
+const Travel = lazyWithRetry(() => import('@/pages/Travel'))
+const MusicBox = lazyWithRetry(() => import('@/pages/MusicBox'))
+const Media = lazyWithRetry(() => import('@/pages/Media'))
+const Guestbook = lazyWithRetry(() => import('@/pages/Guestbook'))
+const Friends = lazyWithRetry(() => import('@/pages/Friends'))
+const Admin = lazyWithRetry(() => import('@/pages/Admin'))
 
 function AnimatedOutlet() {
   const location = useLocation()
@@ -49,8 +47,7 @@ function AnimatedOutlet() {
             <Route path="ai" element={<Avatar />} />
             <Route path="learn" element={<Learn />} />
             <Route path="learn/:id" element={<Reader />} />
-            <Route path="work" element={<Navigate to="/work/resume" replace />} />
-            <Route path="work/resume" element={<Resume />} />
+            <Route path="work" element={<Navigate to="/work/toolbox" replace />} />
             <Route path="work/toolbox" element={<Toolbox />} />
             <Route path="work/files" element={<Files />} />
             <Route path="life" element={<Navigate to="/life/moments" replace />} />
@@ -58,7 +55,7 @@ function AnimatedOutlet() {
             <Route path="life/moments" element={<Moments />} />
             <Route path="life/travel" element={<Travel />} />
             <Route path="life/music" element={<MusicBox />} />
-            <Route path="me" element={<About />} />
+            <Route path="me" element={<Navigate to="/me/media" replace />} />
             <Route path="me/media" element={<Media />} />
             <Route path="me/guestbook" element={<Guestbook />} />
             <Route path="me/friends" element={<Friends />} />
@@ -105,10 +102,15 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary boundary="app">
-      <RouteErrorBoundary>
-        <AnimatedOutlet />
-      </RouteErrorBoundary>
-    </ErrorBoundary>
+    <>
+      <ErrorBoundary boundary="app">
+        <RouteErrorBoundary>
+          <AnimatedOutlet />
+        </RouteErrorBoundary>
+      </ErrorBoundary>
+      {/* 底部菜单栏挂在所有错误边界之外：任何页面 / chunk 渲染出错都只会塌内容区，
+          6 个主入口始终 portal 在 body 上、随视口固定，下滑也不会消失。 */}
+      <MobileTabBar />
+    </>
   )
 }

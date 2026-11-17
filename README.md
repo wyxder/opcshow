@@ -170,7 +170,7 @@ resume1/
 | 3 | **首页叙述** | `Home.tsx` | 标签化 Hero、3D 倾斜名片与详情弹窗、CountUp 数据条、拖拽/自动播放项目轮播、技能 Bento、荣誉榜 + 全览弹窗、生活切片 |
 | 4 | **长文阅读** | `Reader.tsx` · `articles.ts` | 三级目录（Section→Sub）、`IntersectionObserver` 目录高亮、6 种内容块渲染、代码一键复制、阅读位置记忆、正文排版随主题（`.prose-read`） |
 | 5 | **AI 助手** | `AIAssistant.tsx` · `services/ai.ts` | 浮屏入口 + `open-assistant` 事件、SSE 流式输出、阅读上下文注入（当前文章/小节）、可点引用、停止/重试、`source` 角标区分模型/检索/预置 |
-| 6 | **简历与打印** | `Resume.tsx` · `index.css` | 一页纸版式、`window.print()`、打印专用样式（隐藏导航/纹理/动画，白底黑字，防分页断裂）、docx 与原稿下载 |
+| 6 | **AI知识库** | `Learn.tsx` · `articles.index.ts` | 分类/标签目录、标题与标签搜索、可折叠目录导航、文章卡片与阅读入口 |
 | 7 | **生活频道** | `Love/Moments/Travel/MusicBox.tsx` | 恋爱天数与手记、朋友圈（本地追加/点赞/评论）、旅拍地图散点 + 轨迹 + 城市筛选、音乐盒（可插拔音频源，缺失时明示「试听暂缺」） |
 | 8 | **资源与工具** | `Toolbox.tsx` · `Files.tsx` · `services/files.ts` | 工具/Prompt 收藏、资源按类型色标 + 网格/列表 + 分类筛选 + 搜索、`resolveDownload()` 统一判断「静态下载 / 签名下载 / 待上传」 |
 | 9 | **留言弹幕墙** | `Guestbook.tsx` · `services/guestbook.ts` | 弹幕滚动墙、提交→审核→上墙、点赞（服务端按 IP 哈希去重）、举报、本机模式与真实模式同接口 |

@@ -207,8 +207,8 @@ function Hero({ onContact }: { onContact: () => void }) {
               <span className="hidden h-3 w-px bg-ink/15 sm:block" />
               <span>6 个月+ · 5 天/周 · 随时到岗</span>
               <span className="flex items-center gap-3 font-sans text-[10px] tracking-normal">
-                <Link to="/work/resume" className="link-underline font-medium text-ink/55 transition hover:text-ink">
-                  简历 · 一页纸
+                <Link to="/work/files" className="link-underline font-medium text-ink/55 transition hover:text-ink">
+                  简历原件
                 </Link>
                 <Link to="/me/guestbook" className="link-underline font-medium text-ink/55 transition hover:text-ink">
                   留句话
@@ -1107,9 +1107,9 @@ function HomeCTA() {
             </span>
             <ArrowUpRight size={14} />
           </a>
-          <Link to="/work/resume" className="flex items-center justify-between gap-3 rounded-xl border border-paper/25 px-4 py-3 text-[13px] transition hover:border-lime hover:text-lime">
+          <Link to="/work/files" className="flex items-center justify-between gap-3 rounded-xl border border-paper/25 px-4 py-3 text-[13px] transition hover:border-lime hover:text-lime">
             <span className="flex items-center gap-2">
-              <Download size={14} /> 查看完整简历
+              <Download size={14} /> 下载简历原件
             </span>
             <ArrowRight size={14} />
           </Link>
@@ -1221,7 +1221,7 @@ export default function Home() {
               <a href={`mailto:${profile.email}`} className="btn-ink flex-1 !py-2 !text-[12px]">
                 发邮件
               </a>
-              <Link to="/me" onClick={() => setCardOpen(false)} className="btn flex-1 !py-2 !text-[12px]">
+              <Link to="/me/media" onClick={() => setCardOpen(false)} className="btn flex-1 !py-2 !text-[12px]">
                 了解更多
               </Link>
             </div>
