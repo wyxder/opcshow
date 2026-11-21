@@ -5,7 +5,7 @@
 /* =============================================================================
    主题令牌层（唯一数据源）
    -----------------------------------------------------------------------------
-   5 套主题：paper / lab / swiss / terminal / pop
+   4 套主题：paper / terminal / pop / lab
    颜色一律存 RGB 通道三值（"244 240 230"），这样 Tailwind 的 `bg-ink/10`
    这类透明度语法可以写成 rgb(var(--c-ink) / <alpha-value>) 并跟随主题。
    新增主题 = 追加一个 [data-theme='xx'] 块 + 在 src/theme/theme.ts 注册元信息。
@@ -1048,4 +1048,13 @@
   transition-property: background-color, border-color, color, fill, stroke, outline-color !important;
   transition-duration: 200ms !important;
   transition-timing-function: ease !important;
+}
+
+/* 从首页「现场瞬间」卡片跳来时，短暂高亮目标朋友圈帖子 */
+@keyframes momentFlash {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--c-lime) / 0); }
+  30%, 70% { box-shadow: 0 0 0 5px rgb(var(--c-lime) / 0.55); }
+}
+.moment-target-flash {
+  animation: momentFlash 2.6s ease-in-out;
 }

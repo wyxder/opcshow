@@ -70,7 +70,7 @@ export const navItems: NavItem[] = [
     key: 'life',
     label: '生活',
     en: 'LIFE',
-    index: '04',
+    index: '03',
     // 默认入口 = 朋友圈（菜单第一项），/life 会在 App 路由里重定向到这里
     to: '/life/moments',
     children: [
@@ -84,7 +84,7 @@ export const navItems: NavItem[] = [
     key: 'me',
     label: '我的',
     en: 'ME',
-    index: '05',
+    index: '04',
     to: '/me',
     children: [
       { label: '自媒体矩阵', desc: `${formatWan(totalFollowers)} 粉丝的 ${platforms.length} 个平台`, to: '/me/media', icon: 'share' },
@@ -96,7 +96,7 @@ export const navItems: NavItem[] = [
     key: 'ai',
     label: 'AI分身',
     en: 'AVATAR',
-    index: '06',
+    index: '05',
     to: '/ai',
     children: [
       { label: '声音克隆', desc: '30 秒复刻你的音色', to: '/ai?tab=voice', icon: 'mic' },

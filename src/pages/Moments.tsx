@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Camera, ExternalLink, Heart, ImageOff, MapPin, MessageCircle, Play, Send, Share2, Sparkles, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PageHead } from '@/components/ui/primitives'
 import { SmartImage } from '@/components/SmartImage'
 import { useToast } from '@/components/ui/Toast'
@@ -24,6 +25,27 @@ type MediaItem = Moment['media'][number]
 /** 视频直链（mp4 / webm / mov…）可直接 <video> 播放；其余按「视频页链接」渲染成可点卡片 */
 const isPlayableVideo = (url: string) =>
   /\.(mp4|webm|ogg|ogv|mov|m4v)(?:[?#]|$)/i.test(url) || url.startsWith('data:video/') || url.startsWith('blob:')
+
+/** 帖子头像：真实照片，加载失败回退到首字占位，绝不出现破图 */
+function PostAvatar({ accent }: { accent: string }) {
+  const [failed, setFailed] = useState(false)
+  const placeholder = (
+    <div className="flex h-9 w-9 items-center justify-center rounded-full border-1.5 border-ink font-display text-[13px] font-extrabold" style={{ background: accent, color: readableInk(accent) }}>
+      魏
+    </div>
+  )
+  if (failed) return placeholder
+  return (
+    <img
+      src="/image/toux.jpg"
+      alt="晓叶的头像"
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className="h-9 w-9 shrink-0 rounded-full border-1.5 border-ink object-cover"
+    />
+  )
+}
 
 /** 占位卡上只显示文件名，避免把一长串 URL 铺在动态里 */
 function shortLabel(label: string) {
@@ -97,6 +119,8 @@ export default function Moments() {
   const [serverMoments, setServerMoments] = useState<Moment[]>([])
   const [preview, setPreview] = useState<{ src: string; caption?: string } | null>(null)
   const { show, node } = useToast()
+  const [searchParams] = useSearchParams()
+  const targetPost = searchParams.get('post')
 
   useSeo({
     title: '朋友圈 · 晓叶',
@@ -150,6 +174,20 @@ export default function Moments() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [preview])
+
+  // 从首页「现场瞬间」卡片跳来时带 ?post=<id>，数据加载完成后滚动到对应帖子并高亮
+  useEffect(() => {
+    if (!targetPost || !serverMoments.length) return
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById(targetPost)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('moment-target-flash')
+        window.setTimeout(() => el.classList.remove('moment-target-flash'), 2600)
+      }
+    }, 260)
+    return () => window.clearTimeout(timer)
+  }, [targetPost, serverMoments.length])
 
   const addComment = (id: string) => {
     const text = commentDraft[id]?.trim()
@@ -235,19 +273,21 @@ export default function Moments() {
                 return (
                   <motion.article
                     key={m.id}
+                    id={m.id}
                     layout
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="relative overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-4 sm:p-5"
+                    className={cn(
+                      'relative overflow-hidden rounded-2xl border-1.5 border-ink bg-cream p-4 scroll-mt-24 transition-shadow sm:p-5',
+                      targetPost === m.id && 'ring-2 ring-lime',
+                    )}
                   >
                     <span className="absolute right-3 top-3 font-display text-[30px] font-extrabold leading-none text-ink/[0.06]">
                       {String(feed.length - i).padStart(2, '0')}
                     </span>
                     <div className="flex items-center gap-2.5">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full border-1.5 border-ink font-display text-[13px] font-extrabold" style={{ background: m.accent, color: readableInk(m.accent) }}>
-                        魏
-                      </div>
+                      <PostAvatar accent={m.accent} />
                       <div className="leading-tight">
                         <p className="text-[12.5px] font-bold">晓叶</p>
                         <p className="flex items-center gap-1.5 font-mono text-[9px] text-ink/40">

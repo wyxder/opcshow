@@ -1,8 +1,8 @@
 /**
  * AI 分身模块的主题适配层。
  *
- * 原项目使用独立 ThemeContext + 5 套 ThemeConfig；迁移后统一读取当前站点的
- * ThemeProvider（paper / lab / swiss / terminal / pop），把站点令牌转换成
+ * 原项目使用独立 ThemeContext + 多套 ThemeConfig；迁移后统一读取当前站点的
+ * ThemeProvider（paper / terminal / pop / lab），把站点令牌转换成
  * AI 分身组件需要的 ThemeConfig 结构，从而在全部主题下保持一致的配色。
  */
 import { useEffect, useState } from 'react'

@@ -587,21 +587,6 @@ export default function AICharacter() {
                     />
                   </div>
 
-                  <motion.button
-                    onClick={() => {
-                      const nextStyle = characterStyle === 'realistic' ? 'cartoon' : characterStyle === 'cartoon' ? 'hidden' : 'realistic'
-                      handleStyleSwitch(nextStyle)
-                    }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold transition-all backdrop-blur-md border border-white/20 shadow-lg"
-                    style={{
-                      background: `linear-gradient(135deg, rgba(255, 234, 167, 0.2) 0%, rgba(253, 203, 110, 0.2) 50%)`,
-                      color: 'white'
-                    }}
-                  >
-                    <span>{characterStyle === 'cartoon' ? '🎨 卡通' : characterStyle === 'hidden' ? '🚫 隐藏' : '👤 真实'}</span>
-                  </motion.button>
-
                   <div className="flex items-center gap-3">
                     <motion.button
                       onClick={() => setIsHistoryOpen(true)}
@@ -662,18 +647,6 @@ export default function AICharacter() {
                         customBackgroundUrl={customBackgroundUrl}
                       />
                     </div>
-                    <button
-                      onClick={() => {
-                        const nextStyle = characterStyle === 'realistic' ? 'cartoon' : characterStyle === 'cartoon' ? 'hidden' : 'realistic'
-                        handleStyleSwitch(nextStyle)
-                      }}
-                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all backdrop-blur-md border border-white/20 shadow-lg active:scale-95 text-white"
-                      style={{
-                        background: `linear-gradient(135deg, rgba(255, 234, 167, 0.2) 0%, rgba(253, 203, 110, 0.2) 50%)`
-                      }}
-                    >
-                      <span>{characterStyle === 'cartoon' ? '🎨 卡通' : characterStyle === 'hidden' ? '🚫 隐藏' : '👤 真实'}</span>
-                    </button>
                   </div>
                 )}
               </div>

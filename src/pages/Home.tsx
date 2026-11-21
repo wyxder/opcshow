@@ -836,6 +836,8 @@ type SceneShot = {
   image?: string
   /** 点击卡片打开的原始大图 URL（缺省则用 to 站内跳转） */
   full?: string
+  /** 对应朋友圈帖子 id，灯箱里可跳转到原帖 */
+  momentId?: string
 }
 
 /** 复用朋友圈数据：上方一排向左滚动 */
@@ -912,6 +914,16 @@ const matchOriginals = [
   '微信图片_2026-11-17_221830_110.jpg', '微信图片_2026-11-17_223343_421.jpg', '微信图片_2026-11-17_223551_473.jpg',
   '微信图片_2026-11-17_224032_903.jpg', '微信图片_2026-11-17_224211_452.jpg', '微信图片_2026-11-17_224840_371.jpg',
 ]
+/**
+ * 每张比赛图归属的朋友圈帖子编号（01–10），与 server/data/content.json 中
+ * moment-match-01..10 一一对应。灯箱里据此跳到「这条图所在的朋友圈原帖」。
+ * 同一帖的三张图指向同一个 momentId；#03 作为高光在收官帖复用，仍归 04。
+ */
+const matchPostOf = [
+  '01', '01', '04', '03', '04', '05', '01', '02', '02', '03',
+  '05', '06', '06', '04', '07', '09', '07', '08', '05', '02',
+  '03', '08', '09', '10', '06', '08', '10', '09', '07',
+]
 const matchShots: SceneShot[] = Array.from({ length: 29 }, (_, i) => {
   const n = String(i + 1).padStart(2, '0')
   return {
@@ -926,6 +938,7 @@ const matchShots: SceneShot[] = Array.from({ length: 29 }, (_, i) => {
     rotate: shotRotations[i % shotRotations.length],
     image: `/images/match/match-${n}.webp`,
     full: `/images/比赛/${matchOriginals[i]}`,
+    momentId: `moment-match-${matchPostOf[i]}`,
   }
 })
 /** 29 张比赛图拆成三行轮播（10 / 10 / 9），让它们分布在不同行，而不是挤在一行 */
@@ -957,15 +970,6 @@ function ShotCard({ shot, duplicate = false, onOpen }: { shot: SceneShot; duplic
       <div className="relative aspect-[4/3] overflow-hidden rounded-[11px] border border-ink/15">
         <ScenePhoto shot={shot} />
         <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/20 via-transparent to-transparent" />
-        <span className="absolute left-2 top-2 rounded-full border border-ink/25 bg-cream/90 px-1.5 py-0.5 font-mono text-[8.5px] tracking-wide text-ink/65">
-          {shot.kind}
-        </span>
-        <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md border border-ink/25 bg-cream/90">
-          <Camera size={10} />
-        </span>
-        <span className="absolute bottom-2 left-2 max-w-[82%] truncate rounded border border-ink/20 bg-cream/90 px-1.5 py-0.5 font-mono text-[8.5px] text-ink/60">
-          {shot.label}
-        </span>
       </div>
       <div className="px-1 pb-0.5 pt-2">
         <p className="line-clamp-2 text-[11px] leading-snug text-ink/75">{shot.caption}</p>
@@ -977,29 +981,36 @@ function ShotCard({ shot, duplicate = false, onOpen }: { shot: SceneShot; duplic
     </>
   )
 
-  if (duplicate) {
-    return (
-      <div aria-hidden className={cn(cardClass, 'pointer-events-none')} style={{ rotate: `${shot.rotate}deg` }}>
-        {content}
-      </div>
-    )
-  }
+  // openable = 有原图的比赛照片，整张卡片（含动画副本）都可点开大图灯箱；
+  // 动画副本只是无缝循环的视觉拷贝，同样可点，避免鼠标移上去点击穿透“没反应”。
+  const openable = !!shot.full && !!onOpen
+  const sharedClass = cn(
+    cardClass,
+    'group text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-hard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
+  )
+  const style = { rotate: `${shot.rotate}deg` }
 
-  // 有原图的比赛照片：点击打开大图灯箱（用 button，避免和 Link 的站内跳转冲突）
-  if (shot.full && onOpen) {
+  if (openable) {
     return (
       <button
         type="button"
-        onClick={() => onOpen(shot)}
+        onClick={() => onOpen!(shot)}
         aria-label={`${shot.kind}：${shot.caption}（点击查看大图）`}
-        className={cn(
-          cardClass,
-          'group text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-hard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
-        )}
-        style={{ rotate: `${shot.rotate}deg` }}
+        aria-hidden={duplicate || undefined}
+        tabIndex={duplicate ? -1 : undefined}
+        className={sharedClass}
+        style={style}
       >
         {content}
       </button>
+    )
+  }
+
+  if (duplicate) {
+    return (
+      <div aria-hidden className={cn(cardClass, 'pointer-events-none')} style={style}>
+        {content}
+      </div>
     )
   }
 
@@ -1007,11 +1018,8 @@ function ShotCard({ shot, duplicate = false, onOpen }: { shot: SceneShot; duplic
     <Link
       to={shot.to}
       aria-label={`${shot.kind}：${shot.caption}`}
-      className={cn(
-        cardClass,
-        'group transition-all duration-300 hover:-translate-y-1 hover:shadow-hard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
-      )}
-      style={{ rotate: `${shot.rotate}deg` }}
+      className={sharedClass}
+      style={style}
     >
       {content}
     </Link>
@@ -1056,8 +1064,12 @@ function SceneRow({
 
 function SceneWall() {
   const [active, setActive] = useState<SceneShot | null>(null)
-  const openShot = (s: SceneShot) => setActive(s)
+  const [imgLoaded, setImgLoaded] = useState(false)
+  const thumbRef = useRef<HTMLDivElement>(null)
+  const openShot = (s: SceneShot) => { setImgLoaded(false); setActive(s) }
+  const goTo = (s: SceneShot) => { setImgLoaded(false); setActive(s) }
   const step = (dir: 1 | -1) => {
+    setImgLoaded(false)
     setActive((cur) => {
       if (!cur) return cur
       const idx = matchShots.findIndex((m) => m.id === cur.id)
@@ -1074,6 +1086,16 @@ function SceneWall() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [active])
+
+  // 灯箱打开时，缩略图导航条自动把当前图滚到可见区
+  useEffect(() => {
+    if (!active || !thumbRef.current) return
+    const idx = matchShots.findIndex((m) => m.id === active.id)
+    const el = thumbRef.current.children[idx] as HTMLElement | undefined
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  }, [active])
+
+  const activeIdx = active ? matchShots.findIndex((m) => m.id === active.id) : -1
 
   return (
     <section id="scenes" className="scroll-mt-28">
@@ -1103,41 +1125,100 @@ function SceneWall() {
         <SceneRow shots={matchRows[2]} label="比赛现场 · 第三排，向左连续滚动" speed={82} onOpen={openShot} />
       </div>
 
-      {/* 比赛照片大图灯箱 */}
+      {/* 比赛照片大图灯箱：缩略图模糊底 → 原图淡入，配左右切换 / 缩略图导航 / 原帖跳转 */}
       <Modal open={!!active} onClose={() => setActive(null)} bare className="max-w-5xl">
         {active && (
-          <div className="p-3 sm:p-4">
-            <div className="mb-3 pr-12">
-              <div className="kicker mb-1">比赛现场 · {active.label}</div>
-              <h3 className="text-lg font-extrabold leading-tight">{active.caption}</h3>
+          <div className="overflow-hidden rounded-[20px] bg-cream">
+            {/* 顶栏（右侧 pr-12 给 Modal 的关闭按钮留位） */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/10 px-4 py-3 pr-14 sm:px-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-1.5 border-ink bg-lime">
+                  <Camera size={15} />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 font-mono text-[9px] tracking-[0.2em] text-ink/45">
+                    比赛现场 · {active.label}
+                    <span className="rounded-full border border-ink/15 px-1.5 py-0.5 tabular-nums tracking-normal text-ink/55">
+                      {activeIdx + 1} / {matchShots.length}
+                    </span>
+                  </div>
+                  <h3 className="truncate text-sm font-extrabold leading-tight sm:text-base">{active.caption}</h3>
+                </div>
+              </div>
             </div>
-            <div className="relative">
+
+            {/* 主图区：深色底衬 + 缩略图模糊占位 */}
+            <div className="relative flex min-h-[240px] items-center justify-center bg-ink/[0.06] px-2 py-4 sm:px-6 sm:py-5">
+              <img
+                src={active.image ?? active.full}
+                alt=""
+                aria-hidden
+                className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-xl"
+              />
+              <img
+                key={active.id}
+                src={active.full ?? active.image}
+                alt={active.caption}
+                onLoad={() => setImgLoaded(true)}
+                onError={(e) => { e.currentTarget.src = active.image ?? ''; setImgLoaded(true) }}
+                className={cn(
+                  'relative max-h-[52vh] w-auto rounded-xl border border-ink/15 object-contain shadow-hard transition-all duration-500',
+                  imgLoaded ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
+                )}
+              />
               <button
                 type="button"
                 onClick={() => step(-1)}
                 aria-label="上一张"
-                className="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border-1.5 border-ink bg-cream/90 shadow-hard-sm transition hover:bg-lime"
+                className="absolute left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border-1.5 border-ink bg-cream/90 shadow-hard-sm transition hover:-translate-x-0.5 hover:bg-lime active:scale-95 sm:h-11 sm:w-11"
               >
                 <ArrowLeft size={18} />
               </button>
-              <img
-                src={active.full ?? active.image}
-                alt={active.caption}
-                onError={(e) => { e.currentTarget.src = active.image ?? '' }}
-                className="mx-auto max-h-[68vh] w-auto rounded-xl border border-ink/20 object-contain"
-              />
               <button
                 type="button"
                 onClick={() => step(1)}
                 aria-label="下一张"
-                className="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border-1.5 border-ink bg-cream/90 shadow-hard-sm transition hover:bg-lime"
+                className="absolute right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border-1.5 border-ink bg-cream/90 shadow-hard-sm transition hover:translate-x-0.5 hover:bg-lime active:scale-95 sm:h-11 sm:w-11"
               >
                 <ArrowRight size={18} />
               </button>
             </div>
-            <p className="mt-3 text-center font-mono text-[10px] tracking-wide text-ink/45">
-              {matchShots.findIndex((m) => m.id === active.id) + 1} / {matchShots.length} · ← → 切换 · ESC 关闭
-            </p>
+
+            {/* 缩略图导航条 */}
+            <div className="border-t border-ink/10 px-3 py-3 sm:px-5">
+              <div ref={thumbRef} className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
+                {matchShots.map((s, i) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => goTo(s)}
+                    aria-label={`查看第 ${i + 1} 张：${s.caption}`}
+                    className={cn(
+                      'relative h-12 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all sm:h-14 sm:w-20',
+                      s.id === active.id ? 'border-ink opacity-100' : 'border-transparent opacity-55 hover:opacity-100',
+                    )}
+                  >
+                    <img src={s.image} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    {s.id === active.id && <span className="absolute inset-x-0 bottom-0 h-1 bg-lime" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 底栏：操作 + 提示 */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink/10 bg-paper/60 px-4 py-3 sm:px-5">
+              <p className="font-mono text-[9.5px] tracking-wide text-ink/45">
+                {active.meta} · ← → 切换 · ESC 关闭
+              </p>
+              {active.momentId && (
+                <Link
+                  to={`/life/moments?post=${active.momentId}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border-1.5 border-ink bg-lime px-3.5 py-1.5 font-mono text-[10px] font-bold tracking-wide transition hover:-translate-y-0.5 hover:shadow-hard-sm active:translate-y-0"
+                >
+                  查看朋友圈原帖 <ArrowUpRight size={13} />
+                </Link>
+              )}
+            </div>
           </div>
         )}
       </Modal>
